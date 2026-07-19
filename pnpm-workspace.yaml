@@ -1,0 +1,5 @@
+onlyBuiltDependencies:
+  - esbuild
+minimumReleaseAgeExclude:
+  - "@lumen-media/module-sdk"
+  - "@lumen-media/module-cli"

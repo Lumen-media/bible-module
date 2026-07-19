@@ -1,0 +1,55 @@
+name: Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Version (e.g. 1.0.0)"
+        required: true
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          ref: main
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Bump version and sync manifest
+        run: |
+          npm pkg set version=${{ github.event.inputs.version }}
+          node scripts/sync-manifest.js
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Build and pack
+        run: npm run pack
+
+      - name: Commit version changes
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add package.json manifest.json
+          git diff --staged --quiet || git commit -m "chore: bump version to ${{ github.event.inputs.version }} [skip ci]"
+          git push origin main
+
+      - name: Create release
+        run: |
+          PACK_FILE=$(ls dist/*.lumenpack | head -1)
+          gh release create "v${{ github.event.inputs.version }}" "$PACK_FILE" \
+            --title "v${{ github.event.inputs.version }}" \
+            --generate-notes
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

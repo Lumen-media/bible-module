@@ -1,0 +1,14 @@
+node_modules/
+dist/
+coverage/
+.turbo/
+.cache/
+*.lumenpack
+*.log
+.DS_Store
+.env
+.env.local
+.env.*.local
+.vscode/
+.idea/
+*.tsbuildinfo
