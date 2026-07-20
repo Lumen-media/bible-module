@@ -1,0 +1,97 @@
+import { BookOpen } from 'lucide-react';
+import type { Book } from '../data/types.js';
+
+interface BookGridProps {
+  books: Book[];
+  testament: 'old' | 'new';
+  onSelect: (book: Book) => void;
+}
+
+const ABBREVIATIONS: Record<string, string> = {
+  genesis: 'Gn',
+  exodus: 'Êx',
+  leviticus: 'Lv',
+  numbers: 'Nm',
+  deuteronomy: 'Dt',
+  joshua: 'Js',
+  judges: 'Jz',
+  ruth: 'Rt',
+  '1samuel': '1Sm',
+  '2samuel': '2Sm',
+  '1kings': '1Rs',
+  '2kings': '2Rs',
+  '1chronicles': '1Cr',
+  '2chronicles': '2Cr',
+  ezra: 'Ed',
+  nehemiah: 'Ne',
+  esther: 'Et',
+  job: 'Jó',
+  psalms: 'Sl',
+  proverbs: 'Pv',
+  ecclesiastes: 'Ec',
+  songofsolomon: 'Ct',
+  isaiah: 'Is',
+  jeremiah: 'Jr',
+  lamentations: 'Lm',
+  ezekiel: 'Ez',
+  daniel: 'Dn',
+  hosea: 'Os',
+  joel: 'Jl',
+  amos: 'Am',
+  obadiah: 'Ob',
+  jonah: 'Jn',
+  micah: 'Mq',
+  nahum: 'Na',
+  habakkuk: 'Hc',
+  zephaniah: 'Sf',
+  haggai: 'Ag',
+  zechariah: 'Zc',
+  malachi: 'Ml',
+  matthew: 'Mt',
+  mark: 'Mc',
+  luke: 'Lc',
+  john: 'Jo',
+  acts: 'At',
+  romans: 'Rm',
+  '1corinthians': '1Co',
+  '2corinthians': '2Co',
+  galatians: 'Gl',
+  ephesians: 'Ef',
+  philippians: 'Fp',
+  colossians: 'Cl',
+  '1thessalonians': '1Ts',
+  '2thessalonians': '2Ts',
+  '1timothy': '1Tm',
+  '2timothy': '2Tm',
+  titus: 'Tt',
+  philemon: 'Fm',
+  hebrews: 'Hb',
+  james: 'Tg',
+  '1peter': '1Pe',
+  '2peter': '2Pe',
+  '1john': '1Jo',
+  '2john': '2Jo',
+  '3john': '3Jo',
+  jude: 'Jd',
+  revelation: 'Ap',
+};
+
+export function BookGrid({ books, testament, onSelect }: BookGridProps) {
+  const filtered = books.filter((b) => b.testament === testament);
+
+  return (
+    <div className="flex flex-wrap gap-1.5">
+      {filtered.map((book) => (
+        <button
+          key={book.id}
+          onClick={() => onSelect(book)}
+          className="flex h-10 w-14 flex-col items-center justify-center rounded-md border border-border bg-card text-xs font-medium text-card-foreground transition-colors hover:bg-accent hover:text-accent-foreground"
+          title={book.name}
+        >
+          <BookOpen className="mb-0.5 h-3 w-3 opacity-50" />
+          {ABBREVIATIONS[book.id] ?? book.id.slice(0, 3)}
+        </button>
+      ))}
+    </div>
+  );
+}
