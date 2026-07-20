@@ -1,7 +1,7 @@
 {
   "id": "com.example.bible-module",
   "name": "Bíblia",
-  "version": "0.0.0",
+  "version": "v0.0.1",
   "api": "^0.1.0",
   "minLumenVersion": "0.0.0",
   "description": "Bíblia com múltiplas versões (NAA, ARC, ARA, ACF, AS21, AA, JFAA)",
