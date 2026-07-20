@@ -1,8 +1,7 @@
-import type { SqliteHandle } from '@lumen-media/module-sdk';
-import { MIGRATIONS } from './schema.js';
-import type { Book, Chapter, SearchResult } from './types.js';
+import type { DataAPI, FsAPI } from '@lumen-media/module-sdk';
+import type { Book, Chapter, MidvashChapter, Verse } from './types.js';
 
-const BOOKS_DATA: Book[] = [
+export const BOOKS: Book[] = [
   { id: 'genesis', name: 'Gênesis', chapters: 50, testament: 'old' },
   { id: 'exodus', name: 'Êxodo', chapters: 40, testament: 'old' },
   { id: 'leviticus', name: 'Levítico', chapters: 27, testament: 'old' },
@@ -71,105 +70,51 @@ const BOOKS_DATA: Book[] = [
   { id: 'revelation', name: 'Apocalipse', chapters: 22, testament: 'new' },
 ];
 
-export function getBookList(): Book[] {
-  return BOOKS_DATA;
+function chapterPath(version: string, book: string, chapter: number): string {
+  return `cache/${version}/${book}/${chapter}.json`;
 }
 
-export function getBook(id: string): Book | undefined {
-  return BOOKS_DATA.find((b) => b.id === id);
+export function versionCacheDir(version: string): string {
+  return `cache/${version}`;
 }
 
-export async function initDB(db: SqliteHandle): Promise<void> {
-  await db.migrate(MIGRATIONS);
-}
-
-export async function getDownloadedVersions(db: SqliteHandle): Promise<string[]> {
-  const rows = await db.query<{ value: string }>(
-    "SELECT value FROM metadata WHERE key = 'versions'"
-  );
-  if (rows.length === 0) return [];
-  return JSON.parse(rows[0].value) as string[];
-}
-
-export async function setDownloadedVersions(db: SqliteHandle, versions: string[]): Promise<void> {
-  await db.exec("INSERT OR REPLACE INTO metadata (key, value) VALUES ('versions', ?)", [
-    JSON.stringify(versions),
-  ]);
+function decodeBytes(bytes: Uint8Array): string {
+  return new TextDecoder().decode(bytes);
 }
 
 export async function getChapter(
-  db: SqliteHandle,
+  fs: FsAPI,
   version: string,
   book: string,
   chapter: number
 ): Promise<Chapter | null> {
-  const rows = await db.query<{
-    verse: number;
-    text: string;
-  }>(
-    'SELECT verse, text FROM verses WHERE version = ? AND book = ? AND chapter = ? ORDER BY verse',
-    [version, book, chapter]
-  );
+  const path = chapterPath(version, book, chapter);
+  const exists = await fs.exists(path).catch(() => false);
+  if (!exists) return null;
 
-  if (rows.length === 0) return null;
-
-  const maxVerse = Math.max(...rows.map((r) => r.verse));
-  const verses: (Verse | null)[] = new Array(maxVerse + 1).fill(null);
-
-  for (const row of rows) {
-    verses[row.verse] = { number: row.verse, text: row.text };
+  try {
+    const bytes = await fs.read(path);
+    const raw = decodeBytes(bytes);
+    const data = JSON.parse(raw) as MidvashChapter;
+    const verses = data.chapter.verses;
+    const max = verses.length > 0 ? Math.max(...verses.map((v) => v.number)) : 0;
+    const result: (Verse | null)[] = new Array(max + 1).fill(null);
+    for (const v of verses) {
+      result[v.number] = { number: v.number, text: v.text };
+    }
+    return { version, book, number: chapter, verses: result };
+  } catch {
+    return null;
   }
-
-  return { version, book, number: chapter, verses };
 }
 
-export async function search(
-  db: SqliteHandle,
-  query: string,
-  version?: string
-): Promise<SearchResult[]> {
-  if (!query.trim()) return [];
-
-  const params: unknown[] = [query];
-  let versionFilter = '';
-
-  if (version) {
-    versionFilter = ' AND version = ?';
-    params.push(version);
-  }
-
-  const rows = await db.query<{
-    version: string;
-    book: string;
-    chapter: number;
-    verse: number;
-    text: string;
-  }>(
-    `SELECT version, book, chapter, verse, text FROM verses_fts
-     WHERE verses_fts MATCH ?
-     ${versionFilter}
-     ORDER BY rank
-     LIMIT 50`,
-    params
-  );
-
-  return rows.map((r) => ({
-    version: r.version,
-    book: r.book,
-    chapter: r.chapter,
-    verse: r.verse,
-    text: r.text,
-  }));
+export async function getDownloadedVersions(json: DataAPI['json']): Promise<string[]> {
+  return (await json.get<string[]>('downloadedVersions', [])) ?? [];
 }
 
-export function getChapterPath(version: string, book: string, chapter: number): string {
-  return `${version}/${book}/${chapter}.json`;
-}
-
-export function jsonCachePath(version: string, book: string, chapter: number): string {
-  return `cache/${version}/${book}/${chapter}.json`;
-}
-
-export function versionCachePath(version: string): string {
-  return `cache/${version}/.downloaded`;
+export async function setDownloadedVersions(
+  json: DataAPI['json'],
+  versions: string[]
+): Promise<void> {
+  await json.set('downloadedVersions', versions);
 }

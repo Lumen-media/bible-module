@@ -7,7 +7,6 @@ import css from './styles.css?inline';
 
 export default class BibleModulePlugin extends LumenPlugin {
   private styleEl: HTMLStyleElement | null = null;
-  private disposables: Array<() => void> = [];
 
   async onload(host: LumenHost): Promise<void> {
     this.styleEl = document.createElement('style');
@@ -16,17 +15,6 @@ export default class BibleModulePlugin extends LumenPlugin {
     document.head.appendChild(this.styleEl);
 
     setupI18n(host.app.locale);
-
-    const db = await host.data.sqlite();
-    const store = useBibleStore;
-
-    store.getState().init({
-      db,
-      net: host.net,
-      fs: host.fs,
-      presentation: host.presentation,
-      t,
-    });
 
     host.panels.add({
       id: 'bible-controller',
@@ -77,14 +65,18 @@ export default class BibleModulePlugin extends LumenPlugin {
         host.presentation.clear();
       },
     });
+
+    useBibleStore.getState().init({
+      fs: host.fs,
+      net: host.net,
+      json: host.data.json,
+      presentation: host.presentation,
+      t,
+    });
   }
 
   async onunload(): Promise<void> {
     this.styleEl?.remove();
     this.styleEl = null;
-    for (const dispose of this.disposables) {
-      dispose();
-    }
-    this.disposables = [];
   }
 }

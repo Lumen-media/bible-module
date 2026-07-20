@@ -1,5 +1,5 @@
 import { BookOpen, Loader2, Search } from 'lucide-react';
-import { getBookList } from '../data/store.js';
+import { BOOKS } from '../data/store.js';
 import { useBibleStore } from '../store.js';
 import { BookGrid } from './BookGrid.js';
 import { ChapterReader } from './ChapterReader.js';
@@ -20,21 +20,18 @@ export function BibleController() {
     testament,
     tab,
     selectedBook,
-    db,
-    net,
     fs,
+    net,
+    json,
     presentation,
     t,
     setVersion,
     setTestament,
     setTab,
     selectBook,
-    init,
   } = store;
 
-  const books = getBookList();
-
-  if (!t || !db || !net || !fs || !presentation) {
+  if (!t || !fs || !net || !json || !presentation) {
     return (
       <div className="flex h-full items-center justify-center gap-2 text-muted-foreground">
         <Loader2 className="h-5 w-5 animate-spin" />
@@ -66,7 +63,7 @@ export function BibleController() {
         t={t}
       />
 
-      <QuickSearch books={books} onSelect={(book) => selectBook(book)} t={t} />
+      <QuickSearch books={BOOKS} onSelect={(book) => selectBook(book)} t={t} />
 
       <header className="flex items-center gap-3 border-b border-border px-4 py-2">
         <h1 className="text-lg font-bold">{t('bible.title')}</h1>
@@ -124,16 +121,16 @@ export function BibleController() {
       <div className="flex flex-1 overflow-hidden">
         <div className="w-72 flex-shrink-0 overflow-y-auto border-r border-border p-3">
           {tab === 'browse' ? (
-            <BookGrid books={books} testament={testament} onSelect={selectBook} />
+            <BookGrid books={BOOKS} testament={testament} onSelect={selectBook} />
           ) : (
-            <SearchPanel db={db} version={version} t={t} />
+            <SearchPanel fs={fs} version={version} t={t} />
           )}
         </div>
 
         <div className="flex-1 overflow-hidden">
           {selectedBook ? (
             <ChapterReader
-              db={db}
+              fs={fs}
               version={version}
               book={selectedBook}
               presentation={presentation}

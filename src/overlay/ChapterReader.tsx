@@ -1,4 +1,4 @@
-import type { PresentationHostAPI, SqliteHandle } from '@lumen-media/module-sdk';
+import type { FsAPI, PresentationHostAPI } from '@lumen-media/module-sdk';
 import { ChevronLeft, ChevronRight, Loader2, Projector } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { getChapter } from '../data/store.js';
@@ -6,35 +6,33 @@ import type { Book, Chapter } from '../data/types.js';
 import type { TFunction } from '../i18n.js';
 
 interface ChapterReaderProps {
-  db: SqliteHandle;
+  fs: FsAPI;
   version: string;
   book: Book;
   presentation: PresentationHostAPI;
   t: TFunction;
 }
 
-export function ChapterReader({ db, version, book, presentation, t }: ChapterReaderProps) {
+export function ChapterReader({ fs, version, book, presentation, t }: ChapterReaderProps) {
   const [chapter, setChapter] = useState<number>(1);
   const [data, setData] = useState<Chapter | null>(null);
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
-
     async function load() {
       setLoading(true);
-      const result = await getChapter(db, version, book.id, chapter);
+      const result = await getChapter(fs, version, book.id, chapter);
       if (!cancelled) {
         setData(result);
         setLoading(false);
       }
     }
-
     load();
     return () => {
       cancelled = true;
     };
-  }, [db, version, book.id, chapter]);
+  }, [fs, version, book.id, chapter]);
 
   function project() {
     if (!data) return;

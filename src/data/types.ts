@@ -5,12 +5,6 @@ export interface Book {
   testament: 'old' | 'new';
 }
 
-export interface Version {
-  id: string;
-  name: string;
-  language: string;
-}
-
 export interface Chapter {
   version: string;
   book: string;
@@ -24,9 +18,20 @@ export interface Verse {
 }
 
 export interface SearchResult {
+  id: string;
   version: string;
   book: string;
   chapter: number;
   verse: number;
   text: string;
+}
+
+export interface MidvashVerse {
+  number: number;
+  text: string;
+}
+
+export interface MidvashChapter {
+  book: { name: string };
+  chapter: { number: number; verses: MidvashVerse[] };
 }

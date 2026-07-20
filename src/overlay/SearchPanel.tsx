@@ -1,27 +1,33 @@
-import type { SqliteHandle } from '@lumen-media/module-sdk';
 import { Loader2, Search } from 'lucide-react';
 import { useState } from 'react';
-import { search } from '../data/store.js';
 import type { SearchResult } from '../data/types.js';
 import type { TFunction } from '../i18n.js';
+import { ensureIndex, searchIndex } from '../search.js';
 
 interface SearchPanelProps {
-  db: SqliteHandle;
+  fs: import('@lumen-media/module-sdk').FsAPI;
   version: string;
   t: TFunction;
 }
 
-export function SearchPanel({ db, version, t }: SearchPanelProps) {
+export function SearchPanel({ fs, version, t }: SearchPanelProps) {
   const [query, setQuery] = useState('');
   const [results, setResults] = useState<SearchResult[]>([]);
   const [loading, setLoading] = useState(false);
+  const [indexed, setIndexed] = useState(false);
 
   async function handleSearch() {
     if (!query.trim()) return;
-    setLoading(true);
-    const r = await search(db, query, version);
+
+    if (!indexed) {
+      setLoading(true);
+      await ensureIndex(fs, version);
+      setIndexed(true);
+      setLoading(false);
+    }
+
+    const r = searchIndex(query, version);
     setResults(r);
-    setLoading(false);
   }
 
   return (
@@ -44,9 +50,13 @@ export function SearchPanel({ db, version, t }: SearchPanelProps) {
         </button>
       </div>
 
+      {!indexed && !loading && (
+        <p className="text-xs text-muted-foreground">First search builds index from cached files</p>
+      )}
+
       <div className="space-y-1">
-        {results.map((r, i) => (
-          <div key={i} className="rounded-md border border-border bg-card px-3 py-2 text-sm">
+        {results.map((r) => (
+          <div key={r.id} className="rounded-md border border-border bg-card px-3 py-2 text-sm">
             <span className="font-medium text-card-foreground">
               {r.book} {r.chapter}:{r.verse}
             </span>

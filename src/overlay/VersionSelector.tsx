@@ -18,7 +18,7 @@ interface VersionSelectorProps {
   t: TFunction;
 }
 
-export function VersionSelector({ current, onChange, t }: VersionSelectorProps) {
+export function VersionSelector({ current, onChange }: VersionSelectorProps) {
   return (
     <div className="relative">
       <select

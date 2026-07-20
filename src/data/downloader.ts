@@ -1,24 +1,18 @@
-import type { FsAPI, NetAPI, SqliteHandle } from '@lumen-media/module-sdk';
-import { jsonCachePath } from './store.js';
-import type { Book } from './types.js';
+import type { FsAPI, NetAPI } from '@lumen-media/module-sdk';
+import { BOOKS, versionCacheDir } from './store.js';
+import type { MidvashChapter } from './types.js';
 
 const MIDVASH_BASE = 'https://api.midvash.com/v1';
 const CONCURRENCY = 20;
 const MAX_RETRIES = 3;
 const RETRY_DELAYS = [1000, 3000, 5000];
 
-interface MidvashVerse {
-  number: number;
-  text: string;
-}
-
-interface MidvashChapter {
-  book: { name: string };
-  chapter: { number: number; verses: MidvashVerse[] };
-}
-
-async function delay(ms: number): Promise<void> {
+function delay(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+function chapterPath(version: string, book: string, chapter: number): string {
+  return `cache/${version}/${book}/${chapter}.json`;
 }
 
 async function fetchChapter(
@@ -37,10 +31,9 @@ async function fetchChapter(
         responseType: 'json',
         timeoutMs: 10000,
       });
-
       if (response.ok) return response.data;
     } catch {
-      // fall through to retry
+      // retry
     }
 
     if (attempt < MAX_RETRIES - 1) {
@@ -51,23 +44,26 @@ async function fetchChapter(
   return null;
 }
 
-function encodeText(s: string): string {
-  const encoder = new TextEncoder();
-  const bytes = encoder.encode(s);
-  return btoa(String.fromCharCode(...bytes));
+async function ensureDir(fs: FsAPI, version: string, book: string): Promise<void> {
+  const dir = `cache/${version}/${book}`;
+  const exists = await fs.exists(dir).catch(() => false);
+  if (!exists) {
+    try {
+      await fs.write(`${dir}/.keep`, new Uint8Array());
+    } catch {
+      // ignore
+    }
+  }
 }
 
 export async function downloadVersion(
-  db: SqliteHandle,
-  net: NetAPI,
   fs: FsAPI,
+  net: NetAPI,
   versionId: string,
-  books: Book[],
   onProgress?: (current: number, total: number) => void
-): Promise<void> {
+): Promise<boolean> {
   const chapters: { book: string; chapter: number }[] = [];
-
-  for (const book of books) {
+  for (const book of BOOKS) {
     for (let c = 1; c <= book.chapters; c++) {
       chapters.push({ book: book.id, chapter: c });
     }
@@ -75,13 +71,12 @@ export async function downloadVersion(
 
   const total = chapters.length;
   let completed = 0;
+  let anyFailed = false;
 
   async function processItem(item: { book: string; chapter: number }): Promise<void> {
-    const cacheKey = jsonCachePath(versionId, item.book, item.chapter);
-
-    const exists = await fs.exists(cacheKey).catch(() => false);
+    const path = chapterPath(versionId, item.book, item.chapter);
+    const exists = await fs.exists(path).catch(() => false);
     if (exists) {
-      await rehydrateChapter(db, fs, versionId, item.book, item.chapter);
       completed++;
       onProgress?.(completed, total);
       return;
@@ -89,18 +84,16 @@ export async function downloadVersion(
 
     const data = await fetchChapter(net, versionId, item.book, item.chapter);
     if (!data) {
+      anyFailed = true;
       completed++;
       onProgress?.(completed, total);
       return;
     }
 
+    await ensureDir(fs, versionId, item.book);
     const jsonStr = JSON.stringify(data);
-    const encoded = encodeText(jsonStr);
-    const bytes = new Uint8Array(encoded.length);
-    for (let i = 0; i < encoded.length; i++) bytes[i] = encoded.charCodeAt(i);
-
-    await fs.write(cacheKey, bytes).catch(() => {});
-    await insertChapter(db, versionId, item.book, item.chapter, data);
+    const bytes = new TextEncoder().encode(jsonStr);
+    await fs.write(path, bytes).catch(() => {});
 
     completed++;
     onProgress?.(completed, total);
@@ -121,82 +114,20 @@ export async function downloadVersion(
   }
 
   await Promise.allSettled(workers);
+  return !anyFailed;
 }
 
-async function insertChapter(
-  db: SqliteHandle,
-  version: string,
-  book: string,
-  chapter: number,
-  data: MidvashChapter
-): Promise<void> {
-  const verses = data.chapter.verses;
-
-  for (let i = 0; i < verses.length; i += 100) {
-    const batch = verses.slice(i, i + 100);
-    const placeholders = batch.map(() => '(?, ?, ?, ?, ?)').join(', ');
-    const params: unknown[] = [];
-
-    for (const v of batch) {
-      params.push(version, book, chapter, v.number, v.text);
-    }
-
-    await db.exec(
-      `INSERT OR IGNORE INTO verses (version, book, chapter, verse, text) VALUES ${placeholders}`,
-      params
-    );
-  }
+export async function hasAnyCache(fs: FsAPI, versionId: string): Promise<boolean> {
+  const dir = versionCacheDir(versionId);
+  return fs.exists(dir).catch(() => false);
 }
 
-async function rehydrateChapter(
-  db: SqliteHandle,
-  fs: FsAPI,
-  version: string,
-  book: string,
-  chapter: number
-): Promise<void> {
-  const cacheKey = jsonCachePath(version, book, chapter);
-
-  const exists = await fs.exists(cacheKey).catch(() => false);
-  if (!exists) return;
-
-  const count = await db.query<{ c: number }>(
-    'SELECT COUNT(*) as c FROM verses WHERE version = ? AND book = ? AND chapter = ?',
-    [version, book, chapter]
-  );
-
-  if (count[0]?.c > 0) return;
-
-  try {
-    const bytes = await fs.read(cacheKey);
-    const decoded = new TextDecoder().decode(bytes);
-    const data = JSON.parse(decoded) as MidvashChapter;
-    await insertChapter(db, version, book, chapter, data);
-  } catch {
-    // ignore rehydration errors
-  }
-}
-
-export async function rehydrateFromCache(
-  db: SqliteHandle,
-  fs: FsAPI,
-  versionId: string,
-  books: Book[]
-): Promise<boolean> {
-  const cacheDir = `cache/${versionId}`;
-  const cacheExists = await fs.exists(cacheDir).catch(() => false);
-  if (!cacheExists) return false;
-
-  const chapters: { book: string; chapter: number }[] = [];
-  for (const book of books) {
+export function getAllChapterRefs(): { book: string; chapter: number }[] {
+  const refs: { book: string; chapter: number }[] = [];
+  for (const book of BOOKS) {
     for (let c = 1; c <= book.chapters; c++) {
-      chapters.push({ book: book.id, chapter: c });
+      refs.push({ book: book.id, chapter: c });
     }
   }
-
-  for (const item of chapters) {
-    await rehydrateChapter(db, fs, versionId, item.book, item.chapter);
-  }
-
-  return true;
+  return refs;
 }

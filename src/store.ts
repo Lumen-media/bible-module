@@ -1,14 +1,15 @@
-import type { FsAPI, NetAPI, PresentationHostAPI, SqliteHandle } from '@lumen-media/module-sdk';
+import type { DataAPI, FsAPI, NetAPI, PresentationHostAPI } from '@lumen-media/module-sdk';
 import { create } from 'zustand';
-import { downloadVersion, rehydrateFromCache } from './data/downloader.js';
-import { getBookList, getDownloadedVersions, initDB, setDownloadedVersions } from './data/store.js';
+import { downloadVersion, hasAnyCache } from './data/downloader.js';
+import { getDownloadedVersions, setDownloadedVersions } from './data/store.js';
 import type { Book } from './data/types.js';
 import type { TFunction } from './i18n.js';
+import { clearIndex } from './search.js';
 
 export interface BibleState {
-  db: SqliteHandle | null;
-  net: NetAPI | null;
   fs: FsAPI | null;
+  net: NetAPI | null;
+  json: DataAPI['json'] | null;
   presentation: PresentationHostAPI | null;
   t: TFunction | null;
 
@@ -25,14 +26,14 @@ export interface BibleState {
 }
 
 export interface BibleActions {
-  init: (hostData: {
-    db: SqliteHandle;
-    net: NetAPI;
+  init: (services: {
     fs: FsAPI;
+    net: NetAPI;
+    json: DataAPI['json'];
     presentation: PresentationHostAPI;
     t: TFunction;
   }) => Promise<void>;
-  setVersion: (v: string) => void;
+  setVersion: (v: string) => Promise<void>;
   setTestament: (t: 'old' | 'new') => void;
   setTab: (t: 'browse' | 'search') => void;
   selectBook: (book: Book) => void;
@@ -43,9 +44,9 @@ export type BibleStore = BibleState & BibleActions;
 const DEFAULT_VERSIONS = ['naa', 'ara', 'nvi'];
 
 export const useBibleStore = create<BibleStore>((set, _get) => ({
-  db: null,
-  net: null,
   fs: null,
+  net: null,
+  json: null,
   presentation: null,
   t: null,
 
@@ -60,21 +61,19 @@ export const useBibleStore = create<BibleStore>((set, _get) => ({
   tab: 'browse',
   selectedBook: null,
 
-  init: async (hostData) => {
-    const { db, net, fs, presentation, t } = hostData;
-    set({ db, net, fs, presentation, t });
+  init: async (services) => {
+    const { fs, net, json, presentation, t } = services;
+    set({ fs, net, json, presentation, t });
 
-    await initDB(db);
-    const books = getBookList();
-    const downloaded = await getDownloadedVersions(db);
+    const downloaded = await getDownloadedVersions(json);
     const missing = DEFAULT_VERSIONS.filter((v) => !downloaded.includes(v));
 
     if (missing.length > 0) {
       for (const v of missing) {
-        const cached = await rehydrateFromCache(db, fs, v, books);
+        const cached = await hasAnyCache(fs, v);
         if (cached) {
           downloaded.push(v);
-          await setDownloadedVersions(db, downloaded);
+          await setDownloadedVersions(json, downloaded);
         }
       }
 
@@ -83,11 +82,13 @@ export const useBibleStore = create<BibleStore>((set, _get) => ({
       if (stillMissing.length > 0) {
         set({ downloading: true });
         for (const v of stillMissing) {
-          await downloadVersion(db, net, fs, v, books, (current, total) => {
+          const success = await downloadVersion(fs, net, v, (current, total) => {
             set({ dlCurrent: current, dlTotal: total, dlVersion: v });
           });
-          downloaded.push(v);
-          await setDownloadedVersions(db, downloaded);
+          if (success) {
+            downloaded.push(v);
+            await setDownloadedVersions(json, downloaded);
+          }
         }
         set({ downloading: false, dlCurrent: 0, dlTotal: 0, dlVersion: '' });
       }
@@ -96,8 +97,14 @@ export const useBibleStore = create<BibleStore>((set, _get) => ({
     set({ ready: true });
   },
 
-  setVersion: (version) => set({ version }),
+  setVersion: async (version) => {
+    set({ version });
+    clearIndex();
+  },
+
   setTestament: (testament) => set({ testament }),
+
   setTab: (tab) => set({ tab }),
+
   selectBook: (book) => set({ selectedBook: book }),
 }));

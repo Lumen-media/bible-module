@@ -29,8 +29,8 @@ export function BibleSlide({ data }: BibleSlideProps) {
         {bookName} {chapter} — {version.toUpperCase()}
       </div>
       <div className="max-w-4xl text-center text-3xl leading-relaxed text-white">
-        {text.split('\n').map((line, i) => (
-          <p key={i} className="mb-4 last:mb-0">
+        {text.split('\n').map((line) => (
+          <p key={line.slice(0, 40)} className="mb-4 last:mb-0">
             {line}
           </p>
         ))}
