@@ -22,7 +22,7 @@
   "devDependencies": {
     "@biomejs/biome": "^2.5.0",
     "@lumen-media/module-cli": "^0.12.4",
-    "@lumen-media/module-sdk": "^0.12.4",
+    "@lumen-media/module-sdk": "^0.12.6",
     "@tailwindcss/postcss": "^4.0.0",
     "@types/node": "^22.0.0",
     "@types/react": "^19.0.0",
