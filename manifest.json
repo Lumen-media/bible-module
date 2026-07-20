@@ -1,13 +1,18 @@
 {
   "id": "com.example.bible-module",
-  "name": "bible-module",
+  "name": "Bíblia",
   "version": "0.0.0",
   "api": "^0.1.0",
   "minLumenVersion": "0.0.0",
-  "description": "A Lumen module",
+  "description": "Bíblia com múltiplas versões (NAA, ARC, ARA, ACF, AS21, AA, JFAA)",
   "author": {
     "name": ""
   },
   "entry": "main.js",
-  "license": "MIT"
+  "license": "MIT",
+  "permissions": {
+    "network": [
+      "https://api.midvash.com/*"
+    ]
+  }
 }
