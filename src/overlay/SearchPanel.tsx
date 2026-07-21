@@ -63,11 +63,19 @@ export function SearchPanel({ t }: SearchPanelProps) {
     switch (e.key) {
       case 'ArrowDown':
         e.preventDefault();
-        setFocusedIndex((prev) => (prev < results.length - 1 ? prev + 1 : 0));
+        setFocusedIndex((prev) => {
+          const next = prev < results.length - 1 ? prev + 1 : 0;
+          virtualizer.scrollToIndex(next, { align: 'auto' });
+          return next;
+        });
         break;
       case 'ArrowUp':
         e.preventDefault();
-        setFocusedIndex((prev) => (prev > 0 ? prev - 1 : results.length - 1));
+        setFocusedIndex((prev) => {
+          const next = prev > 0 ? prev - 1 : results.length - 1;
+          virtualizer.scrollToIndex(next, { align: 'auto' });
+          return next;
+        });
         break;
       case 'Enter':
         e.preventDefault();
