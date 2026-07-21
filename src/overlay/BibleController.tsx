@@ -134,7 +134,7 @@ export function BibleController() {
 
         <ScrollArea className="flex-1 p-3">
           {tab === 'browse' ? (
-            <BookGrid books={BOOKS} onSelect={selectBook} t={t} />
+            <BookGrid books={BOOKS} onSelect={selectBook} />
           ) : (
             <SearchPanel t={t} />
           )}

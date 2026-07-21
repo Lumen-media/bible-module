@@ -1,10 +1,10 @@
 import { BookOpen } from 'lucide-react';
 import type { Book } from '../data/types.js';
+import { useBibleStore } from '../store.js';
 
 interface BookGridProps {
   books: Book[];
   onSelect: (book: Book) => void;
-  t: (key: string) => string;
 }
 
 const ABBREVIATIONS: Record<string, string> = {
@@ -76,7 +76,8 @@ const ABBREVIATIONS: Record<string, string> = {
   revelation: 'Ap',
 };
 
-export function BookGrid({ books, onSelect, t }: BookGridProps) {
+export function BookGrid({ books, onSelect }: BookGridProps) {
+  const t = useBibleStore((s) => s.t);
   const oldBooks = books.filter((b) => b.testament === 'old');
   const newBooks = books.filter((b) => b.testament === 'new');
 
