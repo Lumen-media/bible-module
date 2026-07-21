@@ -33,9 +33,11 @@ export function ChapterReader({ version, book, presentation, t }: ChapterReaderP
   useEffect(() => {
     if (selectedVerse != null) {
       const el = verseRefs.current.get(selectedVerse);
-      el?.scrollIntoView({ block: 'center', behavior: 'smooth' });
+      if (el) {
+        el.scrollIntoView({ block: 'center', behavior: 'smooth' });
+      }
     }
-  }, [selectedVerse]);
+  }, [selectedVerse, verses]);
 
   const projectVerse = useCallback(
     (v: { number: number; text: string }) => {
