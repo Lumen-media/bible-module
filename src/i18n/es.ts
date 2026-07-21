@@ -23,6 +23,7 @@ const messages: Record<TranslationKeys, string> = {
   'bible.copied': '¡Copiado!',
   'bible.open': 'Abrir Biblia',
   'bible.verses-per-screen': 'Versículos por pantalla',
+  'bible.manage-versions': 'Gestionar versiones',
   'bible.network-error': 'Error de red, verifique su conexión',
   'book.genesis': 'Génesis',
   'book.exodus': 'Éxodo',
