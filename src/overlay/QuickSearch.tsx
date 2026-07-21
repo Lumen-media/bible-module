@@ -1,12 +1,13 @@
 import { Input } from '@lumen-media/module-sdk/ui';
 import { BookOpen, Search } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
+import { parseReference } from '../data/ref.js';
 import type { Book } from '../data/types.js';
 import type { TFunction } from '../i18n.js';
 
 interface QuickSearchProps {
   books: Book[];
-  onSelect: (book: Book, chapter?: number) => void;
+  onSelect: (book: Book, chapter?: number, verse?: number) => void;
   t: TFunction;
 }
 
@@ -33,6 +34,14 @@ export function QuickSearch({ books, onSelect, t }: QuickSearchProps) {
   }, [open]);
 
   if (!open) return null;
+
+  const ref = parseReference(query, books);
+  if (ref) {
+    onSelect(ref.book, ref.chapter, ref.verse);
+    setOpen(false);
+    setQuery('');
+    return null;
+  }
 
   const match = query.match(/^(\D+)\s*(\d*)?/);
   const bookQuery = match?.[1]?.toLowerCase() ?? '';

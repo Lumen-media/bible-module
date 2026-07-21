@@ -1,7 +1,7 @@
 import type { PresentationHostAPI } from '@lumen-media/module-sdk';
 import { Button, ScrollArea, Select } from '@lumen-media/module-sdk/ui';
 import { Loader2, Projector } from 'lucide-react';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef } from 'react';
 import type { Book } from '../data/types.js';
 import type { TFunction } from '../i18n.js';
 import { useBibleStore } from '../store.js';
@@ -16,18 +16,27 @@ interface ChapterReaderProps {
 const VERSES_PER_PAGE_OPTIONS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
 
 export function ChapterReader({ version, book, presentation, t }: ChapterReaderProps) {
-  const [activeVerse, setActiveVerse] = useState<number | null>(null);
   const versesPerPage = useBibleStore((s) => s.versesPerPage);
   const setVersesPerPage = useBibleStore((s) => s.setVersesPerPage);
   const chapter = useBibleStore((s) => s.chapter);
   const verses = useBibleStore((s) => s.verses);
   const versesLoading = useBibleStore((s) => s.versesLoading);
   const loadChapter = useBibleStore((s) => s.loadChapter);
+  const selectedVerse = useBibleStore((s) => s.selectedVerse);
+  const setSelectedVerse = useBibleStore((s) => s.setSelectedVerse);
+  const verseRefs = useRef<Map<number, HTMLButtonElement>>(new Map());
 
   useEffect(() => {
     loadChapter(book.id, chapter);
-    setActiveVerse(null);
-  }, [loadChapter, book.id, chapter]);
+    setSelectedVerse(null);
+  }, [loadChapter, book.id, chapter, setSelectedVerse]);
+
+  useEffect(() => {
+    if (selectedVerse != null) {
+      const el = verseRefs.current.get(selectedVerse);
+      el?.scrollIntoView({ block: 'center', behavior: 'smooth' });
+    }
+  }, [selectedVerse]);
 
   const projectVerse = useCallback(
     (v: { number: number; text: string }) => {
@@ -41,16 +50,16 @@ export function ChapterReader({ version, book, presentation, t }: ChapterReaderP
           text: `${v.number} ${v.text}`,
         },
       });
-      setActiveVerse(v.number);
+      setSelectedVerse(v.number);
     },
-    [presentation, version, book.id, book.name, chapter]
+    [presentation, version, book.id, book.name, chapter, setSelectedVerse]
   );
 
   const handleVerseClick = useCallback(
     (v: { number: number; text: string }) => {
-      setActiveVerse(v.number);
+      setSelectedVerse(v.number);
     },
-    []
+    [setSelectedVerse]
   );
 
   const handleVerseDoubleClick = useCallback(
@@ -87,10 +96,14 @@ export function ChapterReader({ version, book, presentation, t }: ChapterReaderP
             {verses.map((v) => (
               <button
                 key={v.number}
+                ref={(el) => {
+                  if (el) verseRefs.current.set(v.number, el);
+                  else verseRefs.current.delete(v.number);
+                }}
                 type="button"
                 onClick={() => handleVerseClick(v)}
                 onDoubleClick={() => handleVerseDoubleClick(v)}
-                className={`w-full rounded-md px-3 py-1.5 text-left text-sm leading-relaxed transition-colors ${activeVerse === v.number
+                className={`w-full rounded-md px-3 py-1.5 text-left text-sm leading-relaxed transition-colors ${selectedVerse === v.number
                   ? 'bg-accent text-accent-foreground'
                   : 'text-foreground hover:bg-accent/50'
                   }`}

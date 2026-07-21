@@ -31,6 +31,7 @@ export function BibleController() {
     setTab,
     selectBook,
     setChapter,
+    goTo,
   } = useBibleStore();
 
   if (!t || !presentation) {
@@ -65,7 +66,7 @@ export function BibleController() {
         t={t}
       />
 
-      <QuickSearch books={BOOKS} onSelect={(book) => selectBook(book)} t={t} />
+      <QuickSearch books={BOOKS} onSelect={(book, ch, verse) => goTo(book, ch ?? 1, verse)} t={t} />
 
       <header className="flex items-center gap-3 border-b border-border px-4 py-2">
         <h1 className="text-lg font-bold">{t('bible.title')}</h1>

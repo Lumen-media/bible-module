@@ -1,11 +1,12 @@
 import { Button, Input } from '@lumen-media/module-sdk/ui';
 import { Loader2, Search } from 'lucide-react';
 import { useState } from 'react';
-import type { TFunction } from '../i18n.js';
+import { BOOKS } from '../data/store.js';
 import { useBibleStore } from '../store.js';
+import { parseReference } from '../data/ref.js';
 
 interface SearchPanelProps {
-  t: TFunction;
+  t: (key: string) => string;
 }
 
 export function SearchPanel({ t }: SearchPanelProps) {
@@ -13,9 +14,19 @@ export function SearchPanel({ t }: SearchPanelProps) {
   const [results, setResults] = useState<{ book: string; chapter: number; verse: number; text: string }[]>([]);
   const [loading, setLoading] = useState(false);
   const search = useBibleStore((s) => s.search);
+  const goTo = useBibleStore((s) => s.goTo);
+  const setTab = useBibleStore((s) => s.setTab);
 
   async function handleSearch() {
     if (!query.trim()) return;
+
+    const ref = parseReference(query, BOOKS);
+    if (ref) {
+      setTab('browse');
+      goTo(ref.book, ref.chapter, ref.verse);
+      return;
+    }
+
     setLoading(true);
     const r = await search(query);
     setResults(r);

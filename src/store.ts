@@ -50,6 +50,7 @@ export interface BibleState {
   verses: { number: number; text: string }[] | null;
   versesLoading: boolean;
   versesPerPage: number;
+  selectedVerse: number | null;
 }
 
 export interface BibleActions {
@@ -67,6 +68,8 @@ export interface BibleActions {
   selectBook: (book: Book) => void;
   setChapter: (chapter: number) => void;
   setVersesPerPage: (n: number) => Promise<void>;
+  goTo: (book: Book, chapter: number, verse?: number) => void;
+  setSelectedVerse: (verse: number | null) => void;
   loadChapter: (book: string, chapter: number) => Promise<void>;
   search: (
     query: string
@@ -99,6 +102,7 @@ export const useBibleStore = create<BibleStore>((set, get) => ({
   verses: null,
   versesLoading: false,
   versesPerPage: 1,
+  selectedVerse: null,
 
   init: async (services) => {
     const { fs, net, json, presentation, t } = services;
@@ -245,6 +249,17 @@ export const useBibleStore = create<BibleStore>((set, get) => ({
       await persistVersesPerPage(json, n);
     }
   },
+
+  goTo: (book, chapter, verse) => {
+    const { json } = get();
+    set({ selectedBook: book, chapter, verses: null, selectedVerse: verse ?? null });
+    get().loadChapter(book.id, chapter);
+    if (json) {
+      setLastPosition(json, { bookId: book.id, chapter });
+    }
+  },
+
+  setSelectedVerse: (verse) => set({ selectedVerse: verse }),
 
   loadChapter: async (book, chapter) => {
     const { sqlite, version } = get();
