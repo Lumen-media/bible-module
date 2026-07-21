@@ -1,4 +1,4 @@
-import { Button, Input } from '@lumen-media/module-sdk/ui';
+import { Button, Input, ScrollArea } from '@lumen-media/module-sdk/ui';
 import { Loader2, Search } from 'lucide-react';
 import { useState } from 'react';
 import { BOOKS } from '../data/store.js';
@@ -34,8 +34,8 @@ export function SearchPanel({ t }: SearchPanelProps) {
   }
 
   return (
-    <div className="flex flex-col gap-4">
-      <div className="flex gap-2">
+    <div className="flex min-h-0 flex-1 flex-col">
+      <div className="flex gap-2 px-3 pb-3">
         <Input
           value={query}
           onChange={(e) => setQuery(e.target.value)}
@@ -49,16 +49,18 @@ export function SearchPanel({ t }: SearchPanelProps) {
         </Button>
       </div>
 
-      <div className="space-y-1">
-        {results.map((r, i) => (
-          <div key={i} className="rounded-md border border-border bg-card px-3 py-2 text-sm">
-            <span className="font-medium text-card-foreground">
-              {r.book} {r.chapter}:{r.verse}
-            </span>
-            <p className="mt-0.5 text-muted-foreground">{r.text}</p>
-          </div>
-        ))}
-      </div>
+      <ScrollArea className="min-h-0 flex-1 px-3">
+        <div className="space-y-1">
+          {results.map((r, i) => (
+            <div key={i} className="rounded-md border border-border bg-card px-3 py-2 text-sm">
+              <span className="font-medium text-card-foreground">
+                {r.book} {r.chapter}:{r.verse}
+              </span>
+              <p className="mt-0.5 text-muted-foreground">{r.text}</p>
+            </div>
+          ))}
+        </div>
+      </ScrollArea>
     </div>
   );
 }
