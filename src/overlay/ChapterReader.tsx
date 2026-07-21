@@ -2,9 +2,9 @@ import type { PresentationHostAPI } from '@lumen-media/module-sdk';
 import { Button, ScrollArea, Select } from '@lumen-media/module-sdk/ui';
 import { ChevronLeft, ChevronRight, Loader2, Projector } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
-import { useBibleStore } from '../store.js';
 import type { Book } from '../data/types.js';
 import type { TFunction } from '../i18n.js';
+import { useBibleStore } from '../store.js';
 
 interface ChapterReaderProps {
   version: string;
@@ -29,42 +29,55 @@ export function ChapterReader({ version, book, presentation, t }: ChapterReaderP
     setActiveVerse(null);
   }, [loadChapter, book.id, chapter]);
 
-  const projectVerse = useCallback((v: { number: number; text: string }) => {
-    presentation.project('bible-slide', {
-      version,
-      book: book.id,
-      bookName: book.name,
-      chapter,
-      verses: [v.number],
-      text: `${v.number} ${v.text}`,
-    });
-    setActiveVerse(v.number);
-  }, [presentation, version, book.id, book.name, chapter]);
+  const projectVerse = useCallback(
+    (v: { number: number; text: string }) => {
+      presentation.project('bible-slide', {
+        data: {
+          version,
+          book: book.id,
+          bookName: book.name,
+          chapter,
+          verses: [v.number],
+          text: `${v.number} ${v.text}`,
+        },
+      });
+      setActiveVerse(v.number);
+    },
+    [presentation, version, book.id, book.name, chapter]
+  );
 
-  const handleVerseClick = useCallback((v: { number: number; text: string }) => {
-    if (presentation.state() !== 'live') return;
-    projectVerse(v);
-  }, [presentation, projectVerse]);
+  const handleVerseClick = useCallback(
+    (v: { number: number; text: string }) => {
+      if (presentation.state() !== 'live') return;
+      projectVerse(v);
+    },
+    [presentation, projectVerse]
+  );
 
-  const handleVerseDoubleClick = useCallback((v: { number: number; text: string }) => {
-    if (presentation.state() !== 'idle') return;
-    projectVerse(v);
-  }, [presentation, projectVerse]);
+  const handleVerseDoubleClick = useCallback(
+    (v: { number: number; text: string }) => {
+      if (presentation.state() !== 'idle') return;
+      projectVerse(v);
+    },
+    [presentation, projectVerse]
+  );
 
   function projectAll() {
     if (!verses || verses.length === 0) return;
     presentation.project('bible-slide', {
-      version,
-      book: book.id,
-      bookName: book.name,
-      chapter,
-      verses: verses.map((v) => v.number),
-      text: verses.map((v) => `${v.number} ${v.text}`).join('\n'),
+      data: {
+        version,
+        book: book.id,
+        bookName: book.name,
+        chapter,
+        verses: verses.map((v) => v.number),
+        text: verses.map((v) => `${v.number} ${v.text}`).join('\n'),
+      },
     });
   }
 
   return (
-    <div className="flex flex-1 flex-col">
+    <div className="flex flex-1 h-full flex-col">
       <div className="flex items-center justify-between border-b border-border px-4 py-2">
         <h2 className="text-lg font-semibold text-foreground">
           {book.name} {chapter}
@@ -117,11 +130,10 @@ export function ChapterReader({ version, book, presentation, t }: ChapterReaderP
                 type="button"
                 onClick={() => handleVerseClick(v)}
                 onDoubleClick={() => handleVerseDoubleClick(v)}
-                className={`w-full rounded-md px-3 py-1.5 text-left text-sm leading-relaxed transition-colors ${
-                  activeVerse === v.number
+                className={`w-full rounded-md px-3 py-1.5 text-left text-sm leading-relaxed transition-colors ${activeVerse === v.number
                     ? 'bg-accent text-accent-foreground'
                     : 'text-foreground hover:bg-accent/50'
-                }`}
+                  }`}
               >
                 <span className="mr-1.5 text-xs text-muted-foreground">{v.number}</span>
                 {v.text}
