@@ -1,7 +1,7 @@
 import type { PresentationHostAPI } from '@lumen-media/module-sdk';
 import { Button, ScrollArea } from '@lumen-media/module-sdk/ui';
 import { ChevronLeft, ChevronRight, Loader2, Projector } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useBibleStore } from '../store.js';
 import type { Book } from '../data/types.js';
 import type { TFunction } from '../i18n.js';
@@ -15,15 +15,39 @@ interface ChapterReaderProps {
 
 export function ChapterReader({ version, book, presentation, t }: ChapterReaderProps) {
   const [chapter, setChapter] = useState<number>(1);
+  const [activeVerse, setActiveVerse] = useState<number | null>(null);
   const verses = useBibleStore((s) => s.verses);
   const versesLoading = useBibleStore((s) => s.versesLoading);
   const loadChapter = useBibleStore((s) => s.loadChapter);
 
   useEffect(() => {
     loadChapter(book.id, chapter);
+    setActiveVerse(null);
   }, [loadChapter, book.id, chapter]);
 
-  function project() {
+  const projectVerse = useCallback((v: { number: number; text: string }) => {
+    presentation.project('bible-slide', {
+      version,
+      book: book.id,
+      bookName: book.name,
+      chapter,
+      verses: [v.number],
+      text: `${v.number} ${v.text}`,
+    });
+    setActiveVerse(v.number);
+  }, [presentation, version, book.id, book.name, chapter]);
+
+  const handleVerseClick = useCallback((v: { number: number; text: string }) => {
+    if (presentation.state() !== 'live') return;
+    projectVerse(v);
+  }, [presentation, projectVerse]);
+
+  const handleVerseDoubleClick = useCallback((v: { number: number; text: string }) => {
+    if (presentation.state() !== 'idle') return;
+    projectVerse(v);
+  }, [presentation, projectVerse]);
+
+  function projectAll() {
     if (!verses || verses.length === 0) return;
     presentation.project('bible-slide', {
       version,
@@ -43,7 +67,7 @@ export function ChapterReader({ version, book, presentation, t }: ChapterReaderP
         </h2>
         <Button
           size="sm"
-          onClick={project}
+          onClick={projectAll}
           disabled={!verses || verses.length === 0 || versesLoading}
         >
           <Projector className="mr-1 h-4 w-4" />
@@ -82,12 +106,22 @@ export function ChapterReader({ version, book, presentation, t }: ChapterReaderP
             {t('bible.search')}...
           </div>
         ) : verses && verses.length > 0 ? (
-          <div className="space-y-2">
+          <div className="space-y-0.5">
             {verses.map((v) => (
-              <p key={v.number} className="text-sm leading-relaxed text-foreground">
-                <span className="mr-1 text-xs text-muted-foreground">{v.number}</span>
+              <button
+                key={v.number}
+                type="button"
+                onClick={() => handleVerseClick(v)}
+                onDoubleClick={() => handleVerseDoubleClick(v)}
+                className={`w-full rounded-md px-3 py-1.5 text-left text-sm leading-relaxed transition-colors ${
+                  activeVerse === v.number
+                    ? 'bg-accent text-accent-foreground'
+                    : 'text-foreground hover:bg-accent/50'
+                }`}
+              >
+                <span className="mr-1.5 text-xs text-muted-foreground">{v.number}</span>
                 {v.text}
-              </p>
+              </button>
             ))}
           </div>
         ) : (
