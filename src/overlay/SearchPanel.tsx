@@ -94,7 +94,10 @@ export function SearchPanel({ t }: SearchPanelProps) {
         <Input
           ref={inputRef}
           value={query}
-          onChange={(e) => setQuery(e.target.value)}
+          onChange={(e) => {
+            setQuery(e.target.value);
+            setFocusedIndex(-1);
+          }}
           onKeyDown={handleKeyDown}
           placeholder={`${t('bible.search')}...`}
           className="flex-1"
