@@ -1,6 +1,6 @@
 import type { PresentationHostAPI } from '@lumen-media/module-sdk';
-import { Button, Select } from '@lumen-media/module-sdk/ui';
-import { ChevronLeft, ChevronRight, Loader2, Projector } from 'lucide-react';
+import { Button, ScrollArea, Select } from '@lumen-media/module-sdk/ui';
+import { Loader2, Projector } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
 import type { Book } from '../data/types.js';
 import type { TFunction } from '../i18n.js';
@@ -19,7 +19,6 @@ export function ChapterReader({ version, book, presentation, t }: ChapterReaderP
   const [activeVerse, setActiveVerse] = useState<number | null>(null);
   const [versesPerPage, setVersesPerPage] = useState<number>(5);
   const chapter = useBibleStore((s) => s.chapter);
-  const setChapter = useBibleStore((s) => s.setChapter);
   const verses = useBibleStore((s) => s.verses);
   const versesLoading = useBibleStore((s) => s.versesLoading);
   const loadChapter = useBibleStore((s) => s.loadChapter);
@@ -76,45 +75,7 @@ export function ChapterReader({ version, book, presentation, t }: ChapterReaderP
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">
-      <div className="flex items-center justify-between border-b border-border px-4 py-2">
-        <h2 className="text-lg font-semibold text-foreground">
-          {book.name} {chapter}
-        </h2>
-        <Button
-          size="sm"
-          onClick={projectAll}
-          disabled={!verses || verses.length === 0 || versesLoading}
-        >
-          <Projector className="mr-1 h-4 w-4" />
-          {t('bible.project')}
-        </Button>
-      </div>
-
-      <div className="flex items-center justify-center gap-2 border-b border-border px-4 py-2">
-        <Button
-          size="sm"
-          variant="outline"
-          onClick={() => setChapter(Math.max(1, chapter - 1))}
-          disabled={chapter <= 1}
-        >
-          <ChevronLeft className="mr-1 h-4 w-4" />
-          {chapter - 1}
-        </Button>
-        <span className="min-w-20 text-center text-sm text-muted-foreground">
-          {t('bible.chapter')} {chapter}
-        </span>
-        <Button
-          size="sm"
-          variant="outline"
-          onClick={() => setChapter(Math.min(book.chapters, chapter + 1))}
-          disabled={chapter >= book.chapters}
-        >
-          {chapter + 1}
-          <ChevronRight className="ml-1 h-4 w-4" />
-        </Button>
-      </div>
-
-      <div className="min-h-0 flex-1 overflow-y-auto px-4 py-3">
+      <ScrollArea className="min-h-0 flex-1 px-4 py-3">
         {versesLoading ? (
           <div className="flex items-center justify-center gap-2 py-8 text-muted-foreground">
             <Loader2 className="h-4 w-4 animate-spin" />
@@ -143,22 +104,32 @@ export function ChapterReader({ version, book, presentation, t }: ChapterReaderP
             {t('bible.no-results')}
           </div>
         )}
-      </div>
+      </ScrollArea>
 
-      <div className="flex items-center justify-between border-t border-border px-4 py-2">
+      <div className="flex shrink-0 items-center justify-between border-t border-border px-4 py-2">
         <span className="text-xs text-muted-foreground">{t('bible.verses-per-screen')}</span>
-        <Select value={String(versesPerPage)} onValueChange={(v) => setVersesPerPage(Number(v))}>
-          <Select.SelectTrigger className="h-7 w-16 text-xs">
-            <Select.SelectValue />
-          </Select.SelectTrigger>
-          <Select.SelectContent>
-            {VERSES_PER_PAGE_OPTIONS.map((n) => (
-              <Select.SelectItem key={n} value={String(n)}>
-                {n}
-              </Select.SelectItem>
-            ))}
-          </Select.SelectContent>
-        </Select>
+        <div className="flex items-center gap-2">
+          <Select value={String(versesPerPage)} onValueChange={(v) => setVersesPerPage(Number(v))}>
+            <Select.SelectTrigger className="h-7 w-16 text-xs">
+              <Select.SelectValue />
+            </Select.SelectTrigger>
+            <Select.SelectContent>
+              {VERSES_PER_PAGE_OPTIONS.map((n) => (
+                <Select.SelectItem key={n} value={String(n)}>
+                  {n}
+                </Select.SelectItem>
+              ))}
+            </Select.SelectContent>
+          </Select>
+          <Button
+            size="sm"
+            onClick={projectAll}
+            disabled={!verses || verses.length === 0 || versesLoading}
+          >
+            <Projector className="mr-1 h-4 w-4" />
+            {t('bible.project')}
+          </Button>
+        </div>
       </div>
     </div>
   );

@@ -89,7 +89,7 @@ export function BibleController() {
       <Separator />
 
       <div className="flex flex-1 overflow-hidden">
-        <div className="flex w-80 h-dvh shrink-0 flex-col overflow-hidden border-r border-border">
+        <div className="flex w-80 shrink-0 flex-col overflow-hidden border-r border-border">
           {/* version tabs */}
           <div className="flex shrink-0 items-center gap-1 border-b border-border px-3 py-2">
             {VERSION_OPTIONS.map((v) => (
