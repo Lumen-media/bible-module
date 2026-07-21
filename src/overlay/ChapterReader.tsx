@@ -1,5 +1,5 @@
 import type { PresentationHostAPI } from '@lumen-media/module-sdk';
-import { Button, ScrollArea, Select } from '@lumen-media/module-sdk/ui';
+import { Button, Select } from '@lumen-media/module-sdk/ui';
 import { ChevronLeft, ChevronRight, Loader2, Projector } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
 import type { Book } from '../data/types.js';
@@ -48,18 +48,16 @@ export function ChapterReader({ version, book, presentation, t }: ChapterReaderP
 
   const handleVerseClick = useCallback(
     (v: { number: number; text: string }) => {
-      if (presentation.state() !== 'live') return;
-      projectVerse(v);
+      setActiveVerse(v.number);
     },
-    [presentation, projectVerse]
+    []
   );
 
   const handleVerseDoubleClick = useCallback(
     (v: { number: number; text: string }) => {
-      if (presentation.state() !== 'idle') return;
       projectVerse(v);
     },
-    [presentation, projectVerse]
+    [projectVerse]
   );
 
   function projectAll() {
@@ -116,7 +114,7 @@ export function ChapterReader({ version, book, presentation, t }: ChapterReaderP
         </Button>
       </div>
 
-      <ScrollArea className="flex-1 px-4 py-3">
+      <div className="min-h-0 flex-1 overflow-y-auto px-4 py-3">
         {versesLoading ? (
           <div className="flex items-center justify-center gap-2 py-8 text-muted-foreground">
             <Loader2 className="h-4 w-4 animate-spin" />
@@ -145,7 +143,7 @@ export function ChapterReader({ version, book, presentation, t }: ChapterReaderP
             {t('bible.no-results')}
           </div>
         )}
-      </ScrollArea>
+      </div>
 
       <div className="flex items-center justify-between border-t border-border px-4 py-2">
         <span className="text-xs text-muted-foreground">{t('bible.verses-per-screen')}</span>

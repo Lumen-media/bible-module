@@ -1,5 +1,5 @@
 import { BookOpen, Check, Download, Loader2, Search } from 'lucide-react';
-import { ScrollArea, Separator, Tabs } from '@lumen-media/module-sdk/ui';
+import { Separator, Tabs } from '@lumen-media/module-sdk/ui';
 import { BOOKS } from '../data/store.js';
 import { useBibleStore } from '../store.js';
 import { BookGrid } from './BookGrid.js';
@@ -24,11 +24,13 @@ export function BibleController() {
     version,
     tab,
     selectedBook,
+    chapter,
     presentation,
     t,
     setVersion,
     setTab,
     selectBook,
+    setChapter,
   } = useBibleStore();
 
   if (!t || !presentation) {
@@ -132,13 +134,40 @@ export function BibleController() {
           )}
         </div>
 
-        <ScrollArea className="flex-1 p-3">
-          {tab === 'browse' ? (
-            <BookGrid books={BOOKS} onSelect={selectBook} />
-          ) : (
-            <SearchPanel t={t} />
-          )}
-        </ScrollArea>
+        <div className="flex min-h-0 flex-1 flex-col">
+          <div className="min-h-0 flex-1 overflow-y-auto p-3">
+            {tab === 'browse' ? (
+              <div className="space-y-6">
+                <BookGrid books={BOOKS} onSelect={selectBook} />
+                {selectedBook && (
+                  <div>
+                    <h3 className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                      {selectedBook.name} — {t('bible.chapter')}s
+                    </h3>
+                    <div className="grid grid-cols-[repeat(auto-fill,minmax(44px,1fr))] gap-1.5">
+                      {Array.from({ length: selectedBook.chapters }, (_, i) => i + 1).map((ch) => (
+                        <button
+                          key={ch}
+                          type="button"
+                          onClick={() => setChapter(ch)}
+                          className={`flex items-center justify-center rounded-md border px-2 py-1.5 text-xs font-medium transition-colors ${
+                            chapter === ch
+                              ? 'border-primary bg-primary text-primary-foreground'
+                              : 'border-border bg-card text-card-foreground hover:bg-accent hover:text-accent-foreground'
+                          }`}
+                        >
+                          {ch}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            ) : (
+              <SearchPanel t={t} />
+            )}
+          </div>
+        </div>
       </div>
     </div>
   );
