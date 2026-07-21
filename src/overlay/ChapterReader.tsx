@@ -77,7 +77,7 @@ export function ChapterReader({ version, book, presentation, t }: ChapterReaderP
   }
 
   return (
-    <div className="flex flex-1 h-full flex-col">
+    <div className="flex min-h-0 flex-1 flex-col">
       <div className="flex items-center justify-between border-b border-border px-4 py-2">
         <h2 className="text-lg font-semibold text-foreground">
           {book.name} {chapter}
@@ -131,8 +131,8 @@ export function ChapterReader({ version, book, presentation, t }: ChapterReaderP
                 onClick={() => handleVerseClick(v)}
                 onDoubleClick={() => handleVerseDoubleClick(v)}
                 className={`w-full rounded-md px-3 py-1.5 text-left text-sm leading-relaxed transition-colors ${activeVerse === v.number
-                    ? 'bg-accent text-accent-foreground'
-                    : 'text-foreground hover:bg-accent/50'
+                  ? 'bg-accent text-accent-foreground'
+                  : 'text-foreground hover:bg-accent/50'
                   }`}
               >
                 <span className="mr-1.5 text-xs text-muted-foreground">{v.number}</span>

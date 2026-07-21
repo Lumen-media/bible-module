@@ -87,19 +87,18 @@ export function BibleController() {
       <Separator />
 
       <div className="flex flex-1 overflow-hidden">
-        <div className="flex w-80 flex-shrink-0 flex-col overflow-hidden border-r border-border">
+        <div className="flex w-80 h-dvh shrink-0 flex-col overflow-hidden border-r border-border">
           {/* version tabs */}
-          <div className="flex items-center gap-1 border-b border-border px-3 py-2">
+          <div className="flex shrink-0 items-center gap-1 border-b border-border px-3 py-2">
             {VERSION_OPTIONS.map((v) => (
               <button
                 key={v.id}
                 type="button"
                 onClick={() => setVersion(v.id)}
-                className={`flex items-center gap-1 rounded-md px-2.5 py-1 text-xs font-medium transition-colors ${
-                  version === v.id
-                    ? 'bg-primary text-primary-foreground'
-                    : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground'
-                }`}
+                className={`flex items-center gap-1 rounded-md px-2.5 py-1 text-xs font-medium transition-colors ${version === v.id
+                  ? 'bg-primary text-primary-foreground'
+                  : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground'
+                  }`}
               >
                 {v.short}
                 {version === v.id && <Check className="h-3 w-3" />}
