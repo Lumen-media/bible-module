@@ -1,6 +1,6 @@
 import { Input } from '@lumen-media/module-sdk/ui';
 import { BookOpen, Search } from 'lucide-react';
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { parseReference } from '../data/ref.js';
 import type { Book } from '../data/types.js';
 import type { TFunction } from '../i18n.js';
@@ -16,47 +16,48 @@ export function QuickSearch({ books, onSelect, t }: QuickSearchProps) {
   const [open, setOpen] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
+  const close = useCallback(() => {
+    setOpen(false);
+    setQuery('');
+  }, []);
+
   useEffect(() => {
     function onKeyDown(e: KeyboardEvent) {
-      if (e.ctrlKey || e.metaKey || e.target instanceof HTMLInputElement) return;
-      if (e.key.length === 1 && /[a-zA-Z0-9]/.test(e.key)) {
+      if (e.ctrlKey || e.metaKey) return;
+      if (e.key === 'Escape' && open) {
+        close();
+        return;
+      }
+      if (e.key.length === 1 && /[a-zA-Z0-9\u00C0-\u00FF]/.test(e.key) && !(e.target instanceof HTMLInputElement) && !(e.target instanceof HTMLTextAreaElement)) {
         setOpen(true);
         setQuery((prev) => prev + e.key);
         setTimeout(() => inputRef.current?.focus(), 0);
       }
-      if (e.key === 'Escape' && open) {
-        setOpen(false);
-        setQuery('');
-      }
     }
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
-  }, [open]);
+  }, [open, close]);
 
-  function close() {
-    setOpen(false);
-    setQuery('');
-  }
+  const q = query.toLowerCase();
+  const filtered = books.filter((b) => {
+    if (!q) return false;
+    const name = b.name.toLowerCase();
+    const id = b.id.toLowerCase();
+    return name.includes(q) || id.includes(q) || name.startsWith(q);
+  });
 
-  function handleEnter() {
-    const ref = parseReference(query, books);
-    if (ref) {
-      onSelect(ref.book, ref.chapter, ref.verse);
-      close();
-    }
-  }
-
-  const match = query.match(/^(\D+)\s*(\d*)?/);
-  const bookQuery = match?.[1]?.toLowerCase() ?? '';
-
-  const filtered = books.filter(
-    (b) =>
-      bookQuery.length > 0 && (b.id.includes(bookQuery) || b.name.toLowerCase().includes(bookQuery))
-  );
+  const ref = q ? parseReference(query, books) : null;
 
   function handleSelect(book: Book) {
     onSelect(book);
     close();
+  }
+
+  function handleEnter() {
+    if (ref) {
+      onSelect(ref.book, ref.chapter, ref.verse);
+      close();
+    }
   }
 
   if (!open) return null;
