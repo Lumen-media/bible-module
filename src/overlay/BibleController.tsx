@@ -1,5 +1,5 @@
 import { BookOpen, Check, Download, Loader2, Search } from 'lucide-react';
-import { Button, ScrollArea, Separator, Tabs } from '@lumen-media/module-sdk/ui';
+import { ScrollArea, Separator, Tabs } from '@lumen-media/module-sdk/ui';
 import { BOOKS } from '../data/store.js';
 import { useBibleStore } from '../store.js';
 import { BookGrid } from './BookGrid.js';
