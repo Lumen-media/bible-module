@@ -20,11 +20,12 @@ export function SearchPanel({ t }: SearchPanelProps) {
   const [focusedIndex, setFocusedIndex] = useState(-1);
   const search = useBibleStore((s) => s.search);
   const goTo = useBibleStore((s) => s.goTo);
+  const setVersion = useBibleStore((s) => s.setVersion);
   const setTab = useBibleStore((s) => s.setTab);
   const inputRef = useRef<HTMLInputElement>(null);
   const viewportRef = useRef<HTMLDivElement>(null);
 
-  const bookMap = new Map(BOOKS.map((b) => [b.id, b]));
+  const bookByName = new Map(BOOKS.map((b) => [b.name.toLowerCase(), b]));
 
   const GAP = 6;
   const virtualizer = useVirtualizer({
@@ -55,8 +56,9 @@ export function SearchPanel({ t }: SearchPanelProps) {
   function handleSelect(index: number) {
     const r = results[index];
     if (!r) return;
-    const book = bookMap.get(r.book);
+    const book = bookByName.get(r.book.toLowerCase());
     if (!book) return;
+    setVersion(r.version);
     goTo(book, r.chapter, r.verse);
   }
 
@@ -104,7 +106,7 @@ export function SearchPanel({ t }: SearchPanelProps) {
           placeholder={`${t('bible.search')}...`}
           className="flex-1"
         />
-        <Button onClick={handleSearch} disabled={loading}>
+        <Button onClick={handleSearch} disabled={loading} className="outline-none focus:outline-none focus-visible:outline-none">
           {loading ? (
             <Loader2 className="mr-1 h-4 w-4 animate-spin" />
           ) : (
@@ -133,7 +135,7 @@ export function SearchPanel({ t }: SearchPanelProps) {
                   type="button"
                   onClick={(e) => { e.stopPropagation(); handleSelect(virtualItem.index); }}
                   onMouseEnter={() => setFocusedIndex(virtualItem.index)}
-                  className={`absolute left-0 top-0 w-full rounded-md border px-3 py-2 mb-1.5 text-left text-sm transition-colors ${virtualItem.index === focusedIndex
+                  className={`absolute left-0 top-0 w-full rounded-md border px-3 py-2 mb-1.5 text-left text-sm transition-colors outline-none focus:outline-none focus-visible:outline-none ${virtualItem.index === focusedIndex
                     ? 'border-primary bg-accent text-accent-foreground'
                     : 'border-border bg-card text-card-foreground hover:bg-accent hover:text-accent-foreground'
                     }`}

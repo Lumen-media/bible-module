@@ -72,7 +72,7 @@ export function QuickSearch({ books, onSelect, t }: QuickSearchProps) {
           <button
             type="button"
             onClick={() => { setQuery(''); inputRef.current?.focus(); }}
-            className="flex h-6 w-6 items-center justify-center rounded text-muted-foreground hover:bg-accent hover:text-accent-foreground"
+            className="flex h-6 w-6 items-center justify-center rounded text-muted-foreground hover:bg-accent hover:text-accent-foreground outline-none focus:outline-none focus-visible:outline-none"
           >
             <X className="h-4 w-4" />
           </button>
@@ -84,7 +84,7 @@ export function QuickSearch({ books, onSelect, t }: QuickSearchProps) {
             <button
               key={book.id}
               onClick={(e) => { e.stopPropagation(); handleSelect(book); }}
-              className="flex w-full items-center gap-3 px-4 py-2.5 text-left text-sm text-foreground transition-colors hover:bg-accent"
+              className="flex w-full items-center gap-3 px-4 py-2.5 text-left text-sm text-foreground transition-colors hover:bg-accent outline-none focus:outline-none focus-visible:outline-none"
             >
               <BookOpen className="h-4 w-4 text-muted-foreground" />
               <span className="font-medium">{book.name}</span>
