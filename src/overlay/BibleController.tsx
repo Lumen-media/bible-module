@@ -136,7 +136,7 @@ export function BibleController() {
         </div>
 
         <div className="flex min-h-0 flex-1 flex-col">
-          <div className="min-h-0 flex-1 p-3">
+          <div className="flex min-h-0 flex-1 flex-col p-3">
             {tab === 'browse' ? (
               <div className="min-h-0 space-y-6 overflow-y-auto">
                 <BookGrid books={BOOKS} onSelect={selectBook} />
@@ -151,11 +151,10 @@ export function BibleController() {
                           key={ch}
                           type="button"
                           onClick={() => setChapter(ch)}
-                          className={`flex items-center justify-center rounded-md border px-2 py-1.5 text-xs font-medium transition-colors ${
-                            chapter === ch
-                              ? 'border-primary bg-primary text-primary-foreground'
-                              : 'border-border bg-card text-card-foreground hover:bg-accent hover:text-accent-foreground'
-                          }`}
+                          className={`flex items-center justify-center rounded-md border px-2 py-1.5 text-xs font-medium transition-colors ${chapter === ch
+                            ? 'border-primary bg-primary text-primary-foreground'
+                            : 'border-border bg-card text-card-foreground hover:bg-accent hover:text-accent-foreground'
+                            }`}
                         >
                           {ch}
                         </button>
