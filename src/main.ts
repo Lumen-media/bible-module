@@ -5,6 +5,14 @@ import { BibleSlide } from './presenter/BibleSlide.js';
 import { useBibleStore } from './store.js';
 import css from './styles.css?inline';
 
+const SURFACE_PANEL_ID = 'bible-controller';
+const SURFACE_OPTIONS = {
+  maximized: true,
+  resizable: false,
+  decorations: false,
+  title: 'Bíblia',
+} as const;
+
 export default class BibleModulePlugin extends LumenPlugin {
   private styleEl: HTMLStyleElement | null = null;
 
@@ -17,29 +25,25 @@ export default class BibleModulePlugin extends LumenPlugin {
     setupI18n(host.app.locale);
 
     host.panels.add({
-      id: 'bible-controller',
-      slot: 'presenter.content',
+      id: SURFACE_PANEL_ID,
+      slot: 'surface.window',
+      title: 'Bíblia',
       component: BibleController,
     });
 
-    host.panels.add({
-      id: 'bible-slide',
-      slot: 'presenter.content',
-      component: BibleSlide,
-    });
+    if (host.window === 'presenter') {
+      host.panels.add({
+        id: 'bible-slide',
+        slot: 'presenter.content',
+        component: BibleSlide,
+      });
+    }
 
     host.commands.add({
       id: 'bible.open',
       title: t('bible.open'),
       run: () => {
-        host.overlay.project('bible-controller', {
-          windowConfig: {
-            maximized: true,
-            resizable: false,
-            decorations: false,
-            title: 'Bíblia',
-          },
-        });
+        host.surface.openWindow(SURFACE_PANEL_ID, {}, SURFACE_OPTIONS);
       },
     });
 
@@ -47,14 +51,7 @@ export default class BibleModulePlugin extends LumenPlugin {
       id: 'bible.search',
       title: `${t('bible.search')}...`,
       run: () => {
-        host.overlay.project('bible-controller', {
-          windowConfig: {
-            maximized: true,
-            resizable: false,
-            decorations: false,
-            title: 'Bíblia',
-          },
-        });
+        host.surface.openWindow(SURFACE_PANEL_ID, {}, SURFACE_OPTIONS);
       },
     });
 
