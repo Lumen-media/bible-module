@@ -15,7 +15,15 @@ import {
   searchVerses,
 } from './data/database.js';
 import { downloadVersion, hasAnyCache } from './data/downloader.js';
-import { BOOKS, getDownloadedVersions, getLastPosition, setDownloadedVersions, setLastPosition } from './data/store.js';
+import {
+  BOOKS,
+  getDownloadedVersions,
+  getLastPosition,
+  getVersesPerPage,
+  setDownloadedVersions,
+  setLastPosition,
+  setVersesPerPage as persistVersesPerPage,
+} from './data/store.js';
 import type { Book } from './data/types.js';
 import type { TFunction } from './i18n.js';
 
@@ -41,6 +49,7 @@ export interface BibleState {
 
   verses: { number: number; text: string }[] | null;
   versesLoading: boolean;
+  versesPerPage: number;
 }
 
 export interface BibleActions {
@@ -57,6 +66,7 @@ export interface BibleActions {
   setTab: (t: 'browse' | 'search') => void;
   selectBook: (book: Book) => void;
   setChapter: (chapter: number) => void;
+  setVersesPerPage: (n: number) => Promise<void>;
   loadChapter: (book: string, chapter: number) => Promise<void>;
   search: (
     query: string
@@ -88,6 +98,7 @@ export const useBibleStore = create<BibleStore>((set, get) => ({
   chapter: 1,
   verses: null,
   versesLoading: false,
+  versesPerPage: 1,
 
   init: async (services) => {
     const { fs, net, json, presentation, t } = services;
@@ -194,11 +205,18 @@ export const useBibleStore = create<BibleStore>((set, get) => ({
       }
     }
 
+    const vpp = await getVersesPerPage(json);
+    set({ versesPerPage: vpp });
+
     set({ ready: true });
   },
 
   setVersion: async (version) => {
+    const { selectedBook, chapter } = get();
     set({ version, verses: null });
+    if (selectedBook) {
+      get().loadChapter(selectedBook.id, chapter);
+    }
   },
 
   setTestament: (testament) => set({ testament }),
@@ -217,6 +235,14 @@ export const useBibleStore = create<BibleStore>((set, get) => ({
     get().loadChapter(selectedBook.id, chapter);
     if (json) {
       setLastPosition(json, { bookId: selectedBook.id, chapter });
+    }
+  },
+
+  setVersesPerPage: async (n) => {
+    const { json } = get();
+    set({ versesPerPage: n });
+    if (json) {
+      await persistVersesPerPage(json, n);
     }
   },
 

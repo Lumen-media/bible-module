@@ -152,3 +152,14 @@ export async function setLastPosition(
 ): Promise<void> {
   await json.set('lastPosition', position);
 }
+
+export async function getVersesPerPage(json: DataAPI['json']): Promise<number> {
+  return (await json.get<number>('versesPerPage', 1)) ?? 1;
+}
+
+export async function setVersesPerPage(
+  json: DataAPI['json'],
+  n: number
+): Promise<void> {
+  await json.set('versesPerPage', n);
+}
