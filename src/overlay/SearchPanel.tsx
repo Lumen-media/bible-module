@@ -30,8 +30,9 @@ export function SearchPanel({ t }: SearchPanelProps) {
   const virtualizer = useVirtualizer({
     count: results.length,
     getScrollElement: () => viewportRef.current,
-    estimateSize: () => 72 + GAP,
+    estimateSize: () => 80,
     overscan: 10,
+    measureElement: (el) => el.getBoundingClientRect().height + GAP,
   });
 
   async function handleSearch() {
@@ -127,15 +128,16 @@ export function SearchPanel({ t }: SearchPanelProps) {
               return (
                 <button
                   key={virtualItem.key}
+                  data-index={virtualItem.index}
+                  ref={virtualizer.measureElement}
                   type="button"
-                  onClick={() => handleSelect(virtualItem.index)}
+                  onClick={(e) => { e.stopPropagation(); handleSelect(virtualItem.index); }}
                   onMouseEnter={() => setFocusedIndex(virtualItem.index)}
-                  className={`absolute left-0 top-0 w-full rounded-md border px-3 py-2 text-left text-sm transition-colors ${virtualItem.index === focusedIndex
+                  className={`absolute left-0 top-0 w-full rounded-md border px-3 py-2 mb-1.5 text-left text-sm transition-colors ${virtualItem.index === focusedIndex
                     ? 'border-primary bg-accent text-accent-foreground'
                     : 'border-border bg-card text-card-foreground hover:bg-accent hover:text-accent-foreground'
                     }`}
                   style={{
-                    height: `${virtualItem.size - GAP}px`,
                     transform: `translateY(${virtualItem.start}px)`,
                   }}
                 >
