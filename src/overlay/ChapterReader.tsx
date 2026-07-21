@@ -28,8 +28,7 @@ export function ChapterReader({ version, book, presentation, t }: ChapterReaderP
 
   useEffect(() => {
     loadChapter(book.id, chapter);
-    setSelectedVerse(null);
-  }, [loadChapter, book.id, chapter, setSelectedVerse]);
+  }, [loadChapter, book.id, chapter]);
 
   useEffect(() => {
     if (selectedVerse != null) {

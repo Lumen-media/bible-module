@@ -228,14 +228,14 @@ export const useBibleStore = create<BibleStore>((set, get) => ({
   setTab: (tab) => set({ tab }),
 
   selectBook: (book) => {
-    set({ selectedBook: book, chapter: 1, verses: null });
+    set({ selectedBook: book, chapter: 1, verses: null, selectedVerse: null });
     get().loadChapter(book.id, 1);
   },
 
   setChapter: (chapter) => {
     const { selectedBook, json } = get();
     if (!selectedBook) return;
-    set({ chapter, verses: null });
+    set({ chapter, verses: null, selectedVerse: null });
     get().loadChapter(selectedBook.id, chapter);
     if (json) {
       setLastPosition(json, { bookId: selectedBook.id, chapter });
