@@ -41,16 +41,20 @@ export function ChapterReader({ version, book, presentation, t }: ChapterReaderP
 
   const projectVerse = useCallback(
     (v: { number: number; text: string }) => {
-      presentation.project('bible-slide', {
-        data: {
-          version,
-          book: book.id,
-          bookName: book.name,
-          chapter,
-          verses: [v.number],
-          text: `${v.number} ${v.text}`,
-        },
-      });
+      try {
+        presentation.project('bible-slide', {
+          data: {
+            version,
+            book: book.id,
+            bookName: book.name,
+            chapter,
+            verses: [v.number],
+            text: `${v.number} ${v.text}`,
+          },
+        });
+      } catch (e) {
+        console.error('[bible] project error:', e);
+      }
       setSelectedVerse(v.number);
     },
     [presentation, version, book.id, book.name, chapter, setSelectedVerse]
@@ -72,16 +76,20 @@ export function ChapterReader({ version, book, presentation, t }: ChapterReaderP
 
   function projectAll() {
     if (!verses || verses.length === 0) return;
-    presentation.project('bible-slide', {
-      data: {
-        version,
-        book: book.id,
-        bookName: book.name,
-        chapter,
-        verses: verses.map((v) => v.number),
-        text: verses.map((v) => `${v.number} ${v.text}`).join('\n'),
-      },
-    });
+    try {
+      presentation.project('bible-slide', {
+        data: {
+          version,
+          book: book.id,
+          bookName: book.name,
+          chapter,
+          verses: verses.map((v) => v.number),
+          text: verses.map((v) => `${v.number} ${v.text}`).join('\n'),
+        },
+      });
+    } catch (e) {
+      console.error('[bible] projectAll error:', e);
+    }
   }
 
   return (
