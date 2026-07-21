@@ -20,6 +20,7 @@ const messages = {
   'bible.copy': 'Copy',
   'bible.copied': 'Copied!',
   'bible.open': 'Open Bible',
+  'bible.verses-per-screen': 'Verses per screen',
   'bible.network-error': 'Network error, check your connection',
   'book.genesis': 'Genesis',
   'book.exodus': 'Exodus',

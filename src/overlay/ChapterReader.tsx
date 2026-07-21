@@ -1,5 +1,5 @@
 import type { PresentationHostAPI } from '@lumen-media/module-sdk';
-import { Button, ScrollArea } from '@lumen-media/module-sdk/ui';
+import { Button, ScrollArea, Select } from '@lumen-media/module-sdk/ui';
 import { ChevronLeft, ChevronRight, Loader2, Projector } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
 import { useBibleStore } from '../store.js';
@@ -13,9 +13,12 @@ interface ChapterReaderProps {
   t: TFunction;
 }
 
+const VERSES_PER_PAGE_OPTIONS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
+
 export function ChapterReader({ version, book, presentation, t }: ChapterReaderProps) {
   const [chapter, setChapter] = useState<number>(1);
   const [activeVerse, setActiveVerse] = useState<number | null>(null);
+  const [versesPerPage, setVersesPerPage] = useState<number>(5);
   const verses = useBibleStore((s) => s.verses);
   const versesLoading = useBibleStore((s) => s.versesLoading);
   const loadChapter = useBibleStore((s) => s.loadChapter);
@@ -130,6 +133,22 @@ export function ChapterReader({ version, book, presentation, t }: ChapterReaderP
           </div>
         )}
       </ScrollArea>
+
+      <div className="flex items-center justify-between border-t border-border px-4 py-2">
+        <span className="text-xs text-muted-foreground">{t('bible.verses-per-screen')}</span>
+        <Select value={String(versesPerPage)} onValueChange={(v) => setVersesPerPage(Number(v))}>
+          <Select.SelectTrigger className="h-7 w-16 text-xs">
+            <Select.SelectValue />
+          </Select.SelectTrigger>
+          <Select.SelectContent>
+            {VERSES_PER_PAGE_OPTIONS.map((n) => (
+              <Select.SelectItem key={n} value={String(n)}>
+                {n}
+              </Select.SelectItem>
+            ))}
+          </Select.SelectContent>
+        </Select>
+      </div>
     </div>
   );
 }

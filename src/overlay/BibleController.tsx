@@ -119,7 +119,7 @@ export function BibleController() {
       <Separator />
 
       <div className="flex flex-1 overflow-hidden">
-        <div className="flex w-80 flex-shrink-0 flex-col border-r border-border">
+        <div className="flex w-80 flex-shrink-0 flex-col overflow-hidden border-r border-border">
           {selectedBook ? (
             <ChapterReader
               version={version}
