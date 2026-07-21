@@ -60,6 +60,7 @@ export function SearchPanel({ t }: SearchPanelProps) {
   }
 
   function handleKeyDown(e: React.KeyboardEvent) {
+    e.stopPropagation();
     switch (e.key) {
       case 'ArrowDown':
         e.preventDefault();

@@ -1,6 +1,6 @@
 import { Input } from '@lumen-media/module-sdk/ui';
-import { BookOpen, Search } from 'lucide-react';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { BookOpen, Search, X } from 'lucide-react';
+import { useRef, useState } from 'react';
 import { parseReference } from '../data/ref.js';
 import type { Book } from '../data/types.js';
 import type { TFunction } from '../i18n.js';
@@ -16,27 +16,15 @@ export function QuickSearch({ books, onSelect, t }: QuickSearchProps) {
   const [open, setOpen] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  const close = useCallback(() => {
+  function close() {
     setOpen(false);
     setQuery('');
-  }, []);
+  }
 
-  useEffect(() => {
-    function onKeyDown(e: KeyboardEvent) {
-      if (e.ctrlKey || e.metaKey) return;
-      if (e.key === 'Escape' && open) {
-        close();
-        return;
-      }
-      if (e.key.length === 1 && /[a-zA-Z0-9\u00C0-\u00FF]/.test(e.key) && !(e.target instanceof HTMLInputElement) && !(e.target instanceof HTMLTextAreaElement)) {
-        setOpen(true);
-        setQuery((prev) => prev + e.key);
-        setTimeout(() => inputRef.current?.focus(), 0);
-      }
-    }
-    window.addEventListener('keydown', onKeyDown);
-    return () => window.removeEventListener('keydown', onKeyDown);
-  }, [open, close]);
+  function openSearch() {
+    setOpen(true);
+    setTimeout(() => inputRef.current?.focus(), 0);
+  }
 
   const q = query.toLowerCase();
   const filtered = books.filter((b) => {
@@ -60,8 +48,6 @@ export function QuickSearch({ books, onSelect, t }: QuickSearchProps) {
     }
   }
 
-  if (!open) return null;
-
   return (
     <div className="absolute inset-x-0 top-0 z-50 border-b border-border bg-background shadow-lg">
       <div className="flex items-center gap-2 px-4 py-3">
@@ -70,7 +56,9 @@ export function QuickSearch({ books, onSelect, t }: QuickSearchProps) {
           ref={inputRef}
           value={query}
           onChange={(e) => setQuery(e.target.value)}
+          onFocus={() => setOpen(true)}
           onKeyDown={(e) => {
+            e.stopPropagation();
             if (e.key === 'Escape') {
               close();
             } else if (e.key === 'Enter') {
@@ -80,13 +68,22 @@ export function QuickSearch({ books, onSelect, t }: QuickSearchProps) {
           placeholder={`${t('bible.go-to')} (ex: Mateus 1)`}
           className="flex-1 border-0 text-lg"
         />
+        {query && (
+          <button
+            type="button"
+            onClick={() => { setQuery(''); inputRef.current?.focus(); }}
+            className="flex h-6 w-6 items-center justify-center rounded text-muted-foreground hover:bg-accent hover:text-accent-foreground"
+          >
+            <X className="h-4 w-4" />
+          </button>
+        )}
       </div>
-      {filtered.length > 0 && (
+      {open && filtered.length > 0 && (
         <div className="max-h-48 overflow-y-auto border-t border-border">
           {filtered.slice(0, 10).map((book) => (
             <button
               key={book.id}
-              onClick={() => handleSelect(book)}
+              onClick={(e) => { e.stopPropagation(); handleSelect(book); }}
               className="flex w-full items-center gap-3 px-4 py-2.5 text-left text-sm text-foreground transition-colors hover:bg-accent"
             >
               <BookOpen className="h-4 w-4 text-muted-foreground" />
