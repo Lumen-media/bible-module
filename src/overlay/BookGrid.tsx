@@ -78,6 +78,7 @@ const ABBREVIATIONS: Record<string, string> = {
 
 export function BookGrid({ books, onSelect }: BookGridProps) {
   const t = useBibleStore((s) => s.t);
+  const selectedBook = useBibleStore((s) => s.selectedBook);
   const oldBooks = books.filter((b) => b.testament === 'old');
   const newBooks = books.filter((b) => b.testament === 'new');
 
@@ -92,7 +93,11 @@ export function BookGrid({ books, onSelect }: BookGridProps) {
             <button
               key={book.id}
               onClick={() => onSelect(book)}
-              className="flex flex-col items-center gap-1 rounded-lg border border-border bg-card p-3 text-sm font-medium text-card-foreground transition-colors hover:bg-accent hover:text-accent-foreground"
+              className={`flex flex-col items-center gap-1 rounded-lg border p-3 text-sm font-medium transition-colors hover:bg-accent hover:text-accent-foreground ${
+                selectedBook?.id === book.id
+                  ? 'border-primary bg-accent text-accent-foreground'
+                  : 'border-border bg-card text-card-foreground'
+              }`}
               title={book.name}
             >
               <span className="text-xs text-muted-foreground">
