@@ -49,9 +49,9 @@ export function QuickSearch({ books, onSelect, t }: QuickSearchProps) {
   }
 
   return (
-    <div className="absolute inset-x-0 top-0 z-50 border-b border-border bg-background shadow-lg">
-      <div className="flex items-center gap-2 px-4 py-3">
-        <Search className="h-5 w-5 text-muted-foreground" />
+    <div className="border-b border-border bg-background">
+      <div className="flex items-center gap-2 px-4 py-1.5">
+        <Search className="h-4 w-4 text-muted-foreground" />
         <Input
           ref={inputRef}
           value={query}
@@ -66,7 +66,7 @@ export function QuickSearch({ books, onSelect, t }: QuickSearchProps) {
             }
           }}
           placeholder={`${t('bible.go-to')} (ex: Mateus 1)`}
-          className="flex-1 border-0 text-lg"
+          className="h-7 flex-1 border-0 text-sm"
         />
         {query && (
           <button
