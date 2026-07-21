@@ -33,14 +33,17 @@ export function QuickSearch({ books, onSelect, t }: QuickSearchProps) {
     return () => window.removeEventListener('keydown', onKeyDown);
   }, [open]);
 
-  if (!open) return null;
-
-  const ref = parseReference(query, books);
-  if (ref) {
-    onSelect(ref.book, ref.chapter, ref.verse);
+  function close() {
     setOpen(false);
     setQuery('');
-    return null;
+  }
+
+  function handleEnter() {
+    const ref = parseReference(query, books);
+    if (ref) {
+      onSelect(ref.book, ref.chapter, ref.verse);
+      close();
+    }
   }
 
   const match = query.match(/^(\D+)\s*(\d*)?/);
@@ -53,9 +56,10 @@ export function QuickSearch({ books, onSelect, t }: QuickSearchProps) {
 
   function handleSelect(book: Book) {
     onSelect(book);
-    setOpen(false);
-    setQuery('');
+    close();
   }
+
+  if (!open) return null;
 
   return (
     <div className="absolute inset-x-0 top-0 z-50 border-b border-border bg-background shadow-lg">
@@ -67,11 +71,12 @@ export function QuickSearch({ books, onSelect, t }: QuickSearchProps) {
           onChange={(e) => setQuery(e.target.value)}
           onKeyDown={(e) => {
             if (e.key === 'Escape') {
-              setOpen(false);
-              setQuery('');
+              close();
+            } else if (e.key === 'Enter') {
+              handleEnter();
             }
           }}
-          placeholder={`${t('bible.go-to')} (ex: gn 1)`}
+          placeholder={`${t('bible.go-to')} (ex: Mateus 1)`}
           className="flex-1 border-0 text-lg"
         />
       </div>
