@@ -22,13 +22,11 @@ export function BibleController() {
     dlTotal,
     dlVersion,
     version,
-    testament,
     tab,
     selectedBook,
     presentation,
     t,
     setVersion,
-    setTestament,
     setTab,
     selectBook,
   } = useBibleStore();
@@ -126,36 +124,18 @@ export function BibleController() {
               t={t}
             />
           ) : (
-            <div className="flex flex-col p-2">
-              <button
-                type="button"
-                onClick={() => setTestament('old')}
-                className={`w-full rounded-md px-3 py-2 text-left text-sm font-medium transition-colors ${
-                  testament === 'old'
-                    ? 'bg-accent text-accent-foreground'
-                    : 'text-muted-foreground hover:bg-accent/50 hover:text-accent-foreground'
-                }`}
-              >
-                {t('bible.old-testament')}
-              </button>
-              <button
-                type="button"
-                onClick={() => setTestament('new')}
-                className={`w-full rounded-md px-3 py-2 text-left text-sm font-medium transition-colors ${
-                  testament === 'new'
-                    ? 'bg-accent text-accent-foreground'
-                    : 'text-muted-foreground hover:bg-accent/50 hover:text-accent-foreground'
-                }`}
-              >
-                {t('bible.new-testament')}
-              </button>
+            <div className="flex flex-1 items-center justify-center text-muted-foreground">
+              <div className="flex flex-col items-center gap-2">
+                <BookOpen className="h-8 w-8 opacity-30" />
+                <span className="text-sm">{t('bible.go-to')}</span>
+              </div>
             </div>
           )}
         </div>
 
         <ScrollArea className="flex-1 p-3">
           {tab === 'browse' ? (
-            <BookGrid books={BOOKS} testament={testament} onSelect={selectBook} />
+            <BookGrid books={BOOKS} onSelect={selectBook} t={t} />
           ) : (
             <SearchPanel t={t} />
           )}

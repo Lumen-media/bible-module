@@ -3,8 +3,8 @@ import type { Book } from '../data/types.js';
 
 interface BookGridProps {
   books: Book[];
-  testament: 'old' | 'new';
   onSelect: (book: Book) => void;
+  t: (key: string) => string;
 }
 
 const ABBREVIATIONS: Record<string, string> = {
@@ -76,29 +76,44 @@ const ABBREVIATIONS: Record<string, string> = {
   revelation: 'Ap',
 };
 
-export function BookGrid({ books, testament, onSelect }: BookGridProps) {
-  const filtered = books.filter((b) => b.testament === testament);
+export function BookGrid({ books, onSelect, t }: BookGridProps) {
+  const oldBooks = books.filter((b) => b.testament === 'old');
+  const newBooks = books.filter((b) => b.testament === 'new');
+
+  function renderSection(title: string, items: Book[]) {
+    return (
+      <div>
+        <h3 className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+          {title}
+        </h3>
+        <div className="grid grid-cols-[repeat(auto-fill,minmax(100px,1fr))] gap-2">
+          {items.map((book) => (
+            <button
+              key={book.id}
+              onClick={() => onSelect(book)}
+              className="flex flex-col items-center gap-1 rounded-lg border border-border bg-card p-3 text-sm font-medium text-card-foreground transition-colors hover:bg-accent hover:text-accent-foreground"
+              title={book.name}
+            >
+              <span className="text-xs text-muted-foreground">
+                {ABBREVIATIONS[book.id] ?? book.id.slice(0, 3)}
+              </span>
+              <span className="line-clamp-2 text-center text-xs leading-tight">
+                {book.name}
+              </span>
+              <span className="text-[10px] text-muted-foreground/60">
+                {book.chapters}
+              </span>
+            </button>
+          ))}
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <div className="grid grid-cols-[repeat(auto-fill,minmax(100px,1fr))] gap-2">
-      {filtered.map((book) => (
-        <button
-          key={book.id}
-          onClick={() => onSelect(book)}
-          className="flex flex-col items-center gap-1 rounded-lg border border-border bg-card p-3 text-sm font-medium text-card-foreground transition-colors hover:bg-accent hover:text-accent-foreground"
-          title={book.name}
-        >
-          <span className="text-xs text-muted-foreground">
-            {ABBREVIATIONS[book.id] ?? book.id.slice(0, 3)}
-          </span>
-          <span className="line-clamp-2 text-center text-xs leading-tight">
-            {book.name}
-          </span>
-          <span className="text-[10px] text-muted-foreground/60">
-            {book.chapters} {book.testament === 'old' ? 'AT' : 'NT'}
-          </span>
-        </button>
-      ))}
+    <div className="space-y-6">
+      {renderSection(t('bible.old-testament'), oldBooks)}
+      {renderSection(t('bible.new-testament'), newBooks)}
     </div>
   );
 }
