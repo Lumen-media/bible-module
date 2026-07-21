@@ -143,10 +143,10 @@ export async function importVersionFromJson(
 export async function searchVerses(
   db: SqliteHandle,
   query: string,
-  version: string,
+  versions: string[],
   limit = 50
-): Promise<{ book: string; chapter: number; verse: number; text: string }[]> {
-  if (!query.trim()) return [];
+): Promise<{ version: string; book: string; chapter: number; verse: number; text: string }[]> {
+  if (!query.trim() || versions.length === 0) return [];
 
   const terms = query
     .trim()
@@ -156,31 +156,41 @@ export async function searchVerses(
     .join(' AND ');
   if (!terms) return [];
 
+  const placeholders = versions.map(() => '?').join(',');
+
   try {
     return await db.query<{
+      version: string;
       book: string;
       chapter: number;
       verse: number;
       text: string;
     }>(
-      `SELECT book, chapter, verse, text FROM verses_fts
-       WHERE verses_fts MATCH ? AND version = ?
+      `SELECT version, book, chapter, verse, text FROM verses_fts
+       WHERE verses_fts MATCH ? AND version IN (${placeholders})
        ORDER BY rank
        LIMIT ?`,
-      [terms, version, limit]
+      [terms, ...versions, limit]
     );
   } catch {
     const like = `%${query.trim()}%`;
+    const params: (string | number)[] = [];
+    const conditions = versions.map((v) => {
+      params.push(v);
+      return 'version = ?';
+    });
+    params.push(like, limit);
     return await db.query<{
+      version: string;
       book: string;
       chapter: number;
       verse: number;
       text: string;
     }>(
-      `SELECT book, chapter, verse, text FROM verses
-       WHERE version = ? AND text LIKE ?
+      `SELECT version, book, chapter, verse, text FROM verses
+       WHERE (${conditions.join(' OR ')}) AND text LIKE ?
        LIMIT ?`,
-      [version, like, limit]
+      params
     );
   }
 }

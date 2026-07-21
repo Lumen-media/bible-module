@@ -1,21 +1,37 @@
 import { Button, Input, ScrollArea } from '@lumen-media/module-sdk/ui';
+import { useVirtualizer } from '@tanstack/react-virtual';
 import { Loader2, Search } from 'lucide-react';
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { BOOKS } from '../data/store.js';
-import { useBibleStore } from '../store.js';
 import { parseReference } from '../data/ref.js';
+import { useBibleStore } from '../store.js';
+import type { TFunction } from '../i18n.js';
 
 interface SearchPanelProps {
-  t: (key: string) => string;
+  t: TFunction;
 }
 
 export function SearchPanel({ t }: SearchPanelProps) {
   const [query, setQuery] = useState('');
-  const [results, setResults] = useState<{ book: string; chapter: number; verse: number; text: string }[]>([]);
+  const [results, setResults] = useState<
+    { version: string; book: string; chapter: number; verse: number; text: string }[]
+  >([]);
   const [loading, setLoading] = useState(false);
+  const [focusedIndex, setFocusedIndex] = useState(-1);
   const search = useBibleStore((s) => s.search);
   const goTo = useBibleStore((s) => s.goTo);
   const setTab = useBibleStore((s) => s.setTab);
+  const inputRef = useRef<HTMLInputElement>(null);
+  const viewportRef = useRef<HTMLDivElement>(null);
+
+  const bookMap = new Map(BOOKS.map((b) => [b.id, b]));
+
+  const virtualizer = useVirtualizer({
+    count: results.length,
+    getScrollElement: () => viewportRef.current,
+    estimateSize: () => 72,
+    overscan: 10,
+  });
 
   async function handleSearch() {
     if (!query.trim()) return;
@@ -28,18 +44,49 @@ export function SearchPanel({ t }: SearchPanelProps) {
     }
 
     setLoading(true);
+    setFocusedIndex(-1);
     const r = await search(query);
     setResults(r);
     setLoading(false);
+  }
+
+  function handleSelect(index: number) {
+    const r = results[index];
+    if (!r) return;
+    const book = bookMap.get(r.book);
+    if (!book) return;
+    goTo(book, r.chapter, r.verse);
+  }
+
+  function handleKeyDown(e: React.KeyboardEvent) {
+    switch (e.key) {
+      case 'ArrowDown':
+        e.preventDefault();
+        setFocusedIndex((prev) => (prev < results.length - 1 ? prev + 1 : 0));
+        break;
+      case 'ArrowUp':
+        e.preventDefault();
+        setFocusedIndex((prev) => (prev > 0 ? prev - 1 : results.length - 1));
+        break;
+      case 'Enter':
+        e.preventDefault();
+        if (focusedIndex >= 0) {
+          handleSelect(focusedIndex);
+        } else {
+          handleSearch();
+        }
+        break;
+    }
   }
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">
       <div className="flex gap-2 px-3 pb-3">
         <Input
+          ref={inputRef}
           value={query}
           onChange={(e) => setQuery(e.target.value)}
-          onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
+          onKeyDown={handleKeyDown}
           placeholder={`${t('bible.search')}...`}
           className="flex-1"
         />
@@ -49,17 +96,51 @@ export function SearchPanel({ t }: SearchPanelProps) {
         </Button>
       </div>
 
-      <ScrollArea className="min-h-0 flex-1 px-3">
-        <div className="space-y-1">
-          {results.map((r, i) => (
-            <div key={i} className="rounded-md border border-border bg-card px-3 py-2 text-sm">
-              <span className="font-medium text-card-foreground">
-                {r.book} {r.chapter}:{r.verse}
-              </span>
-              <p className="mt-0.5 text-muted-foreground">{r.text}</p>
+      <ScrollArea className="min-h-0 flex-1 px-3" viewportProps={{ ref: viewportRef }}>
+        {results.length > 0 ? (
+          <div
+            style={{
+              height: `${virtualizer.getTotalSize()}px`,
+              width: '100%',
+              position: 'relative',
+            }}
+          >
+            {virtualizer.getVirtualItems().map((virtualItem) => {
+              const r = results[virtualItem.index];
+              return (
+                <button
+                  key={virtualItem.key}
+                  type="button"
+                  onClick={() => handleSelect(virtualItem.index)}
+                  onMouseEnter={() => setFocusedIndex(virtualItem.index)}
+                  className={`absolute left-0 top-0 w-full rounded-md border px-3 py-2 text-left text-sm transition-colors ${
+                    virtualItem.index === focusedIndex
+                      ? 'border-primary bg-accent text-accent-foreground'
+                      : 'border-border bg-card text-card-foreground hover:bg-accent hover:text-accent-foreground'
+                  }`}
+                  style={{
+                    height: `${virtualItem.size}px`,
+                    transform: `translateY(${virtualItem.start}px)`,
+                  }}
+                >
+                  <span className="font-medium">
+                    {r.book} {r.chapter}:{r.verse}
+                  </span>
+                  <span className="ml-2 text-xs text-muted-foreground">
+                    {r.version.toUpperCase()}
+                  </span>
+                  <p className="mt-0.5 line-clamp-2 text-muted-foreground">{r.text}</p>
+                </button>
+              );
+            })}
+          </div>
+        ) : (
+          !loading && (
+            <div className="flex items-center justify-center py-16 text-muted-foreground">
+              {t('bible.no-results') ?? 'No results'}
             </div>
-          ))}
-        </div>
+          )
+        )}
       </ScrollArea>
     </div>
   );

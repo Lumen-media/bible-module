@@ -73,7 +73,7 @@ export interface BibleActions {
   loadChapter: (book: string, chapter: number) => Promise<void>;
   search: (
     query: string
-  ) => Promise<{ book: string; chapter: number; verse: number; text: string }[]>;
+  ) => Promise<{ version: string; book: string; chapter: number; verse: number; text: string }[]>;
 }
 
 export type BibleStore = BibleState & BibleActions;
@@ -275,10 +275,12 @@ export const useBibleStore = create<BibleStore>((set, get) => ({
   },
 
   search: async (query) => {
-    const { sqlite, version } = get();
+    const { sqlite, json } = get();
     if (!sqlite || !query.trim()) return [];
 
-    const results = await searchVerses(sqlite, query, version);
+    const downloaded = await getDownloadedVersions(json!);
+
+    const results = await searchVerses(sqlite, query, downloaded);
     const bookMap = new Map(BOOKS.map((b) => [b.id, b]));
 
     return results.map((r) => ({
