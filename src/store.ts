@@ -15,7 +15,7 @@ import {
   searchVerses,
 } from './data/database.js';
 import { downloadVersion, hasAnyCache } from './data/downloader.js';
-import { BOOKS, getDownloadedVersions, setDownloadedVersions } from './data/store.js';
+import { BOOKS, getDownloadedVersions, getLastPosition, setDownloadedVersions, setLastPosition } from './data/store.js';
 import type { Book } from './data/types.js';
 import type { TFunction } from './i18n.js';
 
@@ -37,6 +37,7 @@ export interface BibleState {
   testament: 'old' | 'new';
   tab: 'browse' | 'search';
   selectedBook: Book | null;
+  chapter: number;
 
   verses: { number: number; text: string }[] | null;
   versesLoading: boolean;
@@ -55,6 +56,7 @@ export interface BibleActions {
   setTestament: (t: 'old' | 'new') => void;
   setTab: (t: 'browse' | 'search') => void;
   selectBook: (book: Book) => void;
+  setChapter: (chapter: number) => void;
   loadChapter: (book: string, chapter: number) => Promise<void>;
   search: (
     query: string
@@ -83,6 +85,7 @@ export const useBibleStore = create<BibleStore>((set, get) => ({
   testament: 'old',
   tab: 'browse',
   selectedBook: null,
+  chapter: 1,
   verses: null,
   versesLoading: false,
 
@@ -182,6 +185,15 @@ export const useBibleStore = create<BibleStore>((set, get) => ({
       set({ downloading: false, dlCurrent: 0, dlTotal: 0, dlVersion: '' });
     }
 
+    const lastPos = await getLastPosition(json);
+    if (lastPos) {
+      const book = BOOKS.find((b) => b.id === lastPos.bookId);
+      if (book && lastPos.chapter >= 1 && lastPos.chapter <= book.chapters) {
+        set({ selectedBook: book, chapter: lastPos.chapter });
+        get().loadChapter(lastPos.bookId, lastPos.chapter);
+      }
+    }
+
     set({ ready: true });
   },
 
@@ -194,8 +206,18 @@ export const useBibleStore = create<BibleStore>((set, get) => ({
   setTab: (tab) => set({ tab }),
 
   selectBook: (book) => {
-    set({ selectedBook: book, verses: null });
+    set({ selectedBook: book, chapter: 1, verses: null });
     get().loadChapter(book.id, 1);
+  },
+
+  setChapter: (chapter) => {
+    const { selectedBook, json } = get();
+    if (!selectedBook) return;
+    set({ chapter, verses: null });
+    get().loadChapter(selectedBook.id, chapter);
+    if (json) {
+      setLastPosition(json, { bookId: selectedBook.id, chapter });
+    }
   },
 
   loadChapter: async (book, chapter) => {

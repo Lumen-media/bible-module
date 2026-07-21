@@ -136,3 +136,19 @@ export async function setDownloadedVersions(
 ): Promise<void> {
   await json.set('downloadedVersions', versions);
 }
+
+export interface LastPosition {
+  bookId: string;
+  chapter: number;
+}
+
+export async function getLastPosition(json: DataAPI['json']): Promise<LastPosition | null> {
+  return (await json.get<LastPosition | null>('lastPosition', null)) ?? null;
+}
+
+export async function setLastPosition(
+  json: DataAPI['json'],
+  position: LastPosition
+): Promise<void> {
+  await json.set('lastPosition', position);
+}

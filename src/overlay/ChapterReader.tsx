@@ -16,9 +16,10 @@ interface ChapterReaderProps {
 const VERSES_PER_PAGE_OPTIONS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
 
 export function ChapterReader({ version, book, presentation, t }: ChapterReaderProps) {
-  const [chapter, setChapter] = useState<number>(1);
   const [activeVerse, setActiveVerse] = useState<number | null>(null);
   const [versesPerPage, setVersesPerPage] = useState<number>(5);
+  const chapter = useBibleStore((s) => s.chapter);
+  const setChapter = useBibleStore((s) => s.setChapter);
   const verses = useBibleStore((s) => s.verses);
   const versesLoading = useBibleStore((s) => s.versesLoading);
   const loadChapter = useBibleStore((s) => s.loadChapter);
