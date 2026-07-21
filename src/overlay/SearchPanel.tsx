@@ -2,10 +2,10 @@ import { Button, Input, ScrollArea } from '@lumen-media/module-sdk/ui';
 import { useVirtualizer } from '@tanstack/react-virtual';
 import { Loader2, Search } from 'lucide-react';
 import { useRef, useState } from 'react';
-import { BOOKS } from '../data/store.js';
 import { parseReference } from '../data/ref.js';
-import { useBibleStore } from '../store.js';
+import { BOOKS } from '../data/store.js';
 import type { TFunction } from '../i18n.js';
+import { useBibleStore } from '../store.js';
 
 interface SearchPanelProps {
   t: TFunction;
@@ -26,10 +26,11 @@ export function SearchPanel({ t }: SearchPanelProps) {
 
   const bookMap = new Map(BOOKS.map((b) => [b.id, b]));
 
+  const GAP = 6;
   const virtualizer = useVirtualizer({
     count: results.length,
     getScrollElement: () => viewportRef.current,
-    estimateSize: () => 72,
+    estimateSize: () => 72 + GAP,
     overscan: 10,
   });
 
@@ -91,7 +92,11 @@ export function SearchPanel({ t }: SearchPanelProps) {
           className="flex-1"
         />
         <Button onClick={handleSearch} disabled={loading}>
-          {loading ? <Loader2 className="mr-1 h-4 w-4 animate-spin" /> : <Search className="mr-1 h-4 w-4" />}
+          {loading ? (
+            <Loader2 className="mr-1 h-4 w-4 animate-spin" />
+          ) : (
+            <Search className="mr-1 h-4 w-4" />
+          )}
           {t('bible.search')}
         </Button>
       </div>
@@ -113,13 +118,12 @@ export function SearchPanel({ t }: SearchPanelProps) {
                   type="button"
                   onClick={() => handleSelect(virtualItem.index)}
                   onMouseEnter={() => setFocusedIndex(virtualItem.index)}
-                  className={`absolute left-0 top-0 w-full rounded-md border px-3 py-2 text-left text-sm transition-colors ${
-                    virtualItem.index === focusedIndex
-                      ? 'border-primary bg-accent text-accent-foreground'
-                      : 'border-border bg-card text-card-foreground hover:bg-accent hover:text-accent-foreground'
-                  }`}
+                  className={`absolute left-0 top-0 w-full rounded-md border px-3 py-2 text-left text-sm transition-colors ${virtualItem.index === focusedIndex
+                    ? 'border-primary bg-accent text-accent-foreground'
+                    : 'border-border bg-card text-card-foreground hover:bg-accent hover:text-accent-foreground'
+                    }`}
                   style={{
-                    height: `${virtualItem.size}px`,
+                    height: `${virtualItem.size - GAP}px`,
                     transform: `translateY(${virtualItem.start}px)`,
                   }}
                 >
