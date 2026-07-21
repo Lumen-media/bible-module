@@ -1,3 +1,4 @@
+import { Progress } from '@lumen-media/module-sdk/ui';
 import { Download } from 'lucide-react';
 import type { TFunction } from '../i18n.js';
 
@@ -27,12 +28,7 @@ export function DownloadProgress({ visible, current, total, version, t }: Downlo
         </span>
         <span className="font-mono tabular-nums">{pct}%</span>
       </div>
-      <div className="h-1 bg-muted">
-        <div
-          className="h-full bg-primary transition-all duration-300"
-          style={{ width: `${pct}%` }}
-        />
-      </div>
+      <Progress value={pct} className="h-1 rounded-none" />
     </div>
   );
 }

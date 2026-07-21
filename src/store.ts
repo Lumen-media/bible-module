@@ -1,15 +1,29 @@
-import type { DataAPI, FsAPI, NetAPI, PresentationHostAPI } from '@lumen-media/module-sdk';
+import type {
+  DataAPI,
+  FsAPI,
+  NetAPI,
+  PresentationHostAPI,
+  SqliteHandle,
+} from '@lumen-media/module-sdk';
 import { create } from 'zustand';
+import {
+  getChapterFromDb,
+  importVersionFromJson,
+  initDatabase,
+  insertChapterBatch,
+  isVersionPopulated,
+  searchVerses,
+} from './data/database.js';
 import { downloadVersion, hasAnyCache } from './data/downloader.js';
-import { getDownloadedVersions, setDownloadedVersions } from './data/store.js';
+import { BOOKS, getDownloadedVersions, setDownloadedVersions } from './data/store.js';
 import type { Book } from './data/types.js';
 import type { TFunction } from './i18n.js';
-import { clearIndex } from './search.js';
 
 export interface BibleState {
   fs: FsAPI | null;
   net: NetAPI | null;
   json: DataAPI['json'] | null;
+  sqlite: SqliteHandle | null;
   presentation: PresentationHostAPI | null;
   t: TFunction | null;
 
@@ -23,6 +37,9 @@ export interface BibleState {
   testament: 'old' | 'new';
   tab: 'browse' | 'search';
   selectedBook: Book | null;
+
+  verses: { number: number; text: string }[] | null;
+  versesLoading: boolean;
 }
 
 export interface BibleActions {
@@ -30,6 +47,7 @@ export interface BibleActions {
     fs: FsAPI;
     net: NetAPI;
     json: DataAPI['json'];
+    sqlite: () => Promise<SqliteHandle>;
     presentation: PresentationHostAPI;
     t: TFunction;
   }) => Promise<void>;
@@ -37,16 +55,21 @@ export interface BibleActions {
   setTestament: (t: 'old' | 'new') => void;
   setTab: (t: 'browse' | 'search') => void;
   selectBook: (book: Book) => void;
+  loadChapter: (book: string, chapter: number) => Promise<void>;
+  search: (
+    query: string
+  ) => Promise<{ book: string; chapter: number; verse: number; text: string }[]>;
 }
 
 export type BibleStore = BibleState & BibleActions;
 
 const DEFAULT_VERSIONS = ['naa', 'ara', 'nvi'];
 
-export const useBibleStore = create<BibleStore>((set, _get) => ({
+export const useBibleStore = create<BibleStore>((set, get) => ({
   fs: null,
   net: null,
   json: null,
+  sqlite: null,
   presentation: null,
   t: null,
 
@@ -60,51 +83,144 @@ export const useBibleStore = create<BibleStore>((set, _get) => ({
   testament: 'old',
   tab: 'browse',
   selectedBook: null,
+  verses: null,
+  versesLoading: false,
 
   init: async (services) => {
     const { fs, net, json, presentation, t } = services;
     set({ fs, net, json, presentation, t });
 
-    const downloaded = await getDownloadedVersions(json);
-    const missing = DEFAULT_VERSIONS.filter((v) => !downloaded.includes(v));
+    const db = await services.sqlite();
+    set({ sqlite: db });
+    await initDatabase(db);
 
-    if (missing.length > 0) {
-      for (const v of missing) {
-        const cached = await hasAnyCache(fs, v);
-        if (cached) {
-          downloaded.push(v);
-          await setDownloadedVersions(json, downloaded);
+    const downloadedFromJson = await getDownloadedVersions(json);
+
+    const needsSqlite: string[] = [];
+    const needsDownload: string[] = [];
+
+    await Promise.all(
+      DEFAULT_VERSIONS.map(async (v) => {
+        if (await isVersionPopulated(db, v)) return;
+
+        const hasJson = await hasAnyCache(fs, v);
+        if (hasJson) {
+          needsSqlite.push(v);
+        } else {
+          needsDownload.push(v);
         }
-      }
+      })
+    );
 
-      const stillMissing = DEFAULT_VERSIONS.filter((v) => !downloaded.includes(v));
+    if (needsSqlite.length > 0 || needsDownload.length > 0) {
+      const totalChaptersPerVersion = 1189;
+      const totalAll = (needsSqlite.length + needsDownload.length) * totalChaptersPerVersion;
+      let globalCurrent = 0;
 
-      if (stillMissing.length > 0) {
-        set({ downloading: true });
-        for (const v of stillMissing) {
-          const success = await downloadVersion(fs, net, v, (current, total) => {
-            set({ dlCurrent: current, dlTotal: total, dlVersion: v });
-          });
-          if (success) {
-            downloaded.push(v);
-            await setDownloadedVersions(json, downloaded);
+      const allVersions = [...new Set([...needsSqlite, ...needsDownload])];
+      set({
+        downloading: true,
+        dlCurrent: 0,
+        dlTotal: totalAll,
+        dlVersion: allVersions.join(', '),
+      });
+
+      const newDownloaded = [...downloadedFromJson];
+
+      let lastUpdate = 0;
+      const throttledSet = (progress: {
+        dlCurrent: number;
+        dlTotal: number;
+        dlVersion: string;
+      }) => {
+        const now = Date.now();
+        if (now - lastUpdate < 100 && progress.dlCurrent < progress.dlTotal) return;
+        lastUpdate = now;
+        set(progress);
+      };
+
+      await Promise.allSettled(
+        allVersions.map(async (v) => {
+          const needsDl = needsDownload.includes(v);
+
+          if (needsDl) {
+            const ok = await downloadVersion(
+              fs,
+              net,
+              v,
+              (current, _total) => {
+                throttledSet({
+                  dlCurrent: globalCurrent + current,
+                  dlTotal: totalAll,
+                  dlVersion: v,
+                });
+              },
+              async (book, chapter, verses) => {
+                try {
+                  await insertChapterBatch(db, v, book, chapter, verses);
+                } catch (e) {
+                  console.error('[bible] sqlite insert error:', v, book, chapter, e);
+                }
+              }
+            );
+            if (!ok) {
+              globalCurrent += totalChaptersPerVersion;
+              return;
+            }
+          } else {
+            await importVersionFromJson(db, fs, v);
           }
-        }
-        set({ downloading: false, dlCurrent: 0, dlTotal: 0, dlVersion: '' });
-      }
+
+          if (!newDownloaded.includes(v)) {
+            newDownloaded.push(v);
+          }
+          globalCurrent += totalChaptersPerVersion;
+        })
+      );
+
+      await setDownloadedVersions(json, newDownloaded);
+      set({ downloading: false, dlCurrent: 0, dlTotal: 0, dlVersion: '' });
     }
 
     set({ ready: true });
   },
 
   setVersion: async (version) => {
-    set({ version });
-    clearIndex();
+    set({ version, verses: null });
   },
 
   setTestament: (testament) => set({ testament }),
 
   setTab: (tab) => set({ tab }),
 
-  selectBook: (book) => set({ selectedBook: book }),
+  selectBook: (book) => {
+    set({ selectedBook: book, verses: null });
+    get().loadChapter(book.id, 1);
+  },
+
+  loadChapter: async (book, chapter) => {
+    const { sqlite, version } = get();
+    if (!sqlite) return;
+
+    set({ versesLoading: true });
+    try {
+      const verses = await getChapterFromDb(sqlite, version, book, chapter);
+      set({ verses, versesLoading: false });
+    } catch {
+      set({ verses: null, versesLoading: false });
+    }
+  },
+
+  search: async (query) => {
+    const { sqlite, version } = get();
+    if (!sqlite || !query.trim()) return [];
+
+    const results = await searchVerses(sqlite, query, version);
+    const bookMap = new Map(BOOKS.map((b) => [b.id, b]));
+
+    return results.map((r) => ({
+      ...r,
+      book: bookMap.get(r.book)?.name ?? r.book,
+    }));
+  },
 }));

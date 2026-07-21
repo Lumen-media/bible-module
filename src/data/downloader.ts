@@ -1,18 +1,26 @@
 import type { FsAPI, NetAPI } from '@lumen-media/module-sdk';
-import { BOOKS, versionCacheDir } from './store.js';
-import type { MidvashChapter } from './types.js';
+import { BOOKS, apiSlug } from './store.js';
+import type { MidvashVerse } from './types.js';
 
 const MIDVASH_BASE = 'https://api.midvash.com/v1';
-const CONCURRENCY = 20;
+const CONCURRENCY = 5;
 const MAX_RETRIES = 3;
+const MAX_ITEM_RETRIES = 5;
 const RETRY_DELAYS = [1000, 3000, 5000];
+const PROGRESS_INTERVAL = 15;
 
 function delay(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
-function chapterPath(version: string, book: string, chapter: number): string {
-  return `cache/${version}/${book}/${chapter}.json`;
+interface BookData {
+  book: string;
+  bookName: string;
+  chapters: { number: number; verses: MidvashVerse[] }[];
+}
+
+function bookPath(version: string, book: string): string {
+  return `cache/${version}/${book}.json`;
 }
 
 async function fetchChapter(
@@ -20,20 +28,31 @@ async function fetchChapter(
   version: string,
   book: string,
   chapter: number
-): Promise<MidvashChapter | null> {
+): Promise<MidvashVerse[] | null> {
   const url = `${MIDVASH_BASE}/${version}/${book}/${chapter}`;
 
   for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
     try {
-      const response = await net.request<MidvashChapter>({
+      const response = await net.request<{
+        data: { verses: string[] };
+      }>({
         url,
         method: 'GET',
         responseType: 'json',
         timeoutMs: 10000,
       });
-      if (response.ok) return response.data;
-    } catch {
-      // retry
+      if (response.ok) {
+        const raw = response.data.data?.verses;
+        if (!Array.isArray(raw)) {
+          console.error('[bible] fetch unexpected format:', url, JSON.stringify(response.data).slice(0, 500));
+          return null;
+        }
+        return raw.map((text: string, i: number) => ({ number: i + 1, text }));
+      } else {
+        console.error('[bible] fetch response not ok:', url, response.status, response.statusText);
+      }
+    } catch (e) {
+      console.error('[bible] fetch error:', url, e);
     }
 
     if (attempt < MAX_RETRIES - 1) {
@@ -44,59 +63,122 @@ async function fetchChapter(
   return null;
 }
 
-async function ensureDir(fs: FsAPI, version: string, book: string): Promise<void> {
-  const dir = `cache/${version}/${book}`;
-  const exists = await fs.exists(dir).catch(() => false);
-  if (!exists) {
-    try {
-      await fs.write(`${dir}/.keep`, new Uint8Array());
-    } catch {
-      // ignore
-    }
-  }
+interface BookBuffer {
+  bookId: string;
+  bookName: string;
+  chapters: (MidvashVerse[] | null)[];
+  chapterCount: number;
 }
 
 export async function downloadVersion(
   fs: FsAPI,
   net: NetAPI,
   versionId: string,
-  onProgress?: (current: number, total: number) => void
+  onProgress?: (current: number, total: number) => void,
+  onChapter?: (book: string, chapter: number, verses: MidvashVerse[]) => Promise<void>
 ): Promise<boolean> {
-  const chapters: { book: string; chapter: number }[] = [];
+  const chapters: { book: string; slug: string; chapter: number; bookName: string }[] = [];
+  const bookMap = new Map(BOOKS.map((b) => [b.id, b]));
+
   for (const book of BOOKS) {
+    const exists = await fs.exists(bookPath(versionId, book.id)).catch(() => false);
+    if (exists) {
+      completed += book.chapters;
+      reportProgress();
+      continue;
+    }
+    const slug = apiSlug(book.id);
     for (let c = 1; c <= book.chapters; c++) {
-      chapters.push({ book: book.id, chapter: c });
+      chapters.push({ book: book.id, slug, chapter: c, bookName: book.name });
     }
   }
+
+  const buffers = new Map<string, BookBuffer>();
 
   const total = chapters.length;
   let completed = 0;
   let anyFailed = false;
+  let lastReported = -PROGRESS_INTERVAL;
 
-  async function processItem(item: { book: string; chapter: number }): Promise<void> {
-    const path = chapterPath(versionId, item.book, item.chapter);
-    const exists = await fs.exists(path).catch(() => false);
-    if (exists) {
-      completed++;
+  function reportProgress() {
+    if (completed - lastReported >= PROGRESS_INTERVAL || completed >= total) {
+      lastReported = completed;
       onProgress?.(completed, total);
-      return;
+    }
+  }
+
+  async function flushBook(version: string, buf: BookBuffer): Promise<void> {
+    const data: BookData = {
+      book: buf.bookId,
+      bookName: buf.bookName,
+      chapters: [],
+    };
+
+    for (let i = 0; i < buf.chapters.length; i++) {
+      const verses = buf.chapters[i];
+      if (verses) {
+        data.chapters.push({ number: i + 1, verses });
+      }
     }
 
-    const data = await fetchChapter(net, versionId, item.book, item.chapter);
-    if (!data) {
-      anyFailed = true;
-      completed++;
-      onProgress?.(completed, total);
-      return;
-    }
-
-    await ensureDir(fs, versionId, item.book);
-    const jsonStr = JSON.stringify(data);
+    const jsonStr = JSON.stringify(data, null, 2);
     const bytes = new TextEncoder().encode(jsonStr);
-    await fs.write(path, bytes).catch(() => {});
+    await fs.write(bookPath(version, buf.bookId), bytes).catch((e) => console.error('[bible] write book file error:', bookPath(version, buf.bookId), e));
+  }
+
+  const attemptCount = new Map<string, number>();
+
+  async function processItem(item: {
+    book: string;
+    slug: string;
+    chapter: number;
+    bookName: string;
+  }): Promise<void> {
+    const key = `${item.book}/${item.chapter}`;
+    const attempts = attemptCount.get(key) ?? 0;
+
+    const verses = await fetchChapter(net, versionId, item.slug, item.chapter);
+    if (!verses) {
+      if (attempts < MAX_ITEM_RETRIES) {
+        attemptCount.set(key, attempts + 1);
+        await delay(2000);
+        queue.push(item);
+      } else {
+        console.error('[bible] download failed after retries:', versionId, item.book, item.chapter);
+        anyFailed = true;
+        completed++;
+        reportProgress();
+      }
+      return;
+    }
+
+    let buf = buffers.get(item.book);
+    if (!buf) {
+      const bookDef = bookMap.get(item.book);
+      buf = {
+        bookId: item.book,
+        bookName: item.bookName,
+        chapters: new Array(bookDef?.chapters ?? 150).fill(null),
+        chapterCount: 0,
+      };
+      buffers.set(item.book, buf);
+    }
+
+    buf.chapters[item.chapter - 1] = verses;
+    buf.chapterCount++;
+
+    if (onChapter) {
+      await onChapter(item.book, item.chapter, verses);
+    }
+
+    const bookDef = bookMap.get(item.book);
+    if (buf.chapterCount === (bookDef?.chapters ?? 0)) {
+      await flushBook(versionId, buf);
+      buffers.delete(item.book);
+    }
 
     completed++;
-    onProgress?.(completed, total);
+    reportProgress();
   }
 
   const queue = [...chapters];
@@ -114,20 +196,15 @@ export async function downloadVersion(
   }
 
   await Promise.allSettled(workers);
+
+  for (const buf of buffers.values()) {
+    await flushBook(versionId, buf);
+  }
+
+  onProgress?.(completed, total);
   return !anyFailed;
 }
 
 export async function hasAnyCache(fs: FsAPI, versionId: string): Promise<boolean> {
-  const dir = versionCacheDir(versionId);
-  return fs.exists(dir).catch(() => false);
-}
-
-export function getAllChapterRefs(): { book: string; chapter: number }[] {
-  const refs: { book: string; chapter: number }[] = [];
-  for (const book of BOOKS) {
-    for (let c = 1; c <= book.chapters; c++) {
-      refs.push({ book: book.id, chapter: c });
-    }
-  }
-  return refs;
+  return fs.exists(bookPath(versionId, BOOKS[0].id)).catch(() => false);
 }

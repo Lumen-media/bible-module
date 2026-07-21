@@ -70,6 +70,7 @@ export default class BibleModulePlugin extends LumenPlugin {
       fs: host.fs,
       net: host.net,
       json: host.data.json,
+      sqlite: () => host.data.sqlite(),
       presentation: host.presentation,
       t,
     });

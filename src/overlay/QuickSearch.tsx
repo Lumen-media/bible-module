@@ -1,3 +1,4 @@
+import { Input } from '@lumen-media/module-sdk/ui';
 import { BookOpen, Search } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import type { Book } from '../data/types.js';
@@ -51,7 +52,7 @@ export function QuickSearch({ books, onSelect, t }: QuickSearchProps) {
     <div className="absolute inset-x-0 top-0 z-50 border-b border-border bg-background shadow-lg">
       <div className="flex items-center gap-2 px-4 py-3">
         <Search className="h-5 w-5 text-muted-foreground" />
-        <input
+        <Input
           ref={inputRef}
           value={query}
           onChange={(e) => setQuery(e.target.value)}
@@ -62,7 +63,7 @@ export function QuickSearch({ books, onSelect, t }: QuickSearchProps) {
             }
           }}
           placeholder={`${t('bible.go-to')} (ex: gn 1)`}
-          className="flex-1 border-0 bg-transparent text-lg text-foreground outline-none"
+          className="flex-1 border-0 text-lg"
         />
       </div>
       {filtered.length > 0 && (

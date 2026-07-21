@@ -80,16 +80,23 @@ export function BookGrid({ books, testament, onSelect }: BookGridProps) {
   const filtered = books.filter((b) => b.testament === testament);
 
   return (
-    <div className="flex flex-wrap gap-1.5">
+    <div className="grid grid-cols-[repeat(auto-fill,minmax(100px,1fr))] gap-2">
       {filtered.map((book) => (
         <button
           key={book.id}
           onClick={() => onSelect(book)}
-          className="flex h-10 w-14 flex-col items-center justify-center rounded-md border border-border bg-card text-xs font-medium text-card-foreground transition-colors hover:bg-accent hover:text-accent-foreground"
+          className="flex flex-col items-center gap-1 rounded-lg border border-border bg-card p-3 text-sm font-medium text-card-foreground transition-colors hover:bg-accent hover:text-accent-foreground"
           title={book.name}
         >
-          <BookOpen className="mb-0.5 h-3 w-3 opacity-50" />
-          {ABBREVIATIONS[book.id] ?? book.id.slice(0, 3)}
+          <span className="text-xs text-muted-foreground">
+            {ABBREVIATIONS[book.id] ?? book.id.slice(0, 3)}
+          </span>
+          <span className="line-clamp-2 text-center text-xs leading-tight">
+            {book.name}
+          </span>
+          <span className="text-[10px] text-muted-foreground/60">
+            {book.chapters} {book.testament === 'old' ? 'AT' : 'NT'}
+          </span>
         </button>
       ))}
     </div>

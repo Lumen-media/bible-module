@@ -16,8 +16,8 @@ let miniSearch: MiniSearch<Doc> | null = null;
 let building = false;
 let buildQueue: Array<() => void> = [];
 
-function chapterPath(version: string, book: string, chapter: number): string {
-  return `cache/${version}/${book}/${chapter}.json`;
+function bookPath(version: string, book: string): string {
+  return `cache/${version}/${book}.json`;
 }
 
 export async function ensureIndex(fs: FsAPI, version: string): Promise<MiniSearch<Doc>> {
@@ -41,29 +41,31 @@ export async function ensureIndex(fs: FsAPI, version: string): Promise<MiniSearc
   const docs: Doc[] = [];
 
   for (const book of BOOKS) {
-    for (let c = 1; c <= book.chapters; c++) {
-      const path = chapterPath(version, book.id, c);
-      const exists = await fs.exists(path).catch(() => false);
-      if (!exists) continue;
+    const path = bookPath(version, book.id);
+    const exists = await fs.exists(path).catch(() => false);
+    if (!exists) continue;
 
-      try {
-        const bytes = await fs.read(path);
-        const raw = new TextDecoder().decode(bytes);
-        const data = JSON.parse(raw) as MidvashChapter;
+    try {
+      const bytes = await fs.read(path);
+      const raw = new TextDecoder().decode(bytes);
+      const data = JSON.parse(raw) as {
+        chapters: { number: number; verses: { number: number; text: string }[] }[];
+      };
 
-        for (const v of data.chapter.verses) {
+      for (const ch of data.chapters ?? []) {
+        for (const v of ch.verses ?? []) {
           docs.push({
-            id: `${version}-${book.id}-${c}-${v.number}`,
+            id: `${version}-${book.id}-${ch.number}-${v.number}`,
             version,
             book: book.id,
-            chapter: c,
+            chapter: ch.number,
             verse: v.number,
             text: v.text,
           });
         }
-      } catch {
-        // skip corrupt file
       }
+    } catch {
+      // skip corrupt file
     }
   }
 

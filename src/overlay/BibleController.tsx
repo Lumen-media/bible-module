@@ -1,4 +1,5 @@
 import { BookOpen, Loader2, Search } from 'lucide-react';
+import { Button, ScrollArea, Select, Separator, Tabs } from '@lumen-media/module-sdk/ui';
 import { BOOKS } from '../data/store.js';
 import { useBibleStore } from '../store.js';
 import { BookGrid } from './BookGrid.js';
@@ -6,10 +7,14 @@ import { ChapterReader } from './ChapterReader.js';
 import { DownloadProgress } from './DownloadProgress.js';
 import { QuickSearch } from './QuickSearch.js';
 import { SearchPanel } from './SearchPanel.js';
-import { VersionSelector } from './VersionSelector.js';
+
+const VERSION_OPTIONS = [
+  { id: 'naa', name: 'Nova Almeida Atualizada' },
+  { id: 'ara', name: 'Almeida Revista e Atualizada' },
+  { id: 'nvi', name: 'Nova Versão Internacional' },
+];
 
 export function BibleController() {
-  const store = useBibleStore();
   const {
     ready,
     downloading,
@@ -20,18 +25,15 @@ export function BibleController() {
     testament,
     tab,
     selectedBook,
-    fs,
-    net,
-    json,
     presentation,
     t,
     setVersion,
     setTestament,
     setTab,
     selectBook,
-  } = store;
+  } = useBibleStore();
 
-  if (!t || !fs || !net || !json || !presentation) {
+  if (!t || !presentation) {
     return (
       <div className="flex h-full items-center justify-center gap-2 text-muted-foreground">
         <Loader2 className="h-5 w-5 animate-spin" />
@@ -67,77 +69,66 @@ export function BibleController() {
 
       <header className="flex items-center gap-3 border-b border-border px-4 py-2">
         <h1 className="text-lg font-bold">{t('bible.title')}</h1>
-        <VersionSelector current={version} onChange={setVersion} t={t} />
+
+        <Select value={version} onValueChange={setVersion}>
+          <Select.SelectTrigger className="w-56">
+            <Select.SelectValue />
+          </Select.SelectTrigger>
+          <Select.SelectContent>
+            {VERSION_OPTIONS.map((v) => (
+              <Select.SelectItem key={v.id} value={v.id}>
+                {v.name}
+              </Select.SelectItem>
+            ))}
+          </Select.SelectContent>
+        </Select>
 
         <div className="flex gap-1">
-          <button
+          <Button
+            size="sm"
+            variant={testament === 'old' ? 'default' : 'ghost'}
             onClick={() => setTestament('old')}
-            className={`rounded-md px-2.5 py-1 text-xs font-medium transition-colors ${
-              testament === 'old'
-                ? 'bg-primary text-primary-foreground'
-                : 'text-muted-foreground hover:bg-accent'
-            }`}
           >
             {t('bible.old-testament')}
-          </button>
-          <button
+          </Button>
+          <Button
+            size="sm"
+            variant={testament === 'new' ? 'default' : 'ghost'}
             onClick={() => setTestament('new')}
-            className={`rounded-md px-2.5 py-1 text-xs font-medium transition-colors ${
-              testament === 'new'
-                ? 'bg-primary text-primary-foreground'
-                : 'text-muted-foreground hover:bg-accent'
-            }`}
           >
             {t('bible.new-testament')}
-          </button>
+          </Button>
         </div>
 
         <div className="ml-auto flex gap-1">
-          <button
-            onClick={() => setTab('browse')}
-            className={`inline-flex items-center gap-1 rounded-md px-2.5 py-1 text-xs font-medium transition-colors ${
-              tab === 'browse'
-                ? 'bg-primary text-primary-foreground'
-                : 'text-muted-foreground hover:bg-accent'
-            }`}
-          >
-            <BookOpen className="h-3.5 w-3.5" />
-            {t('bible.book')}
-          </button>
-          <button
-            onClick={() => setTab('search')}
-            className={`inline-flex items-center gap-1 rounded-md px-2.5 py-1 text-xs font-medium transition-colors ${
-              tab === 'search'
-                ? 'bg-primary text-primary-foreground'
-                : 'text-muted-foreground hover:bg-accent'
-            }`}
-          >
-            <Search className="h-3.5 w-3.5" />
-            {t('bible.search')}
-          </button>
+          <Tabs value={tab} onValueChange={(v) => setTab(v as 'browse' | 'search')}>
+            <Tabs.TabsList>
+              <Tabs.TabsTrigger value="browse">
+                <BookOpen className="mr-1 h-3.5 w-3.5" />
+                {t('bible.book')}
+              </Tabs.TabsTrigger>
+              <Tabs.TabsTrigger value="search">
+                <Search className="mr-1 h-3.5 w-3.5" />
+                {t('bible.search')}
+              </Tabs.TabsTrigger>
+            </Tabs.TabsList>
+          </Tabs>
         </div>
       </header>
 
-      <div className="flex flex-1 overflow-hidden">
-        <div className="w-72 flex-shrink-0 overflow-y-auto border-r border-border p-3">
-          {tab === 'browse' ? (
-            <BookGrid books={BOOKS} testament={testament} onSelect={selectBook} />
-          ) : (
-            <SearchPanel fs={fs} version={version} t={t} />
-          )}
-        </div>
+      <Separator />
 
-        <div className="flex-1 overflow-hidden">
+      <div className="flex flex-1 overflow-hidden">
+        <div className="flex w-80 flex-shrink-0 flex-col border-r border-border">
           {selectedBook ? (
             <ChapterReader
-              fs={fs}
               version={version}
               book={selectedBook}
               presentation={presentation}
               t={t}
             />
           ) : (
-            <div className="flex h-full items-center justify-center text-muted-foreground">
+            <div className="flex flex-1 items-center justify-center text-muted-foreground">
               <div className="flex flex-col items-center gap-2">
                 <BookOpen className="h-8 w-8 opacity-30" />
                 <span className="text-sm">{t('bible.go-to')}</span>
@@ -145,6 +136,14 @@ export function BibleController() {
             </div>
           )}
         </div>
+
+        <ScrollArea className="flex-1 p-3">
+          {tab === 'browse' ? (
+            <BookGrid books={BOOKS} testament={testament} onSelect={selectBook} />
+          ) : (
+            <SearchPanel t={t} />
+          )}
+        </ScrollArea>
       </div>
     </div>
   );

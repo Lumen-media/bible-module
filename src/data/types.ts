@@ -1,6 +1,7 @@
 export interface Book {
   id: string;
   name: string;
+  slug?: string;
   chapters: number;
   testament: 'old' | 'new';
 }
