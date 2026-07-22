@@ -15,10 +15,12 @@
   },
   "dependencies": {
     "@tanstack/react-virtual": "^3.14.7",
+    "clsx": "^2.1.1",
     "lucide-react": "^1.25.0",
     "minisearch": "^7.2.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
+    "tailwind-merge": "^3.6.0",
     "zustand": "^5.0.14"
   },
   "devDependencies": {

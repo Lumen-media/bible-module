@@ -12,7 +12,8 @@
   "license": "MIT",
   "permissions": {
     "network": [
-      "https://api.midvash.com/*"
+      "https://api.midvash.com/*",
+      "https://pub-fdcd1dc78f82411d8901ea46dabc2d17.r2.dev/*"
     ]
   }
 }
