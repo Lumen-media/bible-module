@@ -106,8 +106,14 @@ export async function downloadVersion(
       const jsonStr = JSON.stringify(r2Book, null, 2);
       const bytes = new TextEncoder().encode(jsonStr);
       await fs.write(bookPath(versionId, book.id), bytes).catch(() => {});
+      const allVerses: { number: number; text: string; chapter: number }[] = [];
       for (const ch of r2Book.chapters) {
-        if (onChapter) await onChapter(book.id, ch.number, ch.verses).catch(() => {});
+        for (const v of ch.verses) {
+          allVerses.push({ number: v.number, text: v.text, chapter: ch.number });
+        }
+      }
+      if (allVerses.length > 0 && onChapter) {
+        await onChapter(book.id, 0, allVerses as MidvashVerse[]).catch(() => {});
       }
       continue;
     }

@@ -83,6 +83,7 @@ export interface BibleState {
   dlTotal: number;
   dlVersion: string;
   downloadingVersion: string | null;
+  downloadingVersions: string[];
 
   version: string;
   testament: 'old' | 'new';
@@ -118,6 +119,7 @@ export interface BibleActions {
     query: string
   ) => Promise<{ version: string; book: string; chapter: number; verse: number; text: string }[]>;
   downloadAndSetVersion: (versionId: string) => Promise<void>;
+  downloadVersionOnly: (versionId: string) => Promise<void>;
   removeVersion: (versionId: string) => Promise<void>;
   downloadedVersions: () => Promise<string[]>;
 }
@@ -158,6 +160,7 @@ export const useBibleStore = create<BibleStore>((set, get) => ({
   dlTotal: 0,
   dlVersion: '',
   downloadingVersion: null,
+  downloadingVersions: [],
 
   version: 'naa',
   testament: 'old',
@@ -355,28 +358,39 @@ export const useBibleStore = create<BibleStore>((set, get) => ({
   },
 
   downloadAndSetVersion: async (versionId) => {
-    const { fs, net, json, sqlite } = get();
-    if (!fs || !net || !json || !sqlite || get().downloadingVersion) return;
+    set({ version: versionId, verses: null });
+    get().downloadVersionOnly(versionId);
+  },
 
-    set({ downloadingVersion: versionId, version: versionId, verses: null });
+  downloadVersionOnly: async (versionId) => {
+    const { fs, net, json, sqlite } = get();
+    if (!fs || !net || !json || !sqlite) return;
+
+    const already = get().downloadingVersions;
+    if (already.includes(versionId)) return;
+    set({ downloadingVersions: [...already, versionId] });
 
     try {
       const db = sqlite;
       await downloadVersion(fs, net, versionId, (current) => {
         set({ dlCurrent: current, dlTotal: 66 });
       }, async (bookId, chapter, verses) => {
-        await insertChapterBatch(db, versionId, bookId, chapter, verses).catch(() => {});
+        await insertChapterBatch(db, versionId, bookId, chapter, verses as { number: number; text: string; chapter?: number }[]).catch(() => {});
       });
+
+      const downloaded = await getDownloadedVersions(json);
+      if (!downloaded.includes(versionId)) {
+        await setDownloadedVersions(json, [...downloaded, versionId]);
+      }
     } catch (e) {
       console.error('[bible] download failed:', versionId, e);
     }
 
-    const downloaded = await getDownloadedVersions(json);
-    if (!downloaded.includes(versionId)) {
-      await setDownloadedVersions(json, [...downloaded, versionId]);
-    }
-
-    set({ downloadingVersion: null, dlCurrent: 0, dlTotal: 0 });
+    set((s) => ({
+      downloadingVersions: s.downloadingVersions.filter((v) => v !== versionId),
+      dlCurrent: 0,
+      dlTotal: 0,
+    }));
   },
 
   removeVersion: async (versionId) => {

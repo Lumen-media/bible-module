@@ -14,10 +14,10 @@ import { useEffect, useState } from 'react';
 export function BibleController() {
   const {
     ready, downloading, dlCurrent, dlTotal, dlVersion,
-    downloadingVersion, version, tab, selectedBook, chapter,
+    downloadingVersions, version, tab, selectedBook, chapter,
     presentation, t,
     setVersion, setTab, selectBook, setChapter, goTo,
-    downloadAndSetVersion, downloadedVersions,
+    downloadAndSetVersion, downloadVersionOnly, downloadedVersions,
   } = useBibleStore();
 
   const [localDownloaded, setLocalDownloaded] = useState<string[]>([]);
@@ -26,7 +26,7 @@ export function BibleController() {
 
   useEffect(() => {
     downloadedVersions().then(setLocalDownloaded).catch(() => { });
-  }, [downloadedVersions, downloadingVersion]);
+  }, [downloadedVersions, downloadingVersions]);
 
   useEffect(() => {
     if (localDownloaded.length > 0 && displayedTabs.length === 0) {
@@ -49,10 +49,6 @@ export function BibleController() {
   const raw = navigator.language;
   const userLang = raw.startsWith('pt-PT') || raw === 'pt' ? 'pt-pt' : raw.startsWith('pt') ? 'pt-br' : raw.startsWith('es') ? 'es' : raw === 'en-GB' || raw === 'en-gb' ? 'en-gb' : 'en-us';
   const [filterLang, setFilterLang] = useState(userLang);
-
-  useEffect(() => {
-    downloadedVersions().then(setLocalDownloaded).catch(() => { });
-  }, [downloadedVersions, downloadingVersion]);
 
   const langLabels: Record<string, string> = { 'pt-br': 'PT-BR', 'pt-pt': 'PT-PT', 'en-us': 'EN-US', 'en-gb': 'EN-GB', es: 'ES' };
   const showFlag = (lang: string) => {
@@ -214,7 +210,7 @@ export function BibleController() {
                     }).map((v) => {
                       const isDownloaded = localDownloaded.includes(v.id);
                       const isCurrent = version === v.id;
-                      const isDownloading = downloadingVersion === v.id;
+                      const isDownloading = downloadingVersions.includes(v.id);
                       const langLabel = langLabels[v.language] || v.language;
 
                       return (
@@ -244,7 +240,7 @@ export function BibleController() {
                           ) : (
                             <button
                               type="button"
-                              onClick={(e) => { e.stopPropagation(); downloadAndSetVersion(v.id); }}
+                              onClick={(e) => { e.stopPropagation(); downloadVersionOnly(v.id); }}
                               className="shrink-0 rounded p-0.5 text-muted-foreground hover:text-foreground"
                             >
                               <Download className="h-3.5 w-3.5" />

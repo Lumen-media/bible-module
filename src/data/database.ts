@@ -73,14 +73,15 @@ export async function insertChapterBatch(
   version: string,
   book: string,
   chapter: number,
-  verses: MidvashVerse[]
+  verses: (MidvashVerse & { chapter?: number })[]
 ): Promise<void> {
   if (verses.length === 0) return;
 
   const placeholders = verses.map(() => '(?, ?, ?, ?, ?)').join(',\n');
   const params: unknown[] = [];
   for (const v of verses) {
-    params.push(version, book, chapter, v.number, v.text);
+    const ch = v.chapter ?? chapter;
+    params.push(version, book, ch, v.number, v.text);
   }
 
   await db.exec(
