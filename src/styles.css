@@ -39,3 +39,12 @@
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-ring: var(--sidebar-ring);
 }
+
+[data-radix-scroll-area-viewport] {
+  outline: none !important;
+}
+
+[data-slot="scroll-area-viewport"] {
+  outline: none !important;
+  box-shadow: none !important;
+}
