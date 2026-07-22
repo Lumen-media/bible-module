@@ -3,6 +3,7 @@ import { BOOKS, apiSlug } from './store.js';
 import type { MidvashVerse } from './types.js';
 
 const MIDVASH_BASE = 'https://api.midvash.com/v1';
+const R2_BASE = 'https://pub-fdcd1dc78f82411d8901ea46dabc2d17.r2.dev';
 const CONCURRENCY = 5;
 const MAX_RETRIES = 3;
 const MAX_ITEM_RETRIES = 5;
@@ -63,6 +64,22 @@ async function fetchChapter(
   return null;
 }
 
+async function fetchBookFromR2(
+  net: NetAPI,
+  version: string,
+  bookId: string,
+): Promise<BookData | null> {
+  const url = `${R2_BASE}/${version}/${bookId}.json`;
+  for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
+    try {
+      const res = await net.request<BookData>({ url, method: 'GET', responseType: 'json', timeoutMs: 15000 });
+      if (res.ok && res.data?.chapters) return res.data;
+    } catch {}
+    if (attempt < MAX_RETRIES - 1) await delay(RETRY_DELAYS[attempt]);
+  }
+  return null;
+}
+
 interface BookBuffer {
   bookId: string;
   bookName: string;
@@ -78,22 +95,30 @@ export async function downloadVersion(
   onChapter?: (book: string, chapter: number, verses: MidvashVerse[]) => Promise<void>
 ): Promise<boolean> {
   const chapters: { book: string; slug: string; chapter: number; bookName: string }[] = [];
-  const bookMap = new Map(BOOKS.map((b) => [b.id, b]));
 
   for (const book of BOOKS) {
     const exists = await fs.exists(bookPath(versionId, book.id)).catch(() => false);
-    if (exists) {
-      completed += book.chapters;
-      reportProgress();
+    if (exists) continue;
+    const slug = apiSlug(book.id);
+
+    const r2Book = await fetchBookFromR2(net, versionId, book.id);
+    if (r2Book && r2Book.chapters) {
+      const jsonStr = JSON.stringify(r2Book, null, 2);
+      const bytes = new TextEncoder().encode(jsonStr);
+      await fs.write(bookPath(versionId, book.id), bytes).catch(() => {});
+      for (const ch of r2Book.chapters) {
+        if (onChapter) await onChapter(book.id, ch.number, ch.verses).catch(() => {});
+      }
       continue;
     }
-    const slug = apiSlug(book.id);
+
     for (let c = 1; c <= book.chapters; c++) {
       chapters.push({ book: book.id, slug, chapter: c, bookName: book.name });
     }
   }
 
   const buffers = new Map<string, BookBuffer>();
+  const bookMap = new Map(BOOKS.map((b) => [b.id, b]));
 
   const total = chapters.length;
   let completed = 0;
