@@ -11,11 +11,14 @@ interface ChapterReaderProps {
   book: Book;
   presentation: PresentationHostAPI;
   t: TFunction;
+  projecting: boolean;
+  onProject: () => void;
+  onClear: () => void;
 }
 
 const VERSES_PER_PAGE_OPTIONS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
 
-export function ChapterReader({ version, book, presentation, t }: ChapterReaderProps) {
+export function ChapterReader({ version, book, presentation, t, projecting, onProject, onClear }: ChapterReaderProps) {
   const versesPerPage = useBibleStore((s) => s.versesPerPage);
   const setVersesPerPage = useBibleStore((s) => s.setVersesPerPage);
   const chapter = useBibleStore((s) => s.chapter);
@@ -52,12 +55,13 @@ export function ChapterReader({ version, book, presentation, t }: ChapterReaderP
             text: `${v.number} ${v.text}`,
           },
         });
+        onProject();
       } catch (e) {
         console.error('[bible] project error:', e);
       }
       setSelectedVerse(v.number);
     },
-    [presentation, version, book.id, book.name, chapter, setSelectedVerse]
+    [presentation, version, book.id, book.name, chapter, setSelectedVerse, onProject]
   );
 
   const handleVerseClick = useCallback(
@@ -87,6 +91,7 @@ export function ChapterReader({ version, book, presentation, t }: ChapterReaderP
           text: verses.map((v) => `${v.number} ${v.text}`).join('\n'),
         },
       });
+      onProject();
     } catch (e) {
       console.error('[bible] projectAll error:', e);
     }
@@ -146,11 +151,12 @@ export function ChapterReader({ version, book, presentation, t }: ChapterReaderP
           </Select>
           <Button
             size="sm"
-            onClick={projectAll}
-            disabled={!verses || verses.length === 0 || versesLoading}
+            onClick={projecting ? onClear : projectAll}
+            disabled={!projecting && (!verses || verses.length === 0 || versesLoading)}
+            variant={projecting ? 'secondary' : 'default'}
           >
             <Projector className="mr-1 h-4 w-4" />
-            {t('bible.project')}
+            {projecting ? t('bible.clear') : t('bible.project')}
           </Button>
         </div>
       </div>

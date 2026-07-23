@@ -1,4 +1,4 @@
-import { BookOpen, Check, ChevronDown, Download, Loader2, Search } from 'lucide-react';
+import { BookOpen, Check, ChevronDown, ChevronLeft, Download, Loader2, Search } from 'lucide-react';
 import { Popover, ScrollArea, Select, Separator, Tabs } from '@lumen-media/module-sdk/ui';
 import { cn } from '../lib/utils.js';
 import { ALL_VERSIONS, useBibleStore } from '../store.js';
@@ -9,9 +9,10 @@ import { ChapterReader } from './ChapterReader.js';
 import { DownloadProgress } from './DownloadProgress.js';
 import { QuickSearch } from './QuickSearch.js';
 import { SearchPanel } from './SearchPanel.js';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useEventListener } from 'usehooks-ts';
 
-export function BibleController() {
+export function BibleController({ close }: { close?: () => void }) {
   const {
     ready, downloading, dlCurrent, dlTotal, dlVersion,
     downloadingVersions, version, tab, selectedBook, chapter,
@@ -23,6 +24,56 @@ export function BibleController() {
   const [localDownloaded, setLocalDownloaded] = useState<string[]>([]);
   const [displayedTabs, setDisplayedTabs] = useState<string[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
+  const [projecting, setProjecting] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  const bookInitials = useMemo(() => {
+    const initials = new Set<string>();
+    for (const book of BOOKS) {
+      const nameChar = book.name.charAt(0).toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+      initials.add(nameChar);
+      const idChar = book.id.charAt(0).toLowerCase();
+      initials.add(idChar);
+    }
+    return initials;
+  }, []);
+
+  const clearProjection = useCallback(() => {
+    presentation?.clear();
+    setProjecting(false);
+  }, [presentation]);
+
+  useEventListener('keydown', (e: KeyboardEvent) => {
+    if (e.key === 'Escape') {
+      if (projecting) {
+        e.preventDefault();
+        clearProjection();
+      }
+      return;
+    }
+
+    const target = e.target as HTMLElement;
+    if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA') return;
+
+    if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
+      e.preventDefault();
+      const input = document.querySelector<HTMLInputElement>('[data-search-input]');
+      input?.focus();
+      setSearchQuery('');
+      return;
+    }
+
+    if (!e.ctrlKey && !e.metaKey && !e.altKey && e.key.length === 1) {
+      const key = e.key.toLowerCase();
+      const normalizedKey = key.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+      if (bookInitials.has(normalizedKey)) {
+        e.preventDefault();
+        const input = document.querySelector<HTMLInputElement>('[data-search-input]');
+        input?.focus();
+        setSearchQuery(key);
+      }
+    }
+  });
 
   useEffect(() => {
     downloadedVersions().then(setLocalDownloaded).catch(() => { });
@@ -86,7 +137,7 @@ export function BibleController() {
   }
 
   return (
-    <div className="flex h-full flex-col bg-background text-foreground">
+    <div ref={containerRef} className="flex h-full flex-col bg-background text-foreground">
       <DownloadProgress
         visible={downloading && dlTotal > 0}
         current={dlCurrent}
@@ -95,10 +146,19 @@ export function BibleController() {
         t={t}
       />
 
-      <QuickSearch books={BOOKS} onSelect={(book, ch, verse) => goTo(book, ch ?? 1, verse)} t={t} />
-
       <header className="flex items-center gap-3 border-b border-border px-4 py-2">
-        <h1 className="text-lg font-bold">{t('bible.title')}</h1>
+        <button
+          type="button"
+          onClick={() => close?.()}
+          className="flex shrink-0 items-center gap-1 rounded-md px-2 py-1 text-xs text-muted-foreground hover:bg-accent hover:text-foreground"
+        >
+          <ChevronLeft className="h-3.5 w-3.5" />
+          {t('bible.go-back')}
+        </button>
+
+        <div className="flex flex-1 justify-center">
+          <QuickSearch books={BOOKS} onSelect={(book, ch, verse) => goTo(book, ch ?? 1, verse)} t={t} inputValue={searchQuery} onInputValueChange={setSearchQuery} />
+        </div>
 
         <div className="ml-auto flex gap-1">
           <Tabs value={tab} onValueChange={(v) => setTab(v as 'browse' | 'search')}>
@@ -142,31 +202,31 @@ export function BibleController() {
                   <Popover.PopoverTrigger className="absolute right-1 flex items-center">
                     <ChevronDown className="h-3 w-3" />
                   </Popover.PopoverTrigger>
-                <Popover.PopoverContent className="w-32 p-0" align="start">
-                  <div className="p-1">
-                    {localDownloaded.filter((d) => !displayedTabs.includes(d)).map((d) => (
-                      <button
-                        key={d}
-                        type="button"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setDisplayedTabs((prev) => {
-                            const idx = prev.indexOf(id);
-                            if (idx < 0) return prev;
-                            const next = [...prev];
-                            next[idx] = d;
-                            return next;
-                          });
-                        }}
-                        className="flex w-full items-center rounded px-2 py-1 text-xs text-muted-foreground hover:bg-accent hover:text-accent-foreground"
-                      >
-                        {d.toUpperCase()}
-                      </button>
-                    ))}
-                  </div>
-                </Popover.PopoverContent>
-              </Popover>
-            </div>
+                  <Popover.PopoverContent className="w-32 p-0" align="start">
+                    <div className="p-1">
+                      {localDownloaded.filter((d) => !displayedTabs.includes(d)).map((d) => (
+                        <button
+                          key={d}
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setDisplayedTabs((prev) => {
+                              const idx = prev.indexOf(id);
+                              if (idx < 0) return prev;
+                              const next = [...prev];
+                              next[idx] = d;
+                              return next;
+                            });
+                          }}
+                          className="flex w-full items-center rounded px-2 py-1 text-xs text-muted-foreground hover:bg-accent hover:text-accent-foreground"
+                        >
+                          {d.toUpperCase()}
+                        </button>
+                      ))}
+                    </div>
+                  </Popover.PopoverContent>
+                </Popover>
+              </div>
             ))}
 
             <Popover>
@@ -263,6 +323,9 @@ export function BibleController() {
               book={selectedBook}
               presentation={presentation}
               t={t}
+              projecting={projecting}
+              onProject={() => setProjecting(true)}
+              onClear={clearProjection}
             />
           ) : (
             <div className="flex flex-1 items-center justify-center text-muted-foreground">
@@ -272,6 +335,7 @@ export function BibleController() {
               </div>
             </div>
           )}
+
         </div>
 
         <div className="flex min-h-0 flex-1 flex-col">

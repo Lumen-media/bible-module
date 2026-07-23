@@ -24,6 +24,8 @@ const messages: Record<TranslationKeys, string> = {
   'bible.open': 'Abrir Biblia',
   'bible.verses-per-screen': 'Versículos por pantalla',
   'bible.manage-versions': 'Gestionar versiones',
+  'bible.search-book': 'Buscar libro...',
+  'bible.go-back': 'Volver',
   'bible.network-error': 'Error de red, verifique su conexión',
   'book.genesis': 'Génesis',
   'book.exodus': 'Éxodo',
