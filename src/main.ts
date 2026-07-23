@@ -1,8 +1,10 @@
-import { type LumenHost, LumenPlugin } from '@lumen-media/module-sdk';
+import { type LumenHost, LumenPlugin, type PrefixSpec } from '@lumen-media/module-sdk';
 import { setupI18n, t } from './i18n.js';
 import { BibleController } from './overlay/BibleController.js';
 import { BibleSlide } from './presenter/BibleSlide.js';
 import { useBibleStore } from './store.js';
+import { BOOKS } from './data/store.js';
+import { parseReference } from './data/ref.js';
 import css from './styles.css?inline';
 
 const SURFACE_PANEL_ID = 'bible-controller';
@@ -62,6 +64,46 @@ export default class BibleModulePlugin extends LumenPlugin {
         host.presentation.clear();
       },
     });
+
+    const makePrefix = (prefix: string): PrefixSpec => ({
+      prefix,
+      title: t('bible.title'),
+      placeholder: t('bible.search-book'),
+      handle: async (query) => {
+        if (!query.trim()) return [];
+        const ref = parseReference(query.trim(), BOOKS);
+        if (ref) {
+          const label = `${ref.book.name} ${ref.chapter}${ref.verse ? `:${ref.verse}` : ''}`;
+          return [{
+            id: `bible-go-to-${prefix}`,
+            title: `${t('bible.go-to')} ${label}`,
+            subtitle: ref.verse ? `${ref.verse}° ${t('bible.verse')}` : `${t('bible.chapter')} ${ref.chapter}`,
+            run: () => {
+              host.surface.openWindow(SURFACE_PANEL_ID, {
+                goToBook: ref.book.id,
+                goToChapter: ref.chapter,
+                goToVerse: ref.verse,
+              }, SURFACE_OPTIONS);
+            },
+          }];
+        }
+        return [{
+          id: `bible-search-${prefix}`,
+          title: `${t('bible.search')} "${query}"`,
+          subtitle: t('bible.no-results'),
+          run: () => {
+            host.surface.openWindow(SURFACE_PANEL_ID, {}, SURFACE_OPTIONS);
+          },
+        }];
+      },
+    });
+
+    const prefixes = ['bbl'];
+    const locale = host.app.locale.toLowerCase();
+    if (locale.startsWith('pt')) prefixes.push('biblia');
+    else if (locale.startsWith('es')) prefixes.push('biblia');
+    else prefixes.push('bible');
+    for (const p of prefixes) host.commands.addPrefix(makePrefix(p));
 
     useBibleStore.getState().init({
       fs: host.fs,

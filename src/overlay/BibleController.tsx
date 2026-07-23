@@ -12,7 +12,15 @@ import { SearchPanel } from './SearchPanel.js';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useEventListener } from 'usehooks-ts';
 
-export function BibleController({ close }: { close?: () => void }) {
+interface BibleControllerProps {
+  close?: () => void;
+  onClose?: () => void;
+  goToBook?: string;
+  goToChapter?: number;
+  goToVerse?: number;
+}
+
+export function BibleController({ close, goToBook, goToChapter, goToVerse }: BibleControllerProps) {
   const {
     ready, downloading, dlCurrent, dlTotal, dlVersion,
     downloadingVersions, version, tab, selectedBook, chapter,
@@ -84,6 +92,12 @@ export function BibleController({ close }: { close?: () => void }) {
       setDisplayedTabs(localDownloaded.slice(0, 3));
     }
   }, [localDownloaded, displayedTabs]);
+
+  useEffect(() => {
+    if (!goToBook || !goToChapter) return;
+    const book = BOOKS.find((b) => b.id === goToBook);
+    if (book) goTo(book, goToChapter, goToVerse);
+  }, [goToBook, goToChapter, goToVerse, goTo]);
 
   const handleSelectVersion = (id: string) => {
     if (!displayedTabs.includes(id)) {
