@@ -1,4 +1,4 @@
-import { Popover, ScrollArea, Select, Separator, Tabs } from '@lumen-media/module-sdk/ui';
+import { Card, Popover, ScrollArea, Select, Separator, Tabs } from '@lumen-media/module-sdk/ui';
 import { BookOpen, Check, ChevronDown, ChevronLeft, Download, Loader2, Search } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useEventListener } from 'usehooks-ts';
@@ -203,7 +203,7 @@ export function BibleController({ close, goToBook, goToChapter, goToVerse }: Bib
         t={t}
       />
 
-      <header className="grid grid-cols-3 gap-3 border-b border-border px-4 py-2">
+      <header className="grid grid-cols-3 gap-3 px-4 py-2 bg-card">
         <button
           type="button"
           onClick={() => close?.()}
@@ -225,7 +225,7 @@ export function BibleController({ close, goToBook, goToChapter, goToVerse }: Bib
 
         <div className="ml-auto flex gap-1">
           <Tabs value={tab} onValueChange={(v) => setTab(v as 'browse' | 'search')}>
-            <Tabs.TabsList className='bg-card gap-1.5'>
+            <Tabs.TabsList className='bg-background/80 gap-1.5'>
               <Tabs.TabsTrigger value="browse">
                 <BookOpen className="mr-1 h-3.5 w-3.5" />
                 {t('bible.book')}
@@ -239,11 +239,9 @@ export function BibleController({ close, goToBook, goToChapter, goToVerse }: Bib
         </div>
       </header>
 
-      <Separator />
-
       <div className="flex flex-1 overflow-hidden">
-        <div className="flex w-80 shrink-0 flex-col overflow-hidden border-r border-border">
-          <div className="flex shrink-0 items-center gap-1 border-b border-border px-1 py-1">
+        <Card className="flex w-80 gap-0 p-0 shrink-0 flex-col overflow-hidden border-r border-border rounded-none">
+          <div className="flex shrink-0 items-center gap-1 px-1 py-2">
             {displayedTabs.map((id) => (
               <div
                 key={id}
@@ -410,9 +408,11 @@ export function BibleController({ close, goToBook, goToChapter, goToVerse }: Bib
               </div>
             </div>
           )}
-        </div>
+        </Card>
 
         <div className="flex min-h-0 flex-1 flex-col">
+          <Separator />
+
           <div className="flex min-h-0 flex-1 flex-col p-3">
             {tab === 'browse' ? (
               <ScrollArea className="min-h-0 flex-1">

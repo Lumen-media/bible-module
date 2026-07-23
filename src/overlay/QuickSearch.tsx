@@ -35,11 +35,11 @@ export function QuickSearch({
 
   const filtered = inputValue.trim()
     ? books
-        .filter((b) => {
-          const q = inputValue.trim().toLowerCase();
-          return b.name.toLowerCase().includes(q) || b.id.toLowerCase().includes(q);
-        })
-        .slice(0, 10)
+      .filter((b) => {
+        const q = inputValue.trim().toLowerCase();
+        return b.name.toLowerCase().includes(q) || b.id.toLowerCase().includes(q);
+      })
+      .slice(0, 10)
     : [];
 
   return (
@@ -48,7 +48,7 @@ export function QuickSearch({
         <Combobox.ComboboxInput
           placeholder={t('bible.search-book')}
           onKeyDown={handleKeyDown}
-          className="bg-transparent text-xs"
+          className="bg-background/80 text-xs"
           data-search-input="true"
         />
         {inputValue.trim() && (
