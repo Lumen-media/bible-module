@@ -1,4 +1,5 @@
 import type { Book } from './types.js';
+import { t, type TranslationKey } from '../i18n.js';
 
 export interface ParsedReference {
   book: Book;
@@ -20,16 +21,22 @@ export function parseReference(query: string, books: Book[]): ParsedReference | 
   let best: { book: Book; nameLen: number } | null = null;
 
   for (const book of books) {
-    const nb = normalize(book.name);
-    if (nq.startsWith(nb) && (!best || nb.length > best.nameLen)) {
-      best = { book, nameLen: nb.length };
+    const candidates = [
+      normalize(book.name),
+      book.id.toLowerCase(),
+      normalize(t(`book.${book.id}` as TranslationKey)),
+    ];
+    for (const nb of candidates) {
+      if (nb && nq.startsWith(nb) && (!best || nb.length > best.nameLen)) {
+        best = { book, nameLen: nb.length };
+      }
     }
   }
 
   if (!best) return null;
 
   const after = nq.slice(best.nameLen).trim();
-  const match = after.match(/^(\d+)\s*(?::|\s)?\s*(\d+)?/);
+  const match = after.match(/^(\d+)\s*[:.,\-]?\s*(\d+)?/);
   if (!match) return null;
 
   const chapter = parseInt(match[1], 10);

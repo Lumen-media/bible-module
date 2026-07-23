@@ -21,16 +21,15 @@ export function QuickSearch({
   function handleKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
     if (e.key === 'Escape') {
       onInputValueChange('');
+      return;
     }
-  }
-
-  function handleEnter(e: React.KeyboardEvent<HTMLInputElement>) {
-    if (e.key !== 'Enter') return;
-    const ref = inputValue.trim() ? parseReference(inputValue.trim(), books) : null;
-    if (ref) {
-      e.preventDefault();
-      onSelect(ref.book, ref.chapter, ref.verse);
-      onInputValueChange('');
+    if (e.key === 'Enter') {
+      const ref = inputValue.trim() ? parseReference(inputValue.trim(), books) : null;
+      if (ref) {
+        e.preventDefault();
+        onSelect(ref.book, ref.chapter, ref.verse);
+        onInputValueChange('');
+      }
     }
   }
 
@@ -49,7 +48,6 @@ export function QuickSearch({
         <Combobox.ComboboxInput
           placeholder={t('bible.search-book')}
           onKeyDown={handleKeyDown}
-          onKeyUp={handleEnter}
           className="bg-transparent text-xs"
           data-search-input="true"
         />

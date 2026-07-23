@@ -41,7 +41,6 @@ export function BibleController({ close, goToBook, goToChapter, goToVerse }: Bib
     selectBook,
     setChapter,
     goTo,
-    downloadAndSetVersion,
     downloadVersionOnly,
     downloadedVersions,
   } = useBibleStore();
@@ -108,7 +107,7 @@ export function BibleController({ close, goToBook, goToChapter, goToVerse }: Bib
     downloadedVersions()
       .then(setLocalDownloaded)
       .catch(() => { });
-  }, [downloadedVersions, downloadingVersions]);
+  }, [downloadedVersions]);
 
   useEffect(() => {
     if (localDownloaded.length > 0 && displayedTabs.length === 0) {
@@ -208,7 +207,7 @@ export function BibleController({ close, goToBook, goToChapter, goToVerse }: Bib
         <button
           type="button"
           onClick={() => close?.()}
-          className="flex shrink-0 items-center gap-1 rounded-md px-2 py-1 text-xs text-muted-foreground hover:bg-accent hover:text-foreground"
+          className="flex shrink-0 items-center w-fit gap-1 rounded-md px-2 py-1 text-xs text-muted-foreground hover:bg-accent hover:text-foreground"
         >
           <ChevronLeft className="h-3.5 w-3.5" />
           {t('bible.go-back')}
@@ -341,7 +340,7 @@ export function BibleController({ close, goToBook, goToChapter, goToVerse }: Bib
                       const isDownloaded = localDownloaded.includes(v.id);
                       const isCurrent = version === v.id;
                       const isDownloading = downloadingVersions.includes(v.id);
-                      const langLabel = langLabels[v.language] || v.language;
+                      const _langLabel = langLabels[v.language] || v.language;
 
                       return (
                         <div
