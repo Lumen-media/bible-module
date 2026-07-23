@@ -1,5 +1,6 @@
-import { BookOpen } from 'lucide-react';
 import type { Book } from '../data/types.js';
+import { type TranslationKey, t as translate } from '../i18n.js';
+import { cn } from '../lib/utils.js';
 import { useBibleStore } from '../store.js';
 
 interface BookGridProps {
@@ -7,119 +8,87 @@ interface BookGridProps {
   onSelect: (book: Book) => void;
 }
 
-const ABBREVIATIONS: Record<string, string> = {
-  genesis: 'Gn',
-  exodus: 'Êx',
-  leviticus: 'Lv',
-  numbers: 'Nm',
-  deuteronomy: 'Dt',
-  joshua: 'Js',
-  judges: 'Jz',
-  ruth: 'Rt',
-  '1samuel': '1Sm',
-  '2samuel': '2Sm',
-  '1kings': '1Rs',
-  '2kings': '2Rs',
-  '1chronicles': '1Cr',
-  '2chronicles': '2Cr',
-  ezra: 'Ed',
-  nehemiah: 'Ne',
-  esther: 'Et',
-  job: 'Jó',
-  psalms: 'Sl',
-  proverbs: 'Pv',
-  ecclesiastes: 'Ec',
-  songofsolomon: 'Ct',
-  isaiah: 'Is',
-  jeremiah: 'Jr',
-  lamentations: 'Lm',
-  ezekiel: 'Ez',
-  daniel: 'Dn',
-  hosea: 'Os',
-  joel: 'Jl',
-  amos: 'Am',
-  obadiah: 'Ob',
-  jonah: 'Jn',
-  micah: 'Mq',
-  nahum: 'Na',
-  habakkuk: 'Hc',
-  zephaniah: 'Sf',
-  haggai: 'Ag',
-  zechariah: 'Zc',
-  malachi: 'Ml',
-  matthew: 'Mt',
-  mark: 'Mc',
-  luke: 'Lc',
-  john: 'Jo',
-  acts: 'At',
-  romans: 'Rm',
-  '1corinthians': '1Co',
-  '2corinthians': '2Co',
-  galatians: 'Gl',
-  ephesians: 'Ef',
-  philippians: 'Fp',
-  colossians: 'Cl',
-  '1thessalonians': '1Ts',
-  '2thessalonians': '2Ts',
-  '1timothy': '1Tm',
-  '2timothy': '2Tm',
-  titus: 'Tt',
-  philemon: 'Fm',
-  hebrews: 'Hb',
-  james: 'Tg',
-  '1peter': '1Pe',
-  '2peter': '2Pe',
-  '1john': '1Jo',
-  '2john': '2Jo',
-  '3john': '3Jo',
-  jude: 'Jd',
-  revelation: 'Ap',
-};
+function getAbbreviation(book: Book): string {
+  const key = `bookAbbr.${book.id}` as TranslationKey;
+  const translated = translate(key);
+  return translated !== key ? translated : book.id.slice(0, 3);
+}
+
+function SectionHeader({ title }: { title: string }) {
+  return (
+    <div className="mb-4 flex items-center gap-4">
+      <h3 className="text-base font-semibold text-foreground">{title}</h3>
+      <div className="h-px flex-1 bg-border" />
+    </div>
+  );
+}
+
+function BookTile({
+  book,
+  selected,
+  onSelect,
+}: {
+  book: Book;
+  selected: boolean;
+  onSelect: (book: Book) => void;
+}) {
+  const abbr = getAbbreviation(book);
+  return (
+    <button
+      type="button"
+      onClick={() => onSelect(book)}
+      className={cn(
+        'flex flex-col items-center justify-center gap-0.5 rounded-lg border px-3 py-3 transition-colors',
+        selected
+          ? 'border-primary bg-primary text-primary-foreground'
+          : 'border-border bg-card text-card-foreground hover:border-primary/40 hover:bg-accent/40'
+      )}
+    >
+      <span className="text-base font-bold tracking-tight">{abbr}</span>
+      <span
+        className={cn(
+          'line-clamp-1 text-[11px] leading-tight',
+          selected ? 'text-primary-foreground/80' : 'text-muted-foreground'
+        )}
+      >
+        {translate(`book.${book.id}` as TranslationKey)}
+      </span>
+    </button>
+  );
+}
+
+function renderSection(
+  title: string,
+  items: Book[],
+  selectedBook: Book | null,
+  onSelect: (book: Book) => void
+) {
+  return (
+    <div>
+      <SectionHeader title={title} />
+      <div className="grid grid-cols-[repeat(auto-fill,minmax(96px,1fr))] gap-2">
+        {items.map((book) => (
+          <BookTile
+            key={book.id}
+            book={book}
+            selected={selectedBook?.id === book.id}
+            onSelect={onSelect}
+          />
+        ))}
+      </div>
+    </div>
+  );
+}
 
 export function BookGrid({ books, onSelect }: BookGridProps) {
-  const t = useBibleStore((s) => s.t);
   const selectedBook = useBibleStore((s) => s.selectedBook);
   const oldBooks = books.filter((b) => b.testament === 'old');
   const newBooks = books.filter((b) => b.testament === 'new');
 
-  function renderSection(title: string, items: Book[]) {
-    return (
-      <div>
-        <h3 className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-          {title}
-        </h3>
-        <div className="grid grid-cols-[repeat(auto-fill,minmax(100px,1fr))] gap-2">
-          {items.map((book) => (
-            <button
-              key={book.id}
-              onClick={() => onSelect(book)}
-              className={`flex flex-col items-center gap-1 rounded-lg border p-3 text-sm font-medium transition-colors hover:bg-accent hover:text-accent-foreground ${
-                selectedBook?.id === book.id
-                  ? 'border-primary bg-accent text-accent-foreground'
-                  : 'border-border bg-card text-card-foreground'
-              }`}
-              title={book.name}
-            >
-              <span className="text-xs text-muted-foreground">
-                {ABBREVIATIONS[book.id] ?? book.id.slice(0, 3)}
-              </span>
-              <span className="line-clamp-2 text-center text-xs leading-tight">
-                {book.name}
-              </span>
-              <span className="text-[10px] text-muted-foreground/60">
-                {book.chapters}
-              </span>
-            </button>
-          ))}
-        </div>
-      </div>
-    );
-  }
-
   return (
-    <div className="space-y-6">
-      {renderSection(t('bible.old-testament'), oldBooks)}
-      {renderSection(t('bible.new-testament'), newBooks)}
+    <div className="space-y-8">
+      {renderSection(translate('bible.old-testament'), oldBooks, selectedBook, onSelect)}
+      {renderSection(translate('bible.new-testament'), newBooks, selectedBook, onSelect)}
     </div>
   );
 }

@@ -103,10 +103,14 @@ export function SearchPanel({ t }: SearchPanelProps) {
             setFocusedIndex(-1);
           }}
           onKeyDown={handleKeyDown}
-          placeholder={`${t('bible.search')}...`}
+          placeholder={t('bible.search-placeholder')}
           className="flex-1"
         />
-        <Button onClick={handleSearch} disabled={loading} className="outline-none focus:outline-none focus-visible:outline-none">
+        <Button
+          onClick={handleSearch}
+          disabled={loading}
+          className="outline-none focus:outline-none focus-visible:outline-none"
+        >
           {loading ? (
             <Loader2 className="mr-1 h-4 w-4 animate-spin" />
           ) : (
@@ -133,12 +137,16 @@ export function SearchPanel({ t }: SearchPanelProps) {
                   data-index={virtualItem.index}
                   ref={virtualizer.measureElement}
                   type="button"
-                  onClick={(e) => { e.stopPropagation(); handleSelect(virtualItem.index); }}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleSelect(virtualItem.index);
+                  }}
                   onMouseEnter={() => setFocusedIndex(virtualItem.index)}
-                  className={`absolute left-0 top-0 w-full rounded-md border px-3 py-2 mb-1.5 text-left text-sm transition-colors outline-none focus:outline-none focus-visible:outline-none ${virtualItem.index === focusedIndex
-                    ? 'border-primary bg-accent text-accent-foreground'
-                    : 'border-border bg-card text-card-foreground hover:bg-accent hover:text-accent-foreground'
-                    }`}
+                  className={`absolute left-0 top-0 w-full rounded-md border px-3 py-2 mb-1.5 text-left text-sm transition-colors outline-none focus:outline-none focus-visible:outline-none ${
+                    virtualItem.index === focusedIndex
+                      ? 'border-primary bg-accent text-accent-foreground'
+                      : 'border-border bg-card text-card-foreground hover:bg-accent hover:text-accent-foreground'
+                  }`}
                   style={{
                     transform: `translateY(${virtualItem.start}px)`,
                   }}
@@ -157,7 +165,7 @@ export function SearchPanel({ t }: SearchPanelProps) {
         ) : (
           !loading && (
             <div className="flex items-center justify-center py-16 text-muted-foreground">
-              {t('bible.no-results') ?? 'No results'}
+              {t('bible.no-results')}
             </div>
           )
         )}

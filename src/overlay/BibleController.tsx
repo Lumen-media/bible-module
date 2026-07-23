@@ -1,16 +1,19 @@
-import { BookOpen, Check, ChevronDown, ChevronLeft, Download, Loader2, Search } from 'lucide-react';
 import { Popover, ScrollArea, Select, Separator, Tabs } from '@lumen-media/module-sdk/ui';
-import { cn } from '../lib/utils.js';
-import { ALL_VERSIONS, useBibleStore } from '../store.js';
-import { BOOKS } from '../data/store.js';
-import { BookGrid } from './BookGrid.js';
-import { BrazilFlag, PortugalFlag, SpainFlag, UKFlag, USFlag } from './flags.js';
-import { ChapterReader } from './ChapterReader.js';
-import { DownloadProgress } from './DownloadProgress.js';
-import { QuickSearch } from './QuickSearch.js';
-import { SearchPanel } from './SearchPanel.js';
+import { BookOpen, Check, ChevronDown, ChevronLeft, Download, Loader2, Search } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useEventListener } from 'usehooks-ts';
+import { BOOKS } from '../data/store.js';
+import type { TranslationKey } from '../i18n.js';
+import { t } from '../i18n.js';
+import { cn } from '../lib/utils.js';
+import { ALL_VERSIONS, useBibleStore } from '../store.js';
+import { BookGrid } from './BookGrid.js';
+import { ChapterPreview } from './ChapterPreview.js';
+import { ChapterReader } from './ChapterReader.js';
+import { DownloadProgress } from './DownloadProgress.js';
+import { BrazilFlag, PortugalFlag, SpainFlag, UKFlag, USFlag } from './flags.js';
+import { QuickSearch } from './QuickSearch.js';
+import { SearchPanel } from './SearchPanel.js';
 
 interface BibleControllerProps {
   close?: () => void;
@@ -22,11 +25,25 @@ interface BibleControllerProps {
 
 export function BibleController({ close, goToBook, goToChapter, goToVerse }: BibleControllerProps) {
   const {
-    ready, downloading, dlCurrent, dlTotal, dlVersion,
-    downloadingVersions, version, tab, selectedBook, chapter,
-    presentation, t,
-    setVersion, setTab, selectBook, setChapter, goTo,
-    downloadAndSetVersion, downloadVersionOnly, downloadedVersions,
+    ready,
+    downloading,
+    dlCurrent,
+    dlTotal,
+    dlVersion,
+    downloadingVersions,
+    version,
+    tab,
+    selectedBook,
+    chapter,
+    presentation,
+    setVersion,
+    setTab,
+    selectBook,
+    setChapter,
+    goTo,
+    downloadAndSetVersion,
+    downloadVersionOnly,
+    downloadedVersions,
   } = useBibleStore();
 
   const [localDownloaded, setLocalDownloaded] = useState<string[]>([]);
@@ -38,7 +55,11 @@ export function BibleController({ close, goToBook, goToChapter, goToVerse }: Bib
   const bookInitials = useMemo(() => {
     const initials = new Set<string>();
     for (const book of BOOKS) {
-      const nameChar = book.name.charAt(0).toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+      const nameChar = book.name
+        .charAt(0)
+        .toLowerCase()
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '');
       initials.add(nameChar);
       const idChar = book.id.charAt(0).toLowerCase();
       initials.add(idChar);
@@ -84,7 +105,9 @@ export function BibleController({ close, goToBook, goToChapter, goToVerse }: Bib
   });
 
   useEffect(() => {
-    downloadedVersions().then(setLocalDownloaded).catch(() => { });
+    downloadedVersions()
+      .then(setLocalDownloaded)
+      .catch(() => {});
   }, [downloadedVersions, downloadingVersions]);
 
   useEffect(() => {
@@ -112,18 +135,39 @@ export function BibleController({ close, goToBook, goToChapter, goToVerse }: Bib
     setVersion(id);
   };
   const raw = navigator.language;
-  const userLang = raw.startsWith('pt-PT') || raw === 'pt' ? 'pt-pt' : raw.startsWith('pt') ? 'pt-br' : raw.startsWith('es') ? 'es' : raw === 'en-GB' || raw === 'en-gb' ? 'en-gb' : 'en-us';
+  const userLang =
+    raw.startsWith('pt-PT') || raw === 'pt'
+      ? 'pt-pt'
+      : raw.startsWith('pt')
+        ? 'pt-br'
+        : raw.startsWith('es')
+          ? 'es'
+          : raw === 'en-GB' || raw === 'en-gb'
+            ? 'en-gb'
+            : 'en-us';
   const [filterLang, setFilterLang] = useState(userLang);
 
-  const langLabels: Record<string, string> = { 'pt-br': 'PT-BR', 'pt-pt': 'PT-PT', 'en-us': 'EN-US', 'en-gb': 'EN-GB', es: 'ES' };
+  const langLabels: Record<string, string> = {
+    'pt-br': 'PT-BR',
+    'pt-pt': 'PT-PT',
+    'en-us': 'EN-US',
+    'en-gb': 'EN-GB',
+    es: 'ES',
+  };
   const showFlag = (lang: string) => {
     switch (lang) {
-      case 'pt-br': return <BrazilFlag className="h-3.5 w-3.5" />;
-      case 'pt-pt': return <PortugalFlag className="h-3.5 w-3.5" />;
-      case 'en-gb': return <UKFlag className="h-3.5 w-3.5" />;
-      case 'en-us': return <USFlag className="h-3.5 w-3.5" />;
-      case 'es': return <SpainFlag className="h-3.5 w-3.5" />;
-      default: return null;
+      case 'pt-br':
+        return <BrazilFlag className="h-3.5 w-3.5" />;
+      case 'pt-pt':
+        return <PortugalFlag className="h-3.5 w-3.5" />;
+      case 'en-gb':
+        return <UKFlag className="h-3.5 w-3.5" />;
+      case 'en-us':
+        return <USFlag className="h-3.5 w-3.5" />;
+      case 'es':
+        return <SpainFlag className="h-3.5 w-3.5" />;
+      default:
+        return null;
     }
   };
   const langOrder = ['pt-br', 'pt-pt', 'en-us', 'en-gb', 'es'];
@@ -132,7 +176,7 @@ export function BibleController({ close, goToBook, goToChapter, goToVerse }: Bib
     return (
       <div className="flex h-full items-center justify-center gap-2 text-muted-foreground">
         <Loader2 className="h-5 w-5 animate-spin" />
-        Initializing...
+        {t('bible.initializing')}
       </div>
     );
   }
@@ -144,7 +188,7 @@ export function BibleController({ close, goToBook, goToChapter, goToVerse }: Bib
         <span className="text-sm">
           {downloading
             ? t('bible.downloading', { version: dlVersion.toUpperCase() })
-            : 'Preparing...'}
+            : t('bible.preparing')}
         </span>
       </div>
     );
@@ -171,7 +215,13 @@ export function BibleController({ close, goToBook, goToChapter, goToVerse }: Bib
         </button>
 
         <div className="flex flex-1 justify-center">
-          <QuickSearch books={BOOKS} onSelect={(book, ch, verse) => goTo(book, ch ?? 1, verse)} t={t} inputValue={searchQuery} onInputValueChange={setSearchQuery} />
+          <QuickSearch
+            books={BOOKS}
+            onSelect={(book, ch, verse) => goTo(book, ch ?? 1, verse)}
+            t={t}
+            inputValue={searchQuery}
+            onInputValueChange={setSearchQuery}
+          />
         </div>
 
         <div className="ml-auto flex gap-1">
@@ -199,10 +249,10 @@ export function BibleController({ close, goToBook, goToChapter, goToVerse }: Bib
               <div
                 key={id}
                 className={cn(
-                  "relative flex-1 flex items-center h-7 rounded-md text-xs font-medium transition-colors",
+                  'relative flex-1 flex items-center h-7 rounded-md text-xs font-medium transition-colors',
                   version === id
-                    ? "bg-primary text-primary-foreground"
-                    : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"
+                    ? 'bg-primary text-primary-foreground'
+                    : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground'
                 )}
               >
                 <button
@@ -218,25 +268,27 @@ export function BibleController({ close, goToBook, goToChapter, goToVerse }: Bib
                   </Popover.PopoverTrigger>
                   <Popover.PopoverContent className="w-32 p-0" align="start">
                     <div className="p-1">
-                      {localDownloaded.filter((d) => !displayedTabs.includes(d)).map((d) => (
-                        <button
-                          key={d}
-                          type="button"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setDisplayedTabs((prev) => {
-                              const idx = prev.indexOf(id);
-                              if (idx < 0) return prev;
-                              const next = [...prev];
-                              next[idx] = d;
-                              return next;
-                            });
-                          }}
-                          className="flex w-full items-center rounded px-2 py-1 text-xs text-muted-foreground hover:bg-accent hover:text-accent-foreground"
-                        >
-                          {d.toUpperCase()}
-                        </button>
-                      ))}
+                      {localDownloaded
+                        .filter((d) => !displayedTabs.includes(d))
+                        .map((d) => (
+                          <button
+                            key={d}
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setDisplayedTabs((prev) => {
+                                const idx = prev.indexOf(id);
+                                if (idx < 0) return prev;
+                                const next = [...prev];
+                                next[idx] = d;
+                                return next;
+                              });
+                            }}
+                            className="flex w-full items-center rounded px-2 py-1 text-xs text-muted-foreground hover:bg-accent hover:text-accent-foreground"
+                          >
+                            {d.toUpperCase()}
+                          </button>
+                        ))}
                     </div>
                   </Popover.PopoverContent>
                 </Popover>
@@ -257,7 +309,7 @@ export function BibleController({ close, goToBook, goToChapter, goToVerse }: Bib
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
                     className="min-w-0 flex-1 bg-transparent text-xs text-foreground placeholder:text-muted-foreground/50 outline-none"
-                    placeholder={t('bible.search') + '...'}
+                    placeholder={t('bible.search-placeholder')}
                   />
                   <Select value={filterLang} onValueChange={(v) => setFilterLang(v)}>
                     <Select.SelectTrigger className="w-fit h-fit py-1 flex items-center justify-center">
@@ -265,7 +317,11 @@ export function BibleController({ close, goToBook, goToChapter, goToVerse }: Bib
                     </Select.SelectTrigger>
                     <Select.SelectContent className="min-w-(--anchor-width) w-fit">
                       {langOrder.map((l) => (
-                        <Select.SelectItem key={l} value={l} className="flex items-center justify-center pl-2 py-1">
+                        <Select.SelectItem
+                          key={l}
+                          value={l}
+                          className="flex items-center justify-center pl-2 py-1"
+                        >
                           {showFlag(l)}
                         </Select.SelectItem>
                       ))}
@@ -291,8 +347,8 @@ export function BibleController({ close, goToBook, goToChapter, goToVerse }: Bib
                         <div
                           key={v.id}
                           className={cn(
-                            "flex items-center gap-2 px-3 py-2 text-xs",
-                            isCurrent ? "bg-accent" : "hover:bg-accent/50"
+                            'flex items-center gap-2 px-3 py-2 text-xs',
+                            isCurrent ? 'bg-accent' : 'hover:bg-accent/50'
                           )}
                         >
                           <span className="shrink-0 rounded bg-muted px-1 py-0.5 text-[10px] font-medium text-muted-foreground">
@@ -306,15 +362,21 @@ export function BibleController({ close, goToBook, goToChapter, goToVerse }: Bib
                           ) : isDownloaded ? (
                             <button
                               type="button"
-                              onClick={(e) => { e.stopPropagation(); handleSelectVersion(v.id); }}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleSelectVersion(v.id);
+                              }}
                               className="shrink-0 rounded p-0.5 text-muted-foreground hover:text-foreground"
                             >
-                              <Check className={cn("h-3.5 w-3.5", isCurrent && "text-primary")} />
+                              <Check className={cn('h-3.5 w-3.5', isCurrent && 'text-primary')} />
                             </button>
                           ) : (
                             <button
                               type="button"
-                              onClick={(e) => { e.stopPropagation(); downloadVersionOnly(v.id); }}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                downloadVersionOnly(v.id);
+                              }}
                               className="shrink-0 rounded p-0.5 text-muted-foreground hover:text-foreground"
                             >
                               <Download className="h-3.5 w-3.5" />
@@ -349,36 +411,54 @@ export function BibleController({ close, goToBook, goToChapter, goToVerse }: Bib
               </div>
             </div>
           )}
-
         </div>
 
         <div className="flex min-h-0 flex-1 flex-col">
           <div className="flex min-h-0 flex-1 flex-col p-3">
             {tab === 'browse' ? (
               <ScrollArea className="min-h-0 flex-1">
-                <div className="space-y-6">
+                <div className="space-y-8">
                   <BookGrid books={BOOKS} onSelect={selectBook} />
                   {selectedBook && (
-                    <div>
-                      <h3 className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                        {selectedBook.name} — {t('bible.chapter')}s
-                      </h3>
-                      <div className="grid grid-cols-[repeat(auto-fill,minmax(44px,1fr))] gap-1.5">
-                        {Array.from({ length: selectedBook.chapters }, (_, i) => i + 1).map((ch) => (
-                          <button
-                            key={ch}
-                            type="button"
-                            onClick={() => setChapter(ch)}
-                            className={cn(
-                              "flex items-center justify-center rounded-md border px-2 py-1.5 text-xs font-medium transition-colors",
-                              chapter === ch
-                                ? "border-primary bg-primary text-primary-foreground"
-                                : "border-border bg-card text-card-foreground hover:bg-accent hover:text-accent-foreground"
-                            )}
-                          >
-                            {ch}
-                          </button>
-                        ))}
+                    <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+                      <div className="rounded-xl border border-border bg-card p-4">
+                        <div className="mb-4 flex items-center gap-4">
+                          <h3 className="text-base font-semibold text-foreground">
+                            {t(`book.${selectedBook.id}` as TranslationKey)} {t('bible.chapter')}s
+                          </h3>
+                          <div className="h-px flex-1 bg-border" />
+                          <span className="text-xs text-muted-foreground">
+                            {selectedBook.chapters} {t('bible.chapter')}s
+                          </span>
+                        </div>
+                        <div className="grid grid-cols-[repeat(auto-fill,minmax(40px,1fr))] gap-1.5">
+                          {Array.from({ length: selectedBook.chapters }, (_, i) => i + 1).map(
+                            (ch) => (
+                              <button
+                                key={ch}
+                                type="button"
+                                onClick={() => setChapter(ch)}
+                                className={cn(
+                                  'flex aspect-square items-center justify-center rounded-md border text-sm font-medium transition-colors',
+                                  chapter === ch
+                                    ? 'border-primary bg-primary text-primary-foreground'
+                                    : 'border-border bg-background text-card-foreground hover:border-primary/40 hover:bg-accent/40'
+                                )}
+                              >
+                                {ch}
+                              </button>
+                            )
+                          )}
+                        </div>
+                      </div>
+                      <div className="rounded-xl border border-border bg-card p-4">
+                        <div className="mb-4 flex items-center gap-4">
+                          <h3 className="text-base font-semibold text-foreground">
+                            {t('bible.chapter')} {chapter}
+                          </h3>
+                          <div className="h-px flex-1 bg-border" />
+                        </div>
+                        <ChapterPreview />
                       </div>
                     </div>
                   )}

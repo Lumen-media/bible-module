@@ -1,7 +1,7 @@
 import { Combobox } from '@lumen-media/module-sdk/ui';
 import { parseReference } from '../data/ref.js';
 import type { Book } from '../data/types.js';
-import type { TFunction } from '../i18n.js';
+import type { TFunction, TranslationKey } from '../i18n.js';
 
 interface QuickSearchProps {
   books: Book[];
@@ -11,7 +11,13 @@ interface QuickSearchProps {
   onInputValueChange: (value: string) => void;
 }
 
-export function QuickSearch({ books, onSelect, t, inputValue, onInputValueChange }: QuickSearchProps) {
+export function QuickSearch({
+  books,
+  onSelect,
+  t,
+  inputValue,
+  onInputValueChange,
+}: QuickSearchProps) {
   function handleKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
     if (e.key === 'Escape') {
       onInputValueChange('');
@@ -29,10 +35,12 @@ export function QuickSearch({ books, onSelect, t, inputValue, onInputValueChange
   }
 
   const filtered = inputValue.trim()
-    ? books.filter((b) => {
-        const q = inputValue.trim().toLowerCase();
-        return b.name.toLowerCase().includes(q) || b.id.toLowerCase().includes(q);
-      }).slice(0, 10)
+    ? books
+        .filter((b) => {
+          const q = inputValue.trim().toLowerCase();
+          return b.name.toLowerCase().includes(q) || b.id.toLowerCase().includes(q);
+        })
+        .slice(0, 10)
     : [];
 
   return (
@@ -51,10 +59,13 @@ export function QuickSearch({ books, onSelect, t, inputValue, onInputValueChange
               {filtered.map((book) => (
                 <Combobox.ComboboxItem
                   key={book.id}
-                  value={book.name}
-                  onSelect={() => { onSelect(book); onInputValueChange(''); }}
+                  value={t(`book.${book.id}` as TranslationKey)}
+                  onSelect={() => {
+                    onSelect(book);
+                    onInputValueChange('');
+                  }}
                 >
-                  <span className="text-xs">{book.name}</span>
+                  <span className="text-xs">{t(`book.${book.id}` as TranslationKey)}</span>
                 </Combobox.ComboboxItem>
               ))}
               {filtered.length === 0 && (

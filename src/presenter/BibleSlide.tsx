@@ -1,4 +1,5 @@
 import { BookOpen } from 'lucide-react';
+import { t } from '../i18n.js';
 
 interface BibleSlideProps {
   data: {
@@ -16,7 +17,7 @@ export function BibleSlide({ data }: BibleSlideProps) {
     return (
       <div className="flex h-full w-full flex-col items-center justify-center bg-black text-white/30">
         <BookOpen className="mb-4 h-12 w-12" />
-        <p className="text-lg">Select a verse to project</p>
+        <p className="text-lg">{t('bible.select-verse-to-project')}</p>
       </div>
     );
   }
