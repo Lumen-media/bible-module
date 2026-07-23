@@ -24,7 +24,7 @@ export function ChapterPreview() {
   }
 
   return (
-    <ScrollArea className="h-72">
+    <ScrollArea className="max-h-72 pr-3">
       <div className="grid grid-cols-[repeat(auto-fill,minmax(40px,1fr))] gap-1.5">
         {verses.map((v) => (
           <button

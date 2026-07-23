@@ -20,9 +20,9 @@ import {
   getDownloadedVersions,
   getLastPosition,
   getVersesPerPage,
+  setVersesPerPage as persistVersesPerPage,
   setDownloadedVersions,
   setLastPosition,
-  setVersesPerPage as persistVersesPerPage,
 } from './data/store.js';
 import type { Book } from './data/types.js';
 import type { TFunction } from './i18n.js';
@@ -131,8 +131,8 @@ const DEFAULT_VERSIONS_BY_LOCALE: Record<string, string[]> = {
   'pt-pt': ['bpt', 'naa', 'nvi'],
   'en-us': ['en_kjv', 'niv', 'nlt'],
   'en-gb': ['en_kjv', 'web', 'ylt'],
-  'en': ['en_kjv', 'niv', 'nlt'],
-  'es': ['es_rvr', 'rvr1960', 'ntv'],
+  en: ['en_kjv', 'niv', 'nlt'],
+  es: ['es_rvr', 'rvr1960', 'ntv'],
 };
 
 function getDefaultVersions(locale?: string): string[] {
@@ -142,7 +142,17 @@ function getDefaultVersions(locale?: string): string[] {
   const lower = locale.toLowerCase();
   const lowerMatch = DEFAULT_VERSIONS_BY_LOCALE[lower];
   if (lowerMatch) return lowerMatch;
-  const prefix = lower.startsWith('pt-pt') ? 'pt-pt' : lower.startsWith('pt') ? 'pt-BR' : lower.startsWith('en-gb') ? 'en-gb' : lower.startsWith('en') ? 'en' : lower.startsWith('es') ? 'es' : 'pt-BR';
+  const prefix = lower.startsWith('pt-pt')
+    ? 'pt-pt'
+    : lower.startsWith('pt')
+      ? 'pt-BR'
+      : lower.startsWith('en-gb')
+        ? 'en-gb'
+        : lower.startsWith('en')
+          ? 'en'
+          : lower.startsWith('es')
+            ? 'es'
+            : 'pt-BR';
   return DEFAULT_VERSIONS_BY_LOCALE[prefix] ?? DEFAULT_VERSIONS_BY_LOCALE['pt-BR'];
 }
 
@@ -372,11 +382,23 @@ export const useBibleStore = create<BibleStore>((set, get) => ({
 
     try {
       const db = sqlite;
-      await downloadVersion(fs, net, versionId, (current) => {
-        set({ dlCurrent: current, dlTotal: 66 });
-      }, async (bookId, chapter, verses) => {
-        await insertChapterBatch(db, versionId, bookId, chapter, verses as { number: number; text: string; chapter?: number }[]).catch(() => {});
-      });
+      await downloadVersion(
+        fs,
+        net,
+        versionId,
+        (current) => {
+          set({ dlCurrent: current, dlTotal: 66 });
+        },
+        async (bookId, chapter, verses) => {
+          await insertChapterBatch(
+            db,
+            versionId,
+            bookId,
+            chapter,
+            verses as { number: number; text: string; chapter?: number }[]
+          ).catch(() => {});
+        }
+      );
 
       const downloaded = await getDownloadedVersions(json);
       if (!downloaded.includes(versionId)) {
@@ -399,7 +421,9 @@ export const useBibleStore = create<BibleStore>((set, get) => ({
 
     for (const book of BOOKS) {
       const p = `cache/${versionId}/${book.id}.json`;
-      try { await fs.remove(p); } catch {}
+      try {
+        await fs.remove(p);
+      } catch {}
     }
 
     if (sqlite) {
@@ -410,7 +434,10 @@ export const useBibleStore = create<BibleStore>((set, get) => ({
     }
 
     const downloaded = await getDownloadedVersions(json);
-    await setDownloadedVersions(json, downloaded.filter((v) => v !== versionId));
+    await setDownloadedVersions(
+      json,
+      downloaded.filter((v) => v !== versionId)
+    );
 
     if (get().version === versionId) {
       set({ version: 'naa', verses: null, selectedBook: null, chapter: 1, selectedVerse: null });

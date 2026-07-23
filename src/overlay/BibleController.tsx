@@ -107,7 +107,7 @@ export function BibleController({ close, goToBook, goToChapter, goToVerse }: Bib
   useEffect(() => {
     downloadedVersions()
       .then(setLocalDownloaded)
-      .catch(() => {});
+      .catch(() => { });
   }, [downloadedVersions, downloadingVersions]);
 
   useEffect(() => {
@@ -204,7 +204,7 @@ export function BibleController({ close, goToBook, goToChapter, goToVerse }: Bib
         t={t}
       />
 
-      <header className="flex items-center gap-3 border-b border-border px-4 py-2">
+      <header className="grid grid-cols-3 gap-3 border-b border-border px-4 py-2">
         <button
           type="button"
           onClick={() => close?.()}
@@ -226,7 +226,7 @@ export function BibleController({ close, goToBook, goToChapter, goToVerse }: Bib
 
         <div className="ml-auto flex gap-1">
           <Tabs value={tab} onValueChange={(v) => setTab(v as 'browse' | 'search')}>
-            <Tabs.TabsList>
+            <Tabs.TabsList className='bg-card gap-1.5'>
               <Tabs.TabsTrigger value="browse">
                 <BookOpen className="mr-1 h-3.5 w-3.5" />
                 {t('bible.book')}
@@ -328,7 +328,7 @@ export function BibleController({ close, goToBook, goToChapter, goToVerse }: Bib
                     </Select.SelectContent>
                   </Select>
                 </div>
-                <ScrollArea className="h-72">
+                <ScrollArea className="max-h-72">
                   <div className="p-1">
                     {ALL_VERSIONS.filter((v) => {
                       if (v.language !== filterLang) return false;
@@ -421,8 +421,8 @@ export function BibleController({ close, goToBook, goToChapter, goToVerse }: Bib
                   <BookGrid books={BOOKS} onSelect={selectBook} />
                   {selectedBook && (
                     <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-                      <div className="rounded-xl border border-border bg-card p-4">
-                        <div className="mb-4 flex items-center gap-4">
+                      <div className="rounded-xl border border-border bg-card p-4 pr-1.5">
+                        <div className="mb-4 flex items-center gap-4 pr-1.5">
                           <h3 className="text-base font-semibold text-foreground">
                             {t(`book.${selectedBook.id}` as TranslationKey)} {t('bible.chapter')}s
                           </h3>
@@ -431,27 +431,29 @@ export function BibleController({ close, goToBook, goToChapter, goToVerse }: Bib
                             {selectedBook.chapters} {t('bible.chapter')}s
                           </span>
                         </div>
-                        <div className="grid grid-cols-[repeat(auto-fill,minmax(40px,1fr))] gap-1.5">
-                          {Array.from({ length: selectedBook.chapters }, (_, i) => i + 1).map(
-                            (ch) => (
-                              <button
-                                key={ch}
-                                type="button"
-                                onClick={() => setChapter(ch)}
-                                className={cn(
-                                  'flex aspect-square items-center justify-center rounded-md border text-sm font-medium transition-colors',
-                                  chapter === ch
-                                    ? 'border-primary bg-primary text-primary-foreground'
-                                    : 'border-border bg-background text-card-foreground hover:border-primary/40 hover:bg-accent/40'
-                                )}
-                              >
-                                {ch}
-                              </button>
-                            )
-                          )}
-                        </div>
+                        <ScrollArea className="h-72 pr-3">
+                          <div className="grid grid-cols-[repeat(auto-fill,minmax(40px,1fr))] gap-1.5">
+                            {Array.from({ length: selectedBook.chapters }, (_, i) => i + 1).map(
+                              (ch) => (
+                                <button
+                                  key={ch}
+                                  type="button"
+                                  onClick={() => setChapter(ch)}
+                                  className={cn(
+                                    'flex aspect-square items-center justify-center rounded-md border text-sm font-medium transition-colors',
+                                    chapter === ch
+                                      ? 'border-primary bg-primary text-primary-foreground'
+                                      : 'border-border bg-background text-card-foreground hover:border-primary/40 hover:bg-accent/40'
+                                  )}
+                                >
+                                  {ch}
+                                </button>
+                              )
+                            )}
+                          </div>
+                        </ScrollArea>
                       </div>
-                      <div className="rounded-xl border border-border bg-card p-4">
+                      <div className="rounded-xl border border-border bg-card p-4 pr-1.5">
                         <div className="mb-4 flex items-center gap-4">
                           <h3 className="text-base font-semibold text-foreground">
                             {t('bible.chapter')} {chapter}

@@ -47,14 +47,38 @@ export const BOOKS: Book[] = [
   { id: 'john', name: 'João', chapters: 21, testament: 'new' },
   { id: 'acts', name: 'Atos', chapters: 28, testament: 'new' },
   { id: 'romans', name: 'Romanos', chapters: 16, testament: 'new' },
-  { id: '1corinthians', name: '1 Coríntios', slug: '1-corinthians', chapters: 16, testament: 'new' },
-  { id: '2corinthians', name: '2 Coríntios', slug: '2-corinthians', chapters: 13, testament: 'new' },
+  {
+    id: '1corinthians',
+    name: '1 Coríntios',
+    slug: '1-corinthians',
+    chapters: 16,
+    testament: 'new',
+  },
+  {
+    id: '2corinthians',
+    name: '2 Coríntios',
+    slug: '2-corinthians',
+    chapters: 13,
+    testament: 'new',
+  },
   { id: 'galatians', name: 'Gálatas', chapters: 6, testament: 'new' },
   { id: 'ephesians', name: 'Efésios', chapters: 6, testament: 'new' },
   { id: 'philippians', name: 'Filipenses', chapters: 4, testament: 'new' },
   { id: 'colossians', name: 'Colossenses', chapters: 4, testament: 'new' },
-  { id: '1thessalonians', name: '1 Tessalonicenses', slug: '1-thessalonians', chapters: 5, testament: 'new' },
-  { id: '2thessalonians', name: '2 Tessalonicenses', slug: '2-thessalonians', chapters: 3, testament: 'new' },
+  {
+    id: '1thessalonians',
+    name: '1 Tessalonicenses',
+    slug: '1-thessalonians',
+    chapters: 5,
+    testament: 'new',
+  },
+  {
+    id: '2thessalonians',
+    name: '2 Tessalonicenses',
+    slug: '2-thessalonians',
+    chapters: 3,
+    testament: 'new',
+  },
   { id: '1timothy', name: '1 Timóteo', slug: '1-timothy', chapters: 6, testament: 'new' },
   { id: '2timothy', name: '2 Timóteo', slug: '2-timothy', chapters: 4, testament: 'new' },
   { id: 'titus', name: 'Tito', chapters: 3, testament: 'new' },
@@ -157,9 +181,6 @@ export async function getVersesPerPage(json: DataAPI['json']): Promise<number> {
   return (await json.get<number>('versesPerPage', 1)) ?? 1;
 }
 
-export async function setVersesPerPage(
-  json: DataAPI['json'],
-  n: number
-): Promise<void> {
+export async function setVersesPerPage(json: DataAPI['json'], n: number): Promise<void> {
   await json.set('versesPerPage', n);
 }
