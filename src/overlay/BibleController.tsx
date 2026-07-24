@@ -12,8 +12,10 @@ import { ChapterPreview } from './ChapterPreview.js';
 import { ChapterReader } from './ChapterReader.js';
 import { DownloadProgress } from './DownloadProgress.js';
 import { BrazilFlag, PortugalFlag, SpainFlag, UKFlag, USFlag } from './flags.js';
+import { PreviewPane } from './PreviewPane.js';
 import { QuickSearch } from './QuickSearch.js';
 import { SearchPanel } from './SearchPanel.js';
+import { SettingsPanel } from './SettingsPanel.js';
 
 interface BibleControllerProps {
   close?: () => void;
@@ -69,6 +71,7 @@ export function BibleController({ close, goToBook, goToChapter, goToVerse }: Bib
   const clearProjection = useCallback(() => {
     presentation?.clear();
     setProjecting(false);
+    useBibleStore.getState().setProjectedData(null);
   }, [presentation]);
 
   useEventListener('keydown', (e: KeyboardEvent) => {
@@ -408,6 +411,10 @@ export function BibleController({ close, goToBook, goToChapter, goToVerse }: Bib
               </div>
             </div>
           )}
+          <Card.CardFooter className="flex shrink-0 items-center gap-2 border-t border-border px-3 py-2">
+            <PreviewPane />
+            <SettingsPanel />
+          </Card.CardFooter>
         </Card>
 
         <div className="flex min-h-0 flex-1 flex-col">

@@ -26,6 +26,14 @@ export default class BibleModulePlugin extends LumenPlugin {
 
     setupI18n(host.app.locale);
 
+    if (host.window === 'main') {
+      host.fonts.list().then((list) => {
+        if (list.length > 0) {
+          host.data.json.set('bibleFonts', list).catch(() => {});
+        }
+      }).catch(() => {});
+    }
+
     host.panels.add({
       id: SURFACE_PANEL_ID,
       slot: 'surface.window',
@@ -121,7 +129,11 @@ export default class BibleModulePlugin extends LumenPlugin {
       json: host.data.json,
       sqlite: () => host.data.sqlite(),
       presentation: host.presentation,
+      themes: host.themes,
+      ui: host.ui,
+      fonts: host.fonts,
       t,
+      hostWindow: host.window,
     });
   }
 

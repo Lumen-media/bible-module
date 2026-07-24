@@ -52,17 +52,17 @@ export function ChapterReader({
 
   const projectVerse = useCallback(
     (v: { number: number; text: string }) => {
+      const data = {
+        version,
+        book: book.id,
+        bookName: t(`book.${book.id}` as TranslationKey),
+        chapter,
+        verses: [v.number],
+        text: `${v.number} ${v.text}`,
+      };
       try {
-        presentation.project('bible-slide', {
-          data: {
-            version,
-            book: book.id,
-            bookName: t(`book.${book.id}` as TranslationKey),
-            chapter,
-            verses: [v.number],
-            text: `${v.number} ${v.text}`,
-          },
-        });
+        presentation.project('bible-slide', { data });
+        useBibleStore.getState().setProjectedData(data);
         onProject();
       } catch (e) {
         console.error('[bible] project error:', e);
@@ -88,17 +88,17 @@ export function ChapterReader({
 
   function projectAll() {
     if (!verses || verses.length === 0) return;
+    const data = {
+      version,
+      book: book.id,
+      bookName: t(`book.${book.id}` as TranslationKey),
+      chapter,
+      verses: verses.map((v) => v.number),
+      text: verses.map((v) => `${v.number} ${v.text}`).join('\n'),
+    };
     try {
-      presentation.project('bible-slide', {
-        data: {
-          version,
-          book: book.id,
-          bookName: t(`book.${book.id}` as TranslationKey),
-          chapter,
-          verses: verses.map((v) => v.number),
-          text: verses.map((v) => `${v.number} ${v.text}`).join('\n'),
-        },
-      });
+      presentation.project('bible-slide', { data });
+      useBibleStore.getState().setProjectedData(data);
       onProject();
     } catch (e) {
       console.error('[bible] projectAll error:', e);

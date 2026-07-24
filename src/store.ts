@@ -1,8 +1,12 @@
 import type {
   DataAPI,
+  FontsAPI,
   FsAPI,
   NetAPI,
   PresentationHostAPI,
+  SelectedBackground,
+  ThemesHostAPI,
+  UIAPI,
   SqliteHandle,
 } from '@lumen-media/module-sdk';
 import { create } from 'zustand';
@@ -76,6 +80,10 @@ export interface BibleState {
   sqlite: SqliteHandle | null;
   presentation: PresentationHostAPI | null;
   t: TFunction | null;
+  themes: ThemesHostAPI | null;
+  ui: UIAPI | null;
+  fonts: FontsAPI | null;
+  hostWindow: 'main' | 'presenter' | 'surface' | null;
 
   ready: boolean;
   downloading: boolean;
@@ -95,6 +103,21 @@ export interface BibleState {
   versesLoading: boolean;
   versesPerPage: number;
   selectedVerse: number | null;
+
+  background: SelectedBackground | null;
+  profileBackground: { type: string; src: string; name: string } | null;
+  fontList: string[];
+  fontSize: number;
+  fontFamily: string;
+
+  projectedData: {
+    version: string;
+    book: string;
+    bookName: string;
+    chapter: number;
+    verses: number[];
+    text: string;
+  } | null;
 }
 
 export interface BibleActions {
@@ -104,7 +127,11 @@ export interface BibleActions {
     json: DataAPI['json'];
     sqlite: () => Promise<SqliteHandle>;
     presentation: PresentationHostAPI;
+    themes: ThemesHostAPI;
+    ui: UIAPI;
+    fonts: FontsAPI;
     t: TFunction;
+    hostWindow: 'main' | 'presenter' | 'surface';
   }) => Promise<void>;
   setVersion: (v: string) => Promise<void>;
   setTestament: (t: 'old' | 'new') => void;
@@ -122,6 +149,19 @@ export interface BibleActions {
   downloadVersionOnly: (versionId: string) => Promise<void>;
   removeVersion: (versionId: string) => Promise<void>;
   downloadedVersions: () => Promise<string[]>;
+  setBackground: (bg: SelectedBackground | null) => void;
+  pickBackground: () => void;
+  setFontSize: (n: number) => void;
+  setFontFamily: (f: string) => void;
+  loadFonts: () => Promise<void>;
+  setProjectedData: (data: {
+    version: string;
+    book: string;
+    bookName: string;
+    chapter: number;
+    verses: number[];
+    text: string;
+  } | null) => void;
 }
 
 export type BibleStore = BibleState & BibleActions;
@@ -163,6 +203,10 @@ export const useBibleStore = create<BibleStore>((set, get) => ({
   sqlite: null,
   presentation: null,
   t: null,
+  themes: null,
+  ui: null,
+  fonts: null,
+  hostWindow: null,
 
   ready: false,
   downloading: false,
@@ -181,10 +225,17 @@ export const useBibleStore = create<BibleStore>((set, get) => ({
   versesLoading: false,
   versesPerPage: 1,
   selectedVerse: null,
+  background: null,
+  profileBackground: null,
+  fontList: ['Inter', 'Georgia', 'Times New Roman', 'Arial', 'Verdana'],
+  fontSize: 36,
+  fontFamily: 'Inter',
+
+  projectedData: null,
 
   init: async (services) => {
-    const { fs, net, json, presentation, t } = services;
-    set({ fs, net, json, presentation, t });
+    const { fs, net, json, presentation, themes, ui, fonts, t, hostWindow } = services;
+    set({ fs, net, json, presentation, themes, ui, fonts, t, hostWindow });
 
     const db = await services.sqlite();
     set({ sqlite: db });
@@ -290,6 +341,41 @@ export const useBibleStore = create<BibleStore>((set, get) => ({
     const vpp = await getVersesPerPage(json);
     set({ versesPerPage: vpp });
 
+    try {
+      const s = await json.get<{ background: SelectedBackground | null; fontSize: number; fontFamily: string }>('bibleSettings');
+      if (s?.background) set({ background: s.background });
+      if (s?.fontSize) set({ fontSize: s.fontSize });
+      if (s?.fontFamily) set({ fontFamily: s.fontFamily });
+    } catch {}
+
+    const profileBg = themes.defaultBackground();
+    if (profileBg) {
+      set({ profileBackground: profileBg });
+      json.set('profileBackground', profileBg).catch(() => {});
+    } else {
+      try {
+        const profileFromJson = await json.get<{ src: string; type: string; name: string } | null>('profileBackground');
+        if (profileFromJson) set({ profileBackground: profileFromJson });
+      } catch {}
+    }
+
+    const themesExt = themes as ThemesHostAPI & {
+      onDefaultBackgroundChange?: (handler: (bg: { src: string; type: string; name: string } | null) => void) => { dispose(): void };
+    };
+    themesExt.onDefaultBackgroundChange?.((bg) => {
+      set({ profileBackground: bg });
+      if (bg) json.set('profileBackground', bg).catch(() => {});
+    });
+
+    try {
+      const cachedFonts = await json.get<string[]>('bibleFonts');
+      if (cachedFonts && cachedFonts.length > 0) {
+        set({ fontList: [...new Set([get().fontFamily, ...cachedFonts, 'Inter', 'Georgia', 'Times New Roman', 'Arial'])] });
+      }
+    } catch {}
+
+    get().loadFonts();
+
     set({ ready: true });
   },
 
@@ -306,14 +392,14 @@ export const useBibleStore = create<BibleStore>((set, get) => ({
   setTab: (tab) => set({ tab }),
 
   selectBook: (book) => {
-    set({ selectedBook: book, chapter: 1, verses: null, selectedVerse: null });
+    set({ selectedBook: book, chapter: 1, verses: null, selectedVerse: 1 });
     get().loadChapter(book.id, 1);
   },
 
   setChapter: (chapter) => {
     const { selectedBook, json } = get();
     if (!selectedBook) return;
-    set({ chapter, verses: null, selectedVerse: null });
+    set({ chapter, verses: null, selectedVerse: 1 });
     get().loadChapter(selectedBook.id, chapter);
     if (json) {
       setLastPosition(json, { bookId: selectedBook.id, chapter });
@@ -330,7 +416,7 @@ export const useBibleStore = create<BibleStore>((set, get) => ({
 
   goTo: (book, chapter, verse) => {
     const { json } = get();
-    set({ selectedBook: book, chapter, verses: null, selectedVerse: verse ?? null });
+    set({ selectedBook: book, chapter, verses: null, selectedVerse: verse ?? 1 });
     get().loadChapter(book.id, chapter);
     if (json) {
       setLastPosition(json, { bookId: book.id, chapter });
@@ -449,4 +535,67 @@ export const useBibleStore = create<BibleStore>((set, get) => ({
     if (!json) return [];
     return getDownloadedVersions(json);
   },
+
+  setBackground: (bg) => {
+    const { json, fontSize, fontFamily } = get();
+    set({ background: bg });
+    if (json) {
+      json.set('bibleSettings', { background: bg, fontSize, fontFamily }).catch(() => {});
+    }
+  },
+
+  pickBackground: () => {
+    const { ui } = get();
+    if (!ui?.openBackgroundPicker) return;
+    ui.openBackgroundPicker((selected) => {
+      if (selected) get().setBackground(selected);
+    });
+  },
+
+  setFontSize: (n) => {
+    const { json, background, fontFamily } = get();
+    set({ fontSize: n });
+    if (json) {
+      json.set('bibleSettings', { background, fontSize: n, fontFamily }).catch(() => {});
+    }
+  },
+
+  setFontFamily: (f) => {
+    const { json, background, fontSize } = get();
+    set({ fontFamily: f });
+    if (json) {
+      json.set('bibleSettings', { background, fontSize, fontFamily: f }).catch(() => {});
+    }
+  },
+
+  loadFonts: async () => {
+    const { fonts, json, hostWindow } = get();
+    if (!fonts) return;
+    try {
+      const system = await fonts.list();
+      if (system.length > 0) {
+        set((s) => ({
+          fontList: [...new Set([s.fontFamily, ...system, 'Inter', 'Georgia', 'Times New Roman', 'Arial'])],
+        }));
+        if (json) json.set('bibleFonts', system).catch(() => {});
+        return;
+      }
+    } catch {}
+    if (hostWindow === 'main' || !json) return;
+    const startTime = Date.now();
+    while (Date.now() - startTime < 3000) {
+      try {
+        const cached = await json.get<string[]>('bibleFonts');
+        if (cached && cached.length > 0) {
+          set((s) => ({
+            fontList: [...new Set([s.fontFamily, ...cached, 'Inter', 'Georgia', 'Times New Roman', 'Arial'])],
+          }));
+          return;
+        }
+      } catch {}
+      await new Promise((r) => setTimeout(r, 200));
+    }
+  },
+
+  setProjectedData: (data) => set({ projectedData: data }),
 }));
