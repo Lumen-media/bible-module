@@ -59,7 +59,7 @@ export function PreviewPane() {
         </span>
       </div>
 
-      <Palette className="absolute right-1.5 top-1.5 h-2.5 w-2.5 text-white/30 opacity-0 transition-opacity group-hover:opacity-100" />
+      <Palette className="absolute right-1.5 top-1.5 h-2.5 w-2.5 text-white/30 paleta-reveal" />
     </button>
   );
 }
