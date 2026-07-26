@@ -329,6 +329,11 @@ export const useBibleStore = create<BibleStore>((set, get) => ({
       set({ downloading: false, dlCurrent: 0, dlTotal: 0, dlVersion: '' });
     }
 
+    const downloadedList = await getDownloadedVersions(json);
+    if (downloadedList.length > 0) {
+      set({ version: downloadedList[0] });
+    }
+
     const lastPos = await getLastPosition(json);
     if (lastPos) {
       const book = BOOKS.find((b) => b.id === lastPos.bookId);
