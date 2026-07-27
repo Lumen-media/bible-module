@@ -1,7 +1,7 @@
 import { Button, Input, ScrollArea } from '@lumen-media/module-sdk/ui';
 import { useVirtualizer } from '@tanstack/react-virtual';
 import { Loader2, Search } from 'lucide-react';
-import { useRef, useState } from 'react';
+import { memo, useRef, useState } from 'react';
 import { parseReference } from '../data/ref.js';
 import { BOOKS } from '../data/store.js';
 import type { TFunction } from '../i18n.js';
@@ -11,7 +11,7 @@ interface SearchPanelProps {
   t: TFunction;
 }
 
-export function SearchPanel({ t }: SearchPanelProps) {
+export const SearchPanel = memo(function SearchPanel({ t }: SearchPanelProps) {
   const [query, setQuery] = useState('');
   const [results, setResults] = useState<
     { version: string; book: string; chapter: number; verse: number; text: string }[]
@@ -172,4 +172,4 @@ export function SearchPanel({ t }: SearchPanelProps) {
       </ScrollArea>
     </div>
   );
-}
+});

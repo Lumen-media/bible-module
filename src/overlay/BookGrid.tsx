@@ -1,3 +1,4 @@
+import { memo } from 'react';
 import type { Book } from '../data/types.js';
 import { type TranslationKey, t as translate } from '../i18n.js';
 import { cn } from '../lib/utils.js';
@@ -80,7 +81,7 @@ function renderSection(
   );
 }
 
-export function BookGrid({ books, onSelect }: BookGridProps) {
+export const BookGrid = memo(function BookGrid({ books, onSelect }: BookGridProps) {
   const selectedBook = useBibleStore((s) => s.selectedBook);
   const oldBooks = books.filter((b) => b.testament === 'old');
   const newBooks = books.filter((b) => b.testament === 'new');
@@ -91,4 +92,4 @@ export function BookGrid({ books, onSelect }: BookGridProps) {
       {renderSection(translate('bible.new-testament'), newBooks, selectedBook, onSelect)}
     </div>
   );
-}
+});

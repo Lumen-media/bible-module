@@ -1,8 +1,9 @@
+import { memo } from 'react';
 import { Palette } from 'lucide-react';
 import { t } from '../i18n.js';
 import { useBibleStore } from '../store.js';
 
-export function PreviewPane() {
+export const PreviewPane = memo(function PreviewPane() {
   const projectedData = useBibleStore((s) => s.projectedData);
   const version = useBibleStore((s) => s.version);
   const background = useBibleStore((s) => s.background);
@@ -62,4 +63,4 @@ export function PreviewPane() {
       <Palette className="absolute right-1.5 top-1.5 h-2.5 w-2.5 text-white/30 paleta-reveal" />
     </button>
   );
-}
+});

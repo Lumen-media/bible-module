@@ -1,9 +1,10 @@
+import { memo } from 'react';
 import { ScrollArea } from '@lumen-media/module-sdk/ui';
 import { Loader2 } from 'lucide-react';
 import { cn } from '../lib/utils.js';
 import { useBibleStore } from '../store.js';
 
-export function ChapterPreview() {
+export const ChapterPreview = memo(function ChapterPreview() {
   const verses = useBibleStore((s) => s.verses);
   const versesLoading = useBibleStore((s) => s.versesLoading);
   const selectedVerse = useBibleStore((s) => s.selectedVerse);
@@ -44,4 +45,4 @@ export function ChapterPreview() {
       </div>
     </ScrollArea>
   );
-}
+});

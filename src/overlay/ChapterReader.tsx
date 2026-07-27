@@ -1,7 +1,7 @@
 import type { PresentationHostAPI } from '@lumen-media/module-sdk';
 import { Button, ScrollArea, Select } from '@lumen-media/module-sdk/ui';
 import { Loader2, Projector } from 'lucide-react';
-import { useCallback, useEffect, useRef } from 'react';
+import { memo, useCallback, useEffect, useRef } from 'react';
 import type { Book } from '../data/types.js';
 import type { TFunction, TranslationKey } from '../i18n.js';
 import { useBibleStore } from '../store.js';
@@ -18,7 +18,7 @@ interface ChapterReaderProps {
 
 const VERSES_PER_PAGE_OPTIONS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
 
-export function ChapterReader({
+export const ChapterReader = memo(function ChapterReader({
   version,
   book,
   presentation,
@@ -48,7 +48,7 @@ export function ChapterReader({
         el.scrollIntoView({ block: 'center', behavior: 'smooth' });
       }
     }
-  }, [selectedVerse, verses]);
+  }, [selectedVerse]);
 
   const projectVerse = useCallback(
     (v: { number: number; text: string }) => {
@@ -171,4 +171,4 @@ export function ChapterReader({
       </div>
     </div>
   );
-}
+});

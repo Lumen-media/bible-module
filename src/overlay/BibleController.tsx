@@ -74,6 +74,8 @@ export function BibleController({ close, goToBook, goToChapter, goToVerse }: Bib
     useBibleStore.getState().setProjectedData(null);
   }, [presentation]);
 
+  const handleProject = useCallback(() => setProjecting(true), []);
+
   useEventListener('keydown', (e: KeyboardEvent) => {
     if (e.key === 'Escape') {
       if (projecting) {
@@ -400,7 +402,7 @@ export function BibleController({ close, goToBook, goToChapter, goToVerse }: Bib
               presentation={presentation}
               t={t}
               projecting={projecting}
-              onProject={() => setProjecting(true)}
+              onProject={handleProject}
               onClear={clearProjection}
             />
           ) : (

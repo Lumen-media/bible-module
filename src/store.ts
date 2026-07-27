@@ -239,129 +239,167 @@ export const useBibleStore = create<BibleStore>((set, get) => ({
 
     const db = await services.sqlite();
     set({ sqlite: db });
-    await initDatabase(db);
+    if (hostWindow === 'main') {
+      await initDatabase(db);
+    }
 
-    const downloadedFromJson = await getDownloadedVersions(json);
+    if (hostWindow === 'main') {
+      const downloadedFromJson = await getDownloadedVersions(json);
 
-    const needsSqlite: string[] = [];
-    const needsDownload: string[] = [];
+      const needsSqlite: string[] = [];
+      const needsDownload: string[] = [];
 
-    await Promise.all(
-      getDefaultVersions(navigator.language).map(async (v) => {
-        if (await isVersionPopulated(db, v)) return;
+      await Promise.all(
+        getDefaultVersions(navigator.language).map(async (v) => {
+          if (await isVersionPopulated(db, v)) return;
 
-        const hasJson = await hasAnyCache(fs, v);
-        if (hasJson) {
-          needsSqlite.push(v);
-        } else {
-          needsDownload.push(v);
-        }
-      })
-    );
-
-    if (needsSqlite.length > 0 || needsDownload.length > 0) {
-      const totalChaptersPerVersion = 1189;
-      const totalAll = (needsSqlite.length + needsDownload.length) * totalChaptersPerVersion;
-      let globalCurrent = 0;
-
-      const allVersions = [...new Set([...needsSqlite, ...needsDownload])];
-      set({
-        downloading: true,
-        dlCurrent: 0,
-        dlTotal: totalAll,
-        dlVersion: allVersions.join(', '),
-      });
-
-      const newDownloaded = [...downloadedFromJson];
-
-      let lastUpdate = 0;
-      const throttledSet = (progress: {
-        dlCurrent: number;
-        dlTotal: number;
-        dlVersion: string;
-      }) => {
-        const now = Date.now();
-        if (now - lastUpdate < 100 && progress.dlCurrent < progress.dlTotal) return;
-        lastUpdate = now;
-        set(progress);
-      };
-
-      await Promise.allSettled(
-        allVersions.map(async (v) => {
-          const needsDl = needsDownload.includes(v);
-
-          if (needsDl) {
-            const ok = await downloadVersion(
-              fs,
-              net,
-              v,
-              (current, _total) => {
-                throttledSet({
-                  dlCurrent: globalCurrent + current,
-                  dlTotal: totalAll,
-                  dlVersion: v,
-                });
-              },
-              async (book, chapter, verses) => {
-                try {
-                  await insertChapterBatch(db, v, book, chapter, verses);
-                } catch (e) {
-                  console.error('[bible] sqlite insert error:', v, book, chapter, e);
-                }
-              }
-            );
-            if (!ok) {
-              globalCurrent += totalChaptersPerVersion;
-              return;
-            }
+          const hasJson = await hasAnyCache(fs, v);
+          if (hasJson) {
+            needsSqlite.push(v);
           } else {
-            await importVersionFromJson(db, fs, v);
+            needsDownload.push(v);
           }
-
-          if (!newDownloaded.includes(v)) {
-            newDownloaded.push(v);
-          }
-          globalCurrent += totalChaptersPerVersion;
         })
       );
 
-      await setDownloadedVersions(json, newDownloaded);
-      set({ downloading: false, dlCurrent: 0, dlTotal: 0, dlVersion: '' });
-    }
+      if (needsSqlite.length > 0 || needsDownload.length > 0) {
+        const totalChaptersPerVersion = 1189;
+        const totalAll = (needsSqlite.length + needsDownload.length) * totalChaptersPerVersion;
+        let globalCurrent = 0;
 
-    const downloadedList = await getDownloadedVersions(json);
-    if (downloadedList.length > 0) {
-      set({ version: downloadedList[0] });
-    }
+        const allVersions = [...new Set([...needsSqlite, ...needsDownload])];
+        set({
+          downloading: true,
+          dlCurrent: 0,
+          dlTotal: totalAll,
+          dlVersion: allVersions.join(', '),
+        });
 
-    const lastPos = await getLastPosition(json);
-    if (lastPos) {
-      const book = BOOKS.find((b) => b.id === lastPos.bookId);
-      if (book && lastPos.chapter >= 1 && lastPos.chapter <= book.chapters) {
-        set({ selectedBook: book, chapter: lastPos.chapter });
-        get().loadChapter(lastPos.bookId, lastPos.chapter);
+        const newDownloaded = [...downloadedFromJson];
+
+        let lastUpdate = 0;
+        const throttledSet = (progress: {
+          dlCurrent: number;
+          dlTotal: number;
+          dlVersion: string;
+        }) => {
+          const now = Date.now();
+          if (now - lastUpdate < 100 && progress.dlCurrent < progress.dlTotal) return;
+          lastUpdate = now;
+          set(progress);
+        };
+
+        await Promise.allSettled(
+          allVersions.map(async (v) => {
+            const needsDl = needsDownload.includes(v);
+
+            if (needsDl) {
+              const ok = await downloadVersion(
+                fs,
+                net,
+                v,
+                (current, _total) => {
+                  throttledSet({
+                    dlCurrent: globalCurrent + current,
+                    dlTotal: totalAll,
+                    dlVersion: v,
+                  });
+                },
+                async (book, chapter, verses) => {
+                  try {
+                    await insertChapterBatch(db, v, book, chapter, verses);
+                  } catch (e) {
+                    console.error('[bible] sqlite insert error:', v, book, chapter, e);
+                  }
+                }
+              );
+              if (!ok) {
+                globalCurrent += totalChaptersPerVersion;
+                return;
+              }
+            } else {
+              await importVersionFromJson(db, fs, v);
+            }
+
+            if (!newDownloaded.includes(v)) {
+              newDownloaded.push(v);
+            }
+            globalCurrent += totalChaptersPerVersion;
+          })
+        );
+
+        await setDownloadedVersions(json, newDownloaded);
+        set({ downloading: false, dlCurrent: 0, dlTotal: 0, dlVersion: '' });
       }
     }
 
-    const vpp = await getVersesPerPage(json);
-    set({ versesPerPage: vpp });
+    const downloadedList = await getDownloadedVersions(json);
 
+    const lastPos = await getLastPosition(json);
+
+    const vpp = await getVersesPerPage(json);
+
+    let restoredBg: SelectedBackground | null = null;
+    let restoredFontSize = 36;
+    let restoredFontFamily = 'Inter';
     try {
       const s = await json.get<{ background: SelectedBackground | null; fontSize: number; fontFamily: string }>('bibleSettings');
-      if (s?.background) set({ background: s.background });
-      if (s?.fontSize) set({ fontSize: s.fontSize });
-      if (s?.fontFamily) set({ fontFamily: s.fontFamily });
+      if (s?.background) restoredBg = s.background;
+      if (s?.fontSize) restoredFontSize = s.fontSize;
+      if (s?.fontFamily) restoredFontFamily = s.fontFamily;
     } catch {}
 
-    const profileBg = themes.defaultBackground();
-    if (profileBg) {
-      set({ profileBackground: profileBg });
-      json.set('profileBackground', profileBg).catch(() => {});
-    } else {
+    let profileBg: SelectedBackground | { src: string; type: string; name: string } | null = themes.defaultBackground();
+    if (!profileBg) {
       try {
-        const profileFromJson = await json.get<{ src: string; type: string; name: string } | null>('profileBackground');
-        if (profileFromJson) set({ profileBackground: profileFromJson });
+        profileBg = await json.get<{ src: string; type: string; name: string } | null>('profileBackground');
       } catch {}
+    } else {
+      json.set('profileBackground', profileBg).catch(() => {});
+    }
+
+    let cachedFonts: string[] = [];
+    try {
+      const f = await json.get<string[]>('bibleFonts');
+      if (f && f.length > 0) cachedFonts = f;
+    } catch {}
+
+    const pending: Partial<BibleState> = {};
+
+    if (downloadedList.length > 0) {
+      pending.version = downloadedList[0];
+    }
+
+    let needsChapterLoad: { bookId: string; chapter: number } | null = null;
+    if (lastPos) {
+      const book = BOOKS.find((b) => b.id === lastPos.bookId);
+      if (book && lastPos.chapter >= 1 && lastPos.chapter <= book.chapters) {
+        pending.selectedBook = book;
+        pending.chapter = lastPos.chapter;
+        needsChapterLoad = lastPos;
+      }
+    }
+
+    pending.versesPerPage = vpp;
+    if (restoredBg) pending.background = restoredBg;
+    pending.fontSize = restoredFontSize;
+    pending.fontFamily = restoredFontFamily;
+    if (profileBg) pending.profileBackground = profileBg as SelectedBackground;
+
+    if (cachedFonts.length > 0) {
+      pending.fontList = [...new Set([restoredFontFamily, ...cachedFonts, 'Inter', 'Georgia', 'Times New Roman', 'Arial'])];
+    }
+
+    pending.ready = true;
+
+    set(pending);
+
+    if (needsChapterLoad) {
+      get().loadChapter(needsChapterLoad.bookId, needsChapterLoad.chapter);
+    }
+
+    if (hostWindow === 'main') {
+      get().loadFonts();
     }
 
     const themesExt = themes as ThemesHostAPI & {
@@ -371,17 +409,6 @@ export const useBibleStore = create<BibleStore>((set, get) => ({
       set({ profileBackground: bg });
       if (bg) json.set('profileBackground', bg).catch(() => {});
     });
-
-    try {
-      const cachedFonts = await json.get<string[]>('bibleFonts');
-      if (cachedFonts && cachedFonts.length > 0) {
-        set({ fontList: [...new Set([get().fontFamily, ...cachedFonts, 'Inter', 'Georgia', 'Times New Roman', 'Arial'])] });
-      }
-    } catch {}
-
-    get().loadFonts();
-
-    set({ ready: true });
   },
 
   setVersion: async (version) => {

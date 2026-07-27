@@ -1,3 +1,4 @@
+import { memo } from 'react';
 import { Progress } from '@lumen-media/module-sdk/ui';
 import { Download } from 'lucide-react';
 import type { TFunction } from '../i18n.js';
@@ -10,7 +11,7 @@ interface DownloadProgressProps {
   t: TFunction;
 }
 
-export function DownloadProgress({ visible, current, total, version, t }: DownloadProgressProps) {
+export const DownloadProgress = memo(function DownloadProgress({ visible, current, total, version, t }: DownloadProgressProps) {
   if (!visible) return null;
 
   const pct = total > 0 ? Math.round((current / total) * 100) : 0;
@@ -31,4 +32,4 @@ export function DownloadProgress({ visible, current, total, version, t }: Downlo
       <Progress value={pct} className="h-1 rounded-none" />
     </div>
   );
-}
+});
