@@ -35,11 +35,11 @@ export function QuickSearch({
 
   const filtered = inputValue.trim()
     ? books
-      .filter((b) => {
-        const q = inputValue.trim().toLowerCase();
-        return b.name.toLowerCase().includes(q) || b.id.toLowerCase().includes(q);
-      })
-      .slice(0, 10)
+        .filter((b) => {
+          const q = inputValue.trim().toLowerCase();
+          return b.name.toLowerCase().includes(q) || b.id.toLowerCase().includes(q);
+        })
+        .slice(0, 10)
     : [];
 
   return (

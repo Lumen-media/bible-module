@@ -230,7 +230,7 @@ export function BibleController({ close, goToBook, goToChapter, goToVerse }: Bib
 
         <div className="ml-auto flex gap-1">
           <Tabs value={tab} onValueChange={(v) => setTab(v as 'browse' | 'search')}>
-            <Tabs.TabsList className='bg-background/80 gap-1.5'>
+            <Tabs.TabsList className="bg-background/80 gap-1.5">
               <Tabs.TabsTrigger value="browse">
                 <BookOpen className="mr-1 h-3.5 w-3.5" />
                 {t('bible.book')}

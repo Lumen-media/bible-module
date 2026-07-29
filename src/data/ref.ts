@@ -1,5 +1,5 @@
+import { type TranslationKey, t } from '../i18n.js';
 import type { Book } from './types.js';
-import { t, type TranslationKey } from '../i18n.js';
 
 export interface ParsedReference {
   book: Book;
@@ -36,7 +36,7 @@ export function parseReference(query: string, books: Book[]): ParsedReference | 
   if (!best) return null;
 
   const after = nq.slice(best.nameLen).trim();
-  const match = after.match(/^(\d+)\s*[:.,\-]?\s*(\d+)?/);
+  const match = after.match(/^(\d+)\s*[:.,-]?\s*(\d+)?/);
   if (!match) return null;
 
   const chapter = parseInt(match[1], 10);

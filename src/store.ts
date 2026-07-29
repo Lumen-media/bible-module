@@ -5,9 +5,9 @@ import type {
   NetAPI,
   PresentationHostAPI,
   SelectedBackground,
+  SqliteHandle,
   ThemesHostAPI,
   UIAPI,
-  SqliteHandle,
 } from '@lumen-media/module-sdk';
 import { create } from 'zustand';
 import {
@@ -154,14 +154,16 @@ export interface BibleActions {
   setFontSize: (n: number) => void;
   setFontFamily: (f: string) => void;
   loadFonts: () => Promise<void>;
-  setProjectedData: (data: {
-    version: string;
-    book: string;
-    bookName: string;
-    chapter: number;
-    verses: number[];
-    text: string;
-  } | null) => void;
+  setProjectedData: (
+    data: {
+      version: string;
+      book: string;
+      bookName: string;
+      chapter: number;
+      verses: number[];
+      text: string;
+    } | null
+  ) => void;
 }
 
 export type BibleStore = BibleState & BibleActions;
@@ -343,16 +345,23 @@ export const useBibleStore = create<BibleStore>((set, get) => ({
     let restoredFontSize = 36;
     let restoredFontFamily = 'Inter';
     try {
-      const s = await json.get<{ background: SelectedBackground | null; fontSize: number; fontFamily: string }>('bibleSettings');
+      const s = await json.get<{
+        background: SelectedBackground | null;
+        fontSize: number;
+        fontFamily: string;
+      }>('bibleSettings');
       if (s?.background) restoredBg = s.background;
       if (s?.fontSize) restoredFontSize = s.fontSize;
       if (s?.fontFamily) restoredFontFamily = s.fontFamily;
     } catch {}
 
-    let profileBg: SelectedBackground | { src: string; type: string; name: string } | null = themes.defaultBackground();
+    let profileBg: SelectedBackground | { src: string; type: string; name: string } | null =
+      themes.defaultBackground();
     if (!profileBg) {
       try {
-        profileBg = await json.get<{ src: string; type: string; name: string } | null>('profileBackground');
+        profileBg = await json.get<{ src: string; type: string; name: string } | null>(
+          'profileBackground'
+        );
       } catch {}
     } else {
       json.set('profileBackground', profileBg).catch(() => {});
@@ -387,7 +396,16 @@ export const useBibleStore = create<BibleStore>((set, get) => ({
     if (profileBg) pending.profileBackground = profileBg as SelectedBackground;
 
     if (cachedFonts.length > 0) {
-      pending.fontList = [...new Set([restoredFontFamily, ...cachedFonts, 'Inter', 'Georgia', 'Times New Roman', 'Arial'])];
+      pending.fontList = [
+        ...new Set([
+          restoredFontFamily,
+          ...cachedFonts,
+          'Inter',
+          'Georgia',
+          'Times New Roman',
+          'Arial',
+        ]),
+      ];
     }
 
     pending.ready = true;
@@ -403,7 +421,9 @@ export const useBibleStore = create<BibleStore>((set, get) => ({
     }
 
     const themesExt = themes as ThemesHostAPI & {
-      onDefaultBackgroundChange?: (handler: (bg: { src: string; type: string; name: string } | null) => void) => { dispose(): void };
+      onDefaultBackgroundChange?: (
+        handler: (bg: { src: string; type: string; name: string } | null) => void
+      ) => { dispose(): void };
     };
     themesExt.onDefaultBackgroundChange?.((bg) => {
       set({ profileBackground: bg });
@@ -607,7 +627,9 @@ export const useBibleStore = create<BibleStore>((set, get) => ({
       const system = await fonts.list();
       if (system.length > 0) {
         set((s) => ({
-          fontList: [...new Set([s.fontFamily, ...system, 'Inter', 'Georgia', 'Times New Roman', 'Arial'])],
+          fontList: [
+            ...new Set([s.fontFamily, ...system, 'Inter', 'Georgia', 'Times New Roman', 'Arial']),
+          ],
         }));
         if (json) json.set('bibleFonts', system).catch(() => {});
         return;
@@ -620,7 +642,9 @@ export const useBibleStore = create<BibleStore>((set, get) => ({
         const cached = await json.get<string[]>('bibleFonts');
         if (cached && cached.length > 0) {
           set((s) => ({
-            fontList: [...new Set([s.fontFamily, ...cached, 'Inter', 'Georgia', 'Times New Roman', 'Arial'])],
+            fontList: [
+              ...new Set([s.fontFamily, ...cached, 'Inter', 'Georgia', 'Times New Roman', 'Arial']),
+            ],
           }));
           return;
         }

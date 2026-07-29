@@ -1,6 +1,6 @@
-import { memo } from 'react';
 import { ScrollArea } from '@lumen-media/module-sdk/ui';
 import { Loader2 } from 'lucide-react';
+import { memo } from 'react';
 import { cn } from '../lib/utils.js';
 import { useBibleStore } from '../store.js';
 

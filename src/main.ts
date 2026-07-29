@@ -1,7 +1,7 @@
 import { type LumenHost, LumenPlugin, type PrefixSpec } from '@lumen-media/module-sdk';
 import { parseReference } from './data/ref.js';
 import { BOOKS } from './data/store.js';
-import { setupI18n, t, type TranslationKey } from './i18n.js';
+import { setupI18n, type TranslationKey, t } from './i18n.js';
 import { BibleController } from './overlay/BibleController.js';
 import { BibleSlide } from './presenter/BibleSlide.js';
 import { useBibleStore } from './store.js';
@@ -27,11 +27,14 @@ export default class BibleModulePlugin extends LumenPlugin {
     setupI18n(host.app.locale);
 
     if (host.window === 'main') {
-      host.fonts.list().then((list) => {
-        if (list.length > 0) {
-          host.data.json.set('bibleFonts', list).catch(() => {});
-        }
-      }).catch(() => {});
+      host.fonts
+        .list()
+        .then((list) => {
+          if (list.length > 0) {
+            host.data.json.set('bibleFonts', list).catch(() => {});
+          }
+        })
+        .catch(() => {});
     }
 
     host.panels.add({
