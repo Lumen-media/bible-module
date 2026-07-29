@@ -52,7 +52,8 @@ export const ChapterReader = memo(function ChapterReader({
 
   const projectVerse = useCallback(
     (v: { number: number; text: string }) => {
-      const { uppercase, showReferenceOnly, showVersion, abbreviatedBooks, fontColor } = useBibleStore.getState();
+      const { uppercase, showReferenceOnly, showVersion, abbreviatedBooks, fontColor } =
+        useBibleStore.getState();
       const data = {
         version,
         book: book.id,
@@ -94,7 +95,8 @@ export const ChapterReader = memo(function ChapterReader({
 
   function projectAll() {
     if (!verses || verses.length === 0) return;
-    const { uppercase, showReferenceOnly, showVersion, abbreviatedBooks, fontColor } = useBibleStore.getState();
+    const { uppercase, showReferenceOnly, showVersion, abbreviatedBooks, fontColor } =
+      useBibleStore.getState();
     const data = {
       version,
       book: book.id,

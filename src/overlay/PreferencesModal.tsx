@@ -92,6 +92,7 @@ export const PreferencesModal = ({ children }: { children: React.ReactNode }) =>
   const [localFontSize, setLocalFontSize] = useState(String(fontSize));
   const [localFontColor, setLocalFontColor] = useState(fontColor);
   const debouncedSetFontColor = useDebounceCallback(setFontColor, 200);
+  const debouncedSetFontSize = useDebounceCallback(setFontSize, 100);
 
   useEffect(() => {
     setFontInput(fontFamily);
@@ -212,115 +213,110 @@ export const PreferencesModal = ({ children }: { children: React.ReactNode }) =>
             </div>
 
             <Card>
-              <Card.CardContent className="space-y-3 p-4">
-                <span className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
-                  {t('bible.live-preview' as TranslationKey)}
-                </span>
-                {(() => {
-                  const bookName = selectedBook
-                    ? abbreviatedBooks
-                      ? t(`bookAbbr.${selectedBook.id}` as TranslationKey)
-                      : t(`book.${selectedBook.id}` as TranslationKey)
-                    : 'John';
-                  const verseNum = selectedVerse ?? 16;
-                  const verseText = verses?.find((v) => v.number === verseNum)?.text;
-                  const previewText = verseText ?? SAMPLE_VERSE;
+              <span className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+                {t('bible.live-preview' as TranslationKey)}
+              </span>
+              {(() => {
+                const bookName = selectedBook
+                  ? abbreviatedBooks
+                    ? t(`bookAbbr.${selectedBook.id}` as TranslationKey)
+                    : t(`book.${selectedBook.id}` as TranslationKey)
+                  : 'John';
+                const verseNum = selectedVerse ?? 16;
+                const verseText = verses?.find((v) => v.number === verseNum)?.text;
+                const previewText = verseText ?? SAMPLE_VERSE;
 
-                  if (showReferenceOnly) {
-                    return (
-                      <div className="relative flex min-h-40 items-center justify-center overflow-hidden rounded-md border border-border bg-black p-6 aspect-video">
-                        {resolvedBg ? (
-                          <img
-                            src={resolvedBg.src}
-                            alt=""
-                            className="absolute inset-0 h-full w-full object-cover"
-                            style={{ opacity: 0.5 }}
-                          />
-                        ) : (
-                          <div className="absolute inset-0 bg-linear-to-br from-card to-background" />
-                        )}
-                        <div className="relative z-10 flex items-center gap-6 scale-150">
-                          <div
-                            className="flex min-w-0 flex-col items-center leading-tight"
-                            style={{ fontFamily }}
-                          >
-                            <span
-                              className={cn('truncate text-4xl font-bold', { uppercase })}
-                              style={{ color: fontColor }}
-                            >
-                              {bookName} {chapter}
-                            </span>
-                            {showVersion && (
-                              <span
-                                className="truncate text-xl self-start"
-                                style={{ color: `${fontColor}99` }}
-                              >
-                                {displayVersion(version)}
-                              </span>
-                            )}
-                          </div>
-                          <div
-                            className="h-16 w-px shrink-0"
-                            style={{ backgroundColor: `${fontColor}40` }}
-                          />
+                if (showReferenceOnly) {
+                  return (
+                    <div className="relative flex min-h-40 items-center justify-center overflow-hidden rounded-md border border-border bg-black p-6 aspect-video">
+                      {resolvedBg ? (
+                        <img
+                          src={resolvedBg.src}
+                          alt=""
+                          className="absolute inset-0 h-full w-full object-cover"
+                          style={{ opacity: 0.5 }}
+                        />
+                      ) : (
+                        <div className="absolute inset-0 bg-linear-to-br from-card to-background" />
+                      )}
+                      <div className="relative z-10 flex items-center gap-6 scale-150">
+                        <div
+                          className="flex min-w-0 flex-col items-center leading-tight"
+                          style={{ fontFamily }}
+                        >
                           <span
-                            className="shrink-0 text-7xl font-bold"
+                            className={cn('truncate text-4xl font-bold', { uppercase })}
                             style={{ color: fontColor }}
                           >
-                            {verseNum}
+                            {bookName} {chapter}
                           </span>
-                        </div>
-                      </div>
-                    );
-                  }
-
-                  return (
-                    <>
-                      <div className="flex flex-wrap items-center gap-2 text-[11px] text-muted-foreground">
-                        <Badge variant="secondary">{bookName}</Badge>
-                        <span className="opacity-60">|</span>
-                        <Badge variant="secondary">
-                          {t('bible.chapter' as TranslationKey)} {chapter}
-                        </Badge>
-                        <span className="opacity-60">|</span>
-                        <Badge variant="secondary">
-                          {t('bible.verse' as TranslationKey)} {verseNum}
-                        </Badge>
-                        {showVersion && (
-                          <Badge className="ml-auto">{displayVersion(version)}</Badge>
-                        )}
-                      </div>
-                      <div className="relative flex min-h-40 items-center justify-center overflow-hidden rounded-md border border-border bg-black p-6 aspect-video">
-                        {resolvedBg && (
-                          <img
-                            src={resolvedBg.src}
-                            alt=""
-                            className="absolute inset-0 h-full w-full object-cover opacity-20"
-                          />
-                        )}
-                        <p
-                          className={cn(
-                            'relative z-10 text-center leading-[1.4]',
-                            { uppercase: uppercase },
-                            { 'font-light': fontWeight === 'Light' },
-                            { 'font-normal': fontWeight === 'Regular' },
-                            { 'font-medium': fontWeight === 'Medium' },
-                            { 'font-bold': fontWeight === 'Bold' },
-                            { italic: fontStyle === 'Italic' }
+                          {showVersion && (
+                            <span
+                              className="truncate text-xl self-start"
+                              style={{ color: `${fontColor}99` }}
+                            >
+                              {displayVersion(version)}
+                            </span>
                           )}
-                          style={{
-                            fontFamily,
-                            fontSize: `${previewSize}px`,
-                            color: fontColor,
-                          }}
+                        </div>
+                        <div
+                          className="h-16 w-px shrink-0"
+                          style={{ backgroundColor: `${fontColor}40` }}
+                        />
+                        <span
+                          className="shrink-0 text-7xl font-bold"
+                          style={{ color: fontColor }}
                         >
-                          {previewText}
-                        </p>
+                          {verseNum}
+                        </span>
                       </div>
-                    </>
+                    </div>
                   );
-                })()}
-              </Card.CardContent>
+                }
+
+                return (
+                  <div className="relative flex min-h-40 flex-col items-center justify-center overflow-hidden rounded-md border border-border bg-black p-6 aspect-video">
+                    {resolvedBg && (
+                      <img
+                        src={resolvedBg.src}
+                        alt=""
+                        className="absolute inset-0 h-full w-full object-cover opacity-20"
+                      />
+                    )}
+                    <div
+                      className={cn('relative z-10 mb-3 font-medium tracking-wide', {
+                        uppercase,
+                      })}
+                      style={{
+                        fontFamily,
+                        fontSize: `${Math.max(14, Math.round(previewSize * 0.4))}px`,
+                        color: `${fontColor}99`,
+                      }}
+                    >
+                      {bookName} {chapter}
+                      {showVersion ? ` ${displayVersion(version)}` : ''}
+                    </div>
+                    <p
+                      className={cn(
+                        'relative z-10 text-center leading-[1.4]',
+                        { uppercase: uppercase },
+                        { 'font-light': fontWeight === 'Light' },
+                        { 'font-normal': fontWeight === 'Regular' },
+                        { 'font-medium': fontWeight === 'Medium' },
+                        { 'font-bold': fontWeight === 'Bold' },
+                        { italic: fontStyle === 'Italic' }
+                      )}
+                      style={{
+                        fontFamily,
+                        fontSize: `${previewSize}px`,
+                        color: fontColor,
+                      }}
+                    >
+                      {previewText}
+                    </p>
+                  </div>
+                );
+              })()}
             </Card>
 
             <Card>
@@ -466,7 +462,7 @@ export const PreferencesModal = ({ children }: { children: React.ReactNode }) =>
                           const delta = e.key === 'ArrowUp' ? 1 : -1;
                           const next = Math.min(120, Math.max(12, base + delta));
                           setLocalFontSize(String(next));
-                          setFontSize(next);
+                          debouncedSetFontSize(next);
                         }
                       }}
                       className="h-8 w-full bg-transparent px-2 text-xs outline-none [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"

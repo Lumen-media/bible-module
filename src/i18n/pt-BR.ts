@@ -73,7 +73,8 @@ const messages: Record<TranslationKeys, string> = {
   'bible.uppercase': 'Maiúsculas',
   'bible.uppercase-desc': 'Exibir o texto do versículo em letras maiúsculas',
   'bible.reference-only': 'Apenas referência',
-  'bible.reference-only-desc': 'Mostrar apenas a referência (livro, capítulo, versículo) sem o texto',
+  'bible.reference-only-desc':
+    'Mostrar apenas a referência (livro, capítulo, versículo) sem o texto',
   'bible.show-version': 'Mostrar versão',
   'bible.show-version-desc': 'Exibir o nome da tradução bíblica nos slides',
   'bible.abbreviated-books': 'Livros abreviados',

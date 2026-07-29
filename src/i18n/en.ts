@@ -71,7 +71,8 @@ const messages = {
   'bible.uppercase': 'Uppercase',
   'bible.uppercase-desc': 'Display verse text in uppercase letters',
   'bible.reference-only': 'Reference only',
-  'bible.reference-only-desc': 'Show only the verse reference (book, chapter, verse) without the text',
+  'bible.reference-only-desc':
+    'Show only the verse reference (book, chapter, verse) without the text',
   'bible.show-version': 'Show version',
   'bible.show-version-desc': 'Display the Bible translation name on slides',
   'bible.abbreviated-books': 'Abbreviated books',

@@ -112,7 +112,7 @@ export function BibleController({ close, goToBook, goToChapter, goToVerse }: Bib
   useEffect(() => {
     downloadedVersions()
       .then(setLocalDownloaded)
-      .catch(() => { });
+      .catch(() => {});
   }, [downloadedVersions]);
 
   useEffect(() => {
@@ -187,7 +187,9 @@ export function BibleController({ close, goToBook, goToChapter, goToVerse }: Bib
         <Loader2 className="h-6 w-6 animate-spin" />
         <span className="text-sm">
           {downloading
-            ? t('bible.downloading', { version: dlVersion.split(', ').map(displayVersion).join(', ') })
+            ? t('bible.downloading', {
+                version: dlVersion.split(', ').map(displayVersion).join(', '),
+              })
             : t('bible.preparing')}
         </span>
       </div>

@@ -10,3 +10,7 @@ const PREFIX_REGEX = /^[a-z]{2}_/;
 export function displayVersion(id: string): string {
   return id.replace(PREFIX_REGEX, '').toUpperCase();
 }
+
+export function getReferenceSize(fontSize: number): number {
+  return Math.max(14, Math.min(48, Math.round(fontSize * 0.4)));
+}

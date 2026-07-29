@@ -1,6 +1,6 @@
 import { BookOpen } from 'lucide-react';
 import { type TranslationKey, t } from '../i18n.js';
-import { cn, displayVersion } from '../lib/utils.js';
+import { cn, displayVersion, getReferenceSize } from '../lib/utils.js';
 import { useBibleStore } from '../store.js';
 
 interface BibleSlideProps {
@@ -43,10 +43,20 @@ export function BibleSlide({ data }: BibleSlideProps) {
     );
   }
 
-  const { book, bookName, chapter, version, verses, text, uppercase, showReferenceOnly, showVersion, abbreviatedBooks, fontColor } = data;
-  const label = abbreviatedBooks
-    ? t(`bookAbbr.${book}` as TranslationKey)
-    : bookName;
+  const {
+    book,
+    bookName,
+    chapter,
+    version,
+    verses,
+    text,
+    uppercase,
+    showReferenceOnly,
+    showVersion,
+    abbreviatedBooks,
+    fontColor,
+  } = data;
+  const label = abbreviatedBooks ? t(`bookAbbr.${book}` as TranslationKey) : bookName;
   const showVersionLabel = showVersion && !showReferenceOnly;
 
   return (
@@ -62,10 +72,7 @@ export function BibleSlide({ data }: BibleSlideProps) {
         <div className="relative z-10 flex items-center gap-6 scale-400">
           <div className="flex min-w-0 flex-col items-center leading-tight" style={{ fontFamily }}>
             <span
-              className={cn(
-                'truncate text-4xl font-bold',
-                { uppercase }
-              )}
+              className={cn('truncate text-4xl font-bold', { uppercase })}
               style={{ color: fontColor }}
             >
               {label} {chapter}
@@ -78,22 +85,27 @@ export function BibleSlide({ data }: BibleSlideProps) {
           </div>
           <div className="h-16 w-px shrink-0" style={{ backgroundColor: `${fontColor}40` }} />
           <span className="shrink-0 text-7xl font-bold" style={{ color: fontColor }}>
-            {verses[0]}{verses.length > 1 ? `-${verses[verses.length - 1]}` : ''}
+            {verses[0]}
+            {verses.length > 1 ? `-${verses[verses.length - 1]}` : ''}
           </span>
         </div>
       ) : (
         <>
           <div
-            className="relative z-10 mb-8 text-sm font-medium tracking-wide"
-            style={{ fontFamily, color: `${fontColor}99` }}
+            className={cn('relative z-10 mb-8 font-medium tracking-wide', { uppercase })}
+            style={{
+              fontSize: `${getReferenceSize(fontSize)}px`,
+              fontFamily,
+              color: `${fontColor}99`,
+            }}
           >
-            {label} {chapter}{showVersionLabel ? ` — ${displayVersion(version)}` : ''}
+            {label} {chapter}
+            {showVersionLabel ? ` ${displayVersion(version)}` : ''}
           </div>
           <div
-            className={cn(
-              'relative z-10 max-w-4xl text-center leading-snug',
-              { 'uppercase': uppercase }
-            )}
+            className={cn('relative z-10 max-w-4xl text-center leading-snug', {
+              uppercase: uppercase,
+            })}
             style={{ fontSize: `${fontSize}px`, fontFamily, color: fontColor }}
           >
             {text.split('\n').map((line) => (
