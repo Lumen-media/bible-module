@@ -1,6 +1,7 @@
 import { Palette } from 'lucide-react';
 import { memo } from 'react';
 import { t } from '../i18n.js';
+import { displayVersion } from '../lib/utils.js';
 import { useBibleStore } from '../store.js';
 
 export const PreviewPane = memo(function PreviewPane() {
@@ -22,7 +23,7 @@ export const PreviewPane = memo(function PreviewPane() {
     : selectedBook
       ? `${selectedBook.name} ${chapter}`
       : '—';
-  const versionLabel = hasData ? data.version.toUpperCase() : version.toUpperCase();
+  const versionLabel = hasData ? displayVersion(data.version) : displayVersion(version);
   const verseNumber: number | null = hasData ? (data.verses?.[0] ?? null) : selectedVerse;
 
   return (

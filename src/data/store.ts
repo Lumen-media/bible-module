@@ -164,6 +164,7 @@ export async function setDownloadedVersions(
 export interface LastPosition {
   bookId: string;
   chapter: number;
+  verse?: number;
 }
 
 export async function getLastPosition(json: DataAPI['json']): Promise<LastPosition | null> {

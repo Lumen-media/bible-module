@@ -5,7 +5,7 @@ import { useEventListener } from 'usehooks-ts';
 import { BOOKS } from '../data/store.js';
 import type { TranslationKey } from '../i18n.js';
 import { t } from '../i18n.js';
-import { cn } from '../lib/utils.js';
+import { cn, displayVersion } from '../lib/utils.js';
 import { ALL_VERSIONS, useBibleStore } from '../store.js';
 import { BookGrid } from './BookGrid.js';
 import { ChapterPreview } from './ChapterPreview.js';
@@ -45,10 +45,11 @@ export function BibleController({ close, goToBook, goToChapter, goToVerse }: Bib
     goTo,
     downloadVersionOnly,
     downloadedVersions,
+    displayedTabs,
+    setDisplayedTabs,
   } = useBibleStore();
 
   const [localDownloaded, setLocalDownloaded] = useState<string[]>([]);
-  const [displayedTabs, setDisplayedTabs] = useState<string[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [projecting, setProjecting] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -115,12 +116,6 @@ export function BibleController({ close, goToBook, goToChapter, goToVerse }: Bib
   }, [downloadedVersions]);
 
   useEffect(() => {
-    if (localDownloaded.length > 0 && displayedTabs.length === 0) {
-      setDisplayedTabs(localDownloaded.slice(0, 3));
-    }
-  }, [localDownloaded, displayedTabs]);
-
-  useEffect(() => {
     if (!goToBook || !goToChapter) return;
     const book = BOOKS.find((b) => b.id === goToBook);
     if (book) goTo(book, goToChapter, goToVerse);
@@ -128,13 +123,14 @@ export function BibleController({ close, goToBook, goToChapter, goToVerse }: Bib
 
   const handleSelectVersion = (id: string) => {
     if (!displayedTabs.includes(id)) {
-      setDisplayedTabs((prev) => {
-        const idx = prev.indexOf(version);
-        if (idx < 0) return [id, ...prev.slice(0, 2)];
-        const next = [...prev];
+      const idx = displayedTabs.indexOf(version);
+      if (idx < 0) {
+        setDisplayedTabs([id, ...displayedTabs.slice(0, 2)]);
+      } else {
+        const next = [...displayedTabs];
         next[idx] = id;
-        return next;
-      });
+        setDisplayedTabs(next);
+      }
     }
     setVersion(id);
   };
@@ -191,7 +187,7 @@ export function BibleController({ close, goToBook, goToChapter, goToVerse }: Bib
         <Loader2 className="h-6 w-6 animate-spin" />
         <span className="text-sm">
           {downloading
-            ? t('bible.downloading', { version: dlVersion.toUpperCase() })
+            ? t('bible.downloading', { version: dlVersion.split(', ').map(displayVersion).join(', ') })
             : t('bible.preparing')}
         </span>
       </div>
@@ -262,7 +258,7 @@ export function BibleController({ close, goToBook, goToChapter, goToVerse }: Bib
                   onClick={() => setVersion(id)}
                   className="flex-1 h-full text-center"
                 >
-                  {id.toUpperCase()}
+                  {displayVersion(id)}
                 </button>
                 <Popover>
                   <Popover.PopoverTrigger className="absolute right-1 flex items-center">
@@ -278,17 +274,17 @@ export function BibleController({ close, goToBook, goToChapter, goToVerse }: Bib
                             type="button"
                             onClick={(e) => {
                               e.stopPropagation();
-                              setDisplayedTabs((prev) => {
-                                const idx = prev.indexOf(id);
-                                if (idx < 0) return prev;
+                              const prev = useBibleStore.getState().displayedTabs;
+                              const idx = prev.indexOf(id);
+                              if (idx >= 0) {
                                 const next = [...prev];
                                 next[idx] = d;
-                                return next;
-                              });
+                                setDisplayedTabs(next);
+                              }
                             }}
                             className="flex w-full items-center rounded px-2 py-1 text-xs text-muted-foreground hover:bg-accent hover:text-accent-foreground"
                           >
-                            {d.toUpperCase()}
+                            {displayVersion(d)}
                           </button>
                         ))}
                     </div>
@@ -330,7 +326,7 @@ export function BibleController({ close, goToBook, goToChapter, goToVerse }: Bib
                     </Select.SelectContent>
                   </Select>
                 </div>
-                <ScrollArea className="max-h-72">
+                <ScrollArea className="h-72">
                   <div className="p-1">
                     {ALL_VERSIONS.filter((v) => {
                       if (v.language !== filterLang) return false;

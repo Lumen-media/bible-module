@@ -12,16 +12,14 @@ import { Database, Download, HardDrive, Palette, Type } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { getDownloadedVersions } from '../data/store.js';
 import { type TranslationKey, t } from '../i18n.js';
-import { cn } from '../lib/utils.js';
+import { cn, displayVersion } from '../lib/utils.js';
 import { ALL_VERSIONS, useBibleStore } from '../store.js';
 
 type SectionId = 'typography' | 'theme' | 'downloads' | 'cache';
 
 const FONT_WEIGHTS = ['Light', 'Regular', 'Medium', 'Bold'] as const;
-type FontWeight = (typeof FONT_WEIGHTS)[number];
 
 const FONT_STYLES = ['Normal', 'Italic'] as const;
-type FontStyle = (typeof FONT_STYLES)[number];
 
 const SAMPLE_VERSE =
   'For God so loved the world, that he gave his only Son, that whoever believes in him should not perish but have eternal life.';
@@ -47,6 +45,10 @@ export const PreferencesModal = ({ children }: { children: React.ReactNode }) =>
   const fontList = useBibleStore((s) => s.fontList);
   const setFontSize = useBibleStore((s) => s.setFontSize);
   const setFontFamily = useBibleStore((s) => s.setFontFamily);
+  const fontWeight = useBibleStore((s) => s.fontWeight);
+  const fontStyle = useBibleStore((s) => s.fontStyle);
+  const setFontWeight = useBibleStore((s) => s.setFontWeight);
+  const setFontStyle = useBibleStore((s) => s.setFontStyle);
   const background = useBibleStore((s) => s.background);
   const profileBackground = useBibleStore((s) => s.profileBackground);
   const setBackground = useBibleStore((s) => s.setBackground);
@@ -61,8 +63,6 @@ export const PreferencesModal = ({ children }: { children: React.ReactNode }) =>
   const themes = useBibleStore((s) => s.themes);
 
   const [section, setSection] = useState<SectionId>('typography');
-  const [fontWeight, setFontWeight] = useState<FontWeight>('Medium');
-  const [fontStyle, setFontStyle] = useState<FontStyle>('Normal');
   const [downloadedIds, setDownloadedIds] = useState<string[]>([]);
   const [cacheBytes, setCacheBytes] = useState<number | null>(null);
   const [clearing, setClearing] = useState(false);
@@ -161,7 +161,7 @@ export const PreferencesModal = ({ children }: { children: React.ReactNode }) =>
     try {
       try {
         await fs.remove('cache');
-      } catch {}
+      } catch { }
       await json.set('bibleFonts', []);
       setDownloadedIds([]);
       setCacheBytes(0);
@@ -176,7 +176,7 @@ export const PreferencesModal = ({ children }: { children: React.ReactNode }) =>
     switch (section) {
       case 'typography':
         return (
-          <div className="space-y-4">
+          <div className="space-y-4 pb-8">
             <div>
               <h3 className="text-base font-semibold text-foreground">
                 {t('bible.typography' as TranslationKey)}
@@ -197,9 +197,9 @@ export const PreferencesModal = ({ children }: { children: React.ReactNode }) =>
                   <Badge variant="secondary">Chapter 3</Badge>
                   <span className="opacity-60">|</span>
                   <Badge variant="secondary">Verse 16</Badge>
-                  <Badge className="ml-auto">{version.toUpperCase()}</Badge>
+                  <Badge className="ml-auto">{displayVersion(version)}</Badge>
                 </div>
-                <div className="flex min-h-40 items-center justify-center rounded-md border border-border bg-muted/30 p-6">
+                <div className="flex min-h-40 items-center justify-center rounded-md border border-border bg-muted/30 p-6 aspect-video">
                   <p
                     className="text-center text-foreground"
                     style={{
@@ -286,14 +286,19 @@ export const PreferencesModal = ({ children }: { children: React.ReactNode }) =>
                   <ToggleGroup
                     value={[fontWeight]}
                     onValueChange={(v) => {
-                      const next = v[0] as FontWeight | undefined;
+                      const next = v.find((w) => w !== fontWeight);
                       if (next) setFontWeight(next);
                     }}
                     size="sm"
-                    variant="outline"
+                    variant="secondary"
+                    className="bg-background w-fit justify-between overflow-hidden"
                   >
                     {FONT_WEIGHTS.map((w) => (
-                      <ToggleGroup.ToggleGroupItem key={w} value={w}>
+                      <ToggleGroup.ToggleGroupItem
+                        key={w}
+                        value={w}
+                        className="flex-1 px-4"
+                      >
                         {w}
                       </ToggleGroup.ToggleGroupItem>
                     ))}
@@ -314,17 +319,21 @@ export const PreferencesModal = ({ children }: { children: React.ReactNode }) =>
                   <ToggleGroup
                     value={[fontStyle]}
                     onValueChange={(v) => {
-                      const next = v[0] as FontStyle | undefined;
+                      const next = v.find((s) => s !== fontStyle);
                       if (next) setFontStyle(next);
                     }}
                     size="sm"
-                    variant="outline"
+                    variant="secondary"
+                    className="bg-background w-fit justify-between overflow-hidden"
                   >
                     {FONT_STYLES.map((s) => (
                       <ToggleGroup.ToggleGroupItem
                         key={s}
                         value={s}
-                        className={s === 'Italic' ? 'italic' : ''}
+                        className={cn(
+                          'flex-1 px-4',
+                          s === 'Italic' && 'italic'
+                        )}
                       >
                         {s}
                       </ToggleGroup.ToggleGroupItem>

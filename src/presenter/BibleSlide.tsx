@@ -1,5 +1,6 @@
 import { BookOpen } from 'lucide-react';
 import { t } from '../i18n.js';
+import { displayVersion } from '../lib/utils.js';
 import { useBibleStore } from '../store.js';
 
 interface BibleSlideProps {
@@ -52,7 +53,7 @@ export function BibleSlide({ data }: BibleSlideProps) {
         className="relative z-10 mb-8 text-sm font-medium tracking-wide text-white/50"
         style={{ fontFamily }}
       >
-        {bookName} {chapter} — {version.toUpperCase()}
+        {bookName} {chapter} — {displayVersion(version)}
       </div>
       <div
         className="relative z-10 max-w-4xl text-center leading-snug text-white"

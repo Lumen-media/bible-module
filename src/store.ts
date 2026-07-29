@@ -109,6 +109,9 @@ export interface BibleState {
   fontList: string[];
   fontSize: number;
   fontFamily: string;
+  fontWeight: string;
+  fontStyle: string;
+  displayedTabs: string[];
 
   projectedData: {
     version: string;
@@ -153,6 +156,9 @@ export interface BibleActions {
   pickBackground: () => void;
   setFontSize: (n: number) => void;
   setFontFamily: (f: string) => void;
+  setFontWeight: (w: string) => void;
+  setFontStyle: (s: string) => void;
+  setDisplayedTabs: (tabs: string[]) => void;
   loadFonts: () => Promise<void>;
   setProjectedData: (
     data: {
@@ -232,6 +238,9 @@ export const useBibleStore = create<BibleStore>((set, get) => ({
   fontList: ['Inter', 'Georgia', 'Times New Roman', 'Arial', 'Verdana'],
   fontSize: 36,
   fontFamily: 'Inter',
+  fontWeight: 'Medium',
+  fontStyle: 'Normal',
+  displayedTabs: [],
 
   projectedData: null,
 
@@ -344,15 +353,27 @@ export const useBibleStore = create<BibleStore>((set, get) => ({
     let restoredBg: SelectedBackground | null = null;
     let restoredFontSize = 36;
     let restoredFontFamily = 'Inter';
+    let restoredFontWeight = 'Medium';
+    let restoredFontStyle = 'Normal';
+    let restoredDisplayedTabs: string[] | undefined;
+    let restoredVersion: string | undefined;
     try {
       const s = await json.get<{
         background: SelectedBackground | null;
         fontSize: number;
         fontFamily: string;
+        fontWeight: string;
+        fontStyle: string;
+        displayedTabs?: string[];
+        version?: string;
       }>('bibleSettings');
       if (s?.background) restoredBg = s.background;
       if (s?.fontSize) restoredFontSize = s.fontSize;
       if (s?.fontFamily) restoredFontFamily = s.fontFamily;
+      if (s?.fontWeight) restoredFontWeight = s.fontWeight;
+      if (s?.fontStyle) restoredFontStyle = s.fontStyle;
+      if (s?.displayedTabs) restoredDisplayedTabs = s.displayedTabs;
+      if (s?.version) restoredVersion = s.version;
     } catch {}
 
     let profileBg: SelectedBackground | { src: string; type: string; name: string } | null =
@@ -375,16 +396,34 @@ export const useBibleStore = create<BibleStore>((set, get) => ({
 
     const pending: Partial<BibleState> = {};
 
-    if (downloadedList.length > 0) {
+    if (restoredVersion && downloadedList.includes(restoredVersion)) {
+      pending.version = restoredVersion;
+    } else if (downloadedList.length > 0) {
       pending.version = downloadedList[0];
     }
 
-    let needsChapterLoad: { bookId: string; chapter: number } | null = null;
+    if (restoredDisplayedTabs) {
+      const valid = restoredDisplayedTabs.filter((id) => downloadedList.includes(id));
+      if (valid.length > 0) {
+        pending.displayedTabs = valid;
+      }
+    }
+
+    if (!pending.displayedTabs || pending.displayedTabs.length === 0) {
+      const defaults = getDefaultVersions(navigator.language);
+      pending.displayedTabs = defaults.filter((id) => downloadedList.includes(id)).slice(0, 3);
+      if (pending.displayedTabs.length === 0) {
+        pending.displayedTabs = downloadedList.slice(0, 3);
+      }
+    }
+
+    let needsChapterLoad: { bookId: string; chapter: number; verse?: number } | null = null;
     if (lastPos) {
       const book = BOOKS.find((b) => b.id === lastPos.bookId);
       if (book && lastPos.chapter >= 1 && lastPos.chapter <= book.chapters) {
         pending.selectedBook = book;
         pending.chapter = lastPos.chapter;
+        pending.selectedVerse = lastPos.verse ?? 1;
         needsChapterLoad = lastPos;
       }
     }
@@ -393,6 +432,8 @@ export const useBibleStore = create<BibleStore>((set, get) => ({
     if (restoredBg) pending.background = restoredBg;
     pending.fontSize = restoredFontSize;
     pending.fontFamily = restoredFontFamily;
+    pending.fontWeight = restoredFontWeight;
+    pending.fontStyle = restoredFontStyle;
     if (profileBg) pending.profileBackground = profileBg as SelectedBackground;
 
     if (cachedFonts.length > 0) {
@@ -432,8 +473,11 @@ export const useBibleStore = create<BibleStore>((set, get) => ({
   },
 
   setVersion: async (version) => {
-    const { selectedBook, chapter } = get();
+    const { selectedBook, chapter, json, background, fontSize, fontFamily, fontWeight, fontStyle, displayedTabs } = get();
     set({ version, verses: null });
+    if (json) {
+      json.set('bibleSettings', { background, fontSize, fontFamily, fontWeight, fontStyle, displayedTabs, version }).catch(() => {});
+    }
     if (selectedBook) {
       get().loadChapter(selectedBook.id, chapter);
     }
@@ -444,8 +488,12 @@ export const useBibleStore = create<BibleStore>((set, get) => ({
   setTab: (tab) => set({ tab }),
 
   selectBook: (book) => {
+    const { json } = get();
     set({ selectedBook: book, chapter: 1, verses: null, selectedVerse: 1 });
     get().loadChapter(book.id, 1);
+    if (json) {
+      setLastPosition(json, { bookId: book.id, chapter: 1, verse: 1 });
+    }
   },
 
   setChapter: (chapter) => {
@@ -454,7 +502,7 @@ export const useBibleStore = create<BibleStore>((set, get) => ({
     set({ chapter, verses: null, selectedVerse: 1 });
     get().loadChapter(selectedBook.id, chapter);
     if (json) {
-      setLastPosition(json, { bookId: selectedBook.id, chapter });
+      setLastPosition(json, { bookId: selectedBook.id, chapter, verse: 1 });
     }
   },
 
@@ -468,14 +516,21 @@ export const useBibleStore = create<BibleStore>((set, get) => ({
 
   goTo: (book, chapter, verse) => {
     const { json } = get();
-    set({ selectedBook: book, chapter, verses: null, selectedVerse: verse ?? 1 });
+    const v = verse ?? 1;
+    set({ selectedBook: book, chapter, verses: null, selectedVerse: v });
     get().loadChapter(book.id, chapter);
     if (json) {
-      setLastPosition(json, { bookId: book.id, chapter });
+      setLastPosition(json, { bookId: book.id, chapter, verse: v });
     }
   },
 
-  setSelectedVerse: (verse) => set({ selectedVerse: verse }),
+  setSelectedVerse: (verse) => {
+    const { json, selectedBook, chapter } = get();
+    set({ selectedVerse: verse });
+    if (json && selectedBook && verse) {
+      setLastPosition(json, { bookId: selectedBook.id, chapter, verse });
+    }
+  },
 
   loadChapter: async (book, chapter) => {
     const { sqlite, version } = get();
@@ -589,10 +644,10 @@ export const useBibleStore = create<BibleStore>((set, get) => ({
   },
 
   setBackground: (bg) => {
-    const { json, fontSize, fontFamily } = get();
+    const { json, fontSize, fontFamily, fontWeight, fontStyle, displayedTabs, version } = get();
     set({ background: bg });
     if (json) {
-      json.set('bibleSettings', { background: bg, fontSize, fontFamily }).catch(() => {});
+      json.set('bibleSettings', { background: bg, fontSize, fontFamily, fontWeight, fontStyle, displayedTabs, version }).catch(() => {});
     }
   },
 
@@ -605,18 +660,42 @@ export const useBibleStore = create<BibleStore>((set, get) => ({
   },
 
   setFontSize: (n) => {
-    const { json, background, fontFamily } = get();
+    const { json, background, fontFamily, fontWeight, fontStyle, displayedTabs, version } = get();
     set({ fontSize: n });
     if (json) {
-      json.set('bibleSettings', { background, fontSize: n, fontFamily }).catch(() => {});
+      json.set('bibleSettings', { background, fontSize: n, fontFamily, fontWeight, fontStyle, displayedTabs, version }).catch(() => {});
     }
   },
 
   setFontFamily: (f) => {
-    const { json, background, fontSize } = get();
+    const { json, background, fontSize, fontWeight, fontStyle, displayedTabs, version } = get();
     set({ fontFamily: f });
     if (json) {
-      json.set('bibleSettings', { background, fontSize, fontFamily: f }).catch(() => {});
+      json.set('bibleSettings', { background, fontSize, fontFamily: f, fontWeight, fontStyle, displayedTabs, version }).catch(() => {});
+    }
+  },
+
+  setFontWeight: (w) => {
+    const { json, background, fontSize, fontFamily, fontStyle, displayedTabs, version } = get();
+    set({ fontWeight: w });
+    if (json) {
+      json.set('bibleSettings', { background, fontSize, fontFamily, fontWeight: w, fontStyle, displayedTabs, version }).catch(() => {});
+    }
+  },
+
+  setFontStyle: (s) => {
+    const { json, background, fontSize, fontFamily, fontWeight, displayedTabs, version } = get();
+    set({ fontStyle: s });
+    if (json) {
+      json.set('bibleSettings', { background, fontSize, fontFamily, fontWeight, fontStyle: s, displayedTabs, version }).catch(() => {});
+    }
+  },
+
+  setDisplayedTabs: (tabs) => {
+    const { json, background, fontSize, fontFamily, fontWeight, fontStyle, version } = get();
+    set({ displayedTabs: tabs });
+    if (json) {
+      json.set('bibleSettings', { background, fontSize, fontFamily, fontWeight, fontStyle, displayedTabs: tabs, version }).catch(() => {});
     }
   },
 

@@ -2,6 +2,7 @@ import { Progress } from '@lumen-media/module-sdk/ui';
 import { Download } from 'lucide-react';
 import { memo } from 'react';
 import type { TFunction } from '../i18n.js';
+import { displayVersion } from '../lib/utils.js';
 
 interface DownloadProgressProps {
   visible: boolean;
@@ -28,7 +29,7 @@ export const DownloadProgress = memo(function DownloadProgress({
         <Download className="h-3.5 w-3.5 animate-pulse" />
         <span>
           {t('bible.download-progress', {
-            version: version.toUpperCase(),
+            version: displayVersion(version),
             current: String(current),
             total: String(total),
           })}

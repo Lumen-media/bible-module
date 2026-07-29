@@ -5,6 +5,7 @@ import { memo, useRef, useState } from 'react';
 import { parseReference } from '../data/ref.js';
 import { BOOKS } from '../data/store.js';
 import type { TFunction } from '../i18n.js';
+import { displayVersion } from '../lib/utils.js';
 import { useBibleStore } from '../store.js';
 
 interface SearchPanelProps {
@@ -155,7 +156,7 @@ export const SearchPanel = memo(function SearchPanel({ t }: SearchPanelProps) {
                     {r.book} {r.chapter}:{r.verse}
                   </span>
                   <span className="ml-2 text-xs text-muted-foreground">
-                    {r.version.toUpperCase()}
+                    {displayVersion(r.version)}
                   </span>
                   <p className="mt-0.5 line-clamp-2 text-muted-foreground">{r.text}</p>
                 </button>
