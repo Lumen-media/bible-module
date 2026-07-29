@@ -113,6 +113,12 @@ export interface BibleState {
   fontStyle: string;
   displayedTabs: string[];
 
+  uppercase: boolean;
+  showReferenceOnly: boolean;
+  showVersion: boolean;
+  abbreviatedBooks: boolean;
+  fontColor: string;
+
   projectedData: {
     version: string;
     book: string;
@@ -120,6 +126,11 @@ export interface BibleState {
     chapter: number;
     verses: number[];
     text: string;
+    uppercase: boolean;
+    showReferenceOnly: boolean;
+    showVersion: boolean;
+    abbreviatedBooks: boolean;
+    fontColor: string;
   } | null;
 }
 
@@ -159,6 +170,11 @@ export interface BibleActions {
   setFontWeight: (w: string) => void;
   setFontStyle: (s: string) => void;
   setDisplayedTabs: (tabs: string[]) => void;
+  setUppercase: (v: boolean) => void;
+  setShowReferenceOnly: (v: boolean) => void;
+  setShowVersion: (v: boolean) => void;
+  setAbbreviatedBooks: (v: boolean) => void;
+  setFontColor: (c: string) => void;
   loadFonts: () => Promise<void>;
   setProjectedData: (
     data: {
@@ -241,6 +257,11 @@ export const useBibleStore = create<BibleStore>((set, get) => ({
   fontWeight: 'Medium',
   fontStyle: 'Normal',
   displayedTabs: [],
+  uppercase: false,
+  showReferenceOnly: false,
+  showVersion: true,
+  abbreviatedBooks: false,
+  fontColor: '#FFFFFF',
 
   projectedData: null,
 
@@ -357,6 +378,11 @@ export const useBibleStore = create<BibleStore>((set, get) => ({
     let restoredFontStyle = 'Normal';
     let restoredDisplayedTabs: string[] | undefined;
     let restoredVersion: string | undefined;
+    let restoredUppercase: boolean | undefined;
+    let restoredShowReferenceOnly: boolean | undefined;
+    let restoredShowVersion: boolean | undefined;
+    let restoredAbbreviatedBooks: boolean | undefined;
+    let restoredFontColor: string | undefined;
     try {
       const s = await json.get<{
         background: SelectedBackground | null;
@@ -366,6 +392,11 @@ export const useBibleStore = create<BibleStore>((set, get) => ({
         fontStyle: string;
         displayedTabs?: string[];
         version?: string;
+        uppercase?: boolean;
+        showReferenceOnly?: boolean;
+        showVersion?: boolean;
+        abbreviatedBooks?: boolean;
+        fontColor?: string;
       }>('bibleSettings');
       if (s?.background) restoredBg = s.background;
       if (s?.fontSize) restoredFontSize = s.fontSize;
@@ -374,6 +405,11 @@ export const useBibleStore = create<BibleStore>((set, get) => ({
       if (s?.fontStyle) restoredFontStyle = s.fontStyle;
       if (s?.displayedTabs) restoredDisplayedTabs = s.displayedTabs;
       if (s?.version) restoredVersion = s.version;
+      if (s?.uppercase != null) restoredUppercase = s.uppercase;
+      if (s?.showReferenceOnly != null) restoredShowReferenceOnly = s.showReferenceOnly;
+      if (s?.showVersion != null) restoredShowVersion = s.showVersion;
+      if (s?.abbreviatedBooks != null) restoredAbbreviatedBooks = s.abbreviatedBooks;
+      if (s?.fontColor != null) restoredFontColor = s.fontColor;
     } catch {}
 
     let profileBg: SelectedBackground | { src: string; type: string; name: string } | null =
@@ -434,6 +470,11 @@ export const useBibleStore = create<BibleStore>((set, get) => ({
     pending.fontFamily = restoredFontFamily;
     pending.fontWeight = restoredFontWeight;
     pending.fontStyle = restoredFontStyle;
+    if (restoredUppercase != null) pending.uppercase = restoredUppercase;
+    if (restoredShowReferenceOnly != null) pending.showReferenceOnly = restoredShowReferenceOnly;
+    if (restoredShowVersion != null) pending.showVersion = restoredShowVersion;
+    if (restoredAbbreviatedBooks != null) pending.abbreviatedBooks = restoredAbbreviatedBooks;
+    if (restoredFontColor != null) pending.fontColor = restoredFontColor;
     if (profileBg) pending.profileBackground = profileBg as SelectedBackground;
 
     if (cachedFonts.length > 0) {
@@ -473,10 +514,10 @@ export const useBibleStore = create<BibleStore>((set, get) => ({
   },
 
   setVersion: async (version) => {
-    const { selectedBook, chapter, json, background, fontSize, fontFamily, fontWeight, fontStyle, displayedTabs } = get();
+    const { selectedBook, chapter, json, background, fontSize, fontFamily, fontWeight, fontStyle, displayedTabs, uppercase, showReferenceOnly, showVersion, abbreviatedBooks, fontColor } = get();
     set({ version, verses: null });
     if (json) {
-      json.set('bibleSettings', { background, fontSize, fontFamily, fontWeight, fontStyle, displayedTabs, version }).catch(() => {});
+      json.set('bibleSettings', { background, fontSize, fontFamily, fontWeight, fontStyle, displayedTabs, version, uppercase, showReferenceOnly, showVersion, abbreviatedBooks, fontColor }).catch(() => {});
     }
     if (selectedBook) {
       get().loadChapter(selectedBook.id, chapter);
@@ -644,10 +685,10 @@ export const useBibleStore = create<BibleStore>((set, get) => ({
   },
 
   setBackground: (bg) => {
-    const { json, fontSize, fontFamily, fontWeight, fontStyle, displayedTabs, version } = get();
+    const { json, fontSize, fontFamily, fontWeight, fontStyle, displayedTabs, version, uppercase, showReferenceOnly, showVersion, abbreviatedBooks, fontColor } = get();
     set({ background: bg });
     if (json) {
-      json.set('bibleSettings', { background: bg, fontSize, fontFamily, fontWeight, fontStyle, displayedTabs, version }).catch(() => {});
+      json.set('bibleSettings', { background: bg, fontSize, fontFamily, fontWeight, fontStyle, displayedTabs, version, uppercase, showReferenceOnly, showVersion, abbreviatedBooks, fontColor }).catch(() => {});
     }
   },
 
@@ -660,42 +701,82 @@ export const useBibleStore = create<BibleStore>((set, get) => ({
   },
 
   setFontSize: (n) => {
-    const { json, background, fontFamily, fontWeight, fontStyle, displayedTabs, version } = get();
+    const { json, background, fontFamily, fontWeight, fontStyle, displayedTabs, version, uppercase, showReferenceOnly, showVersion, abbreviatedBooks, fontColor } = get();
     set({ fontSize: n });
     if (json) {
-      json.set('bibleSettings', { background, fontSize: n, fontFamily, fontWeight, fontStyle, displayedTabs, version }).catch(() => {});
+      json.set('bibleSettings', { background, fontSize: n, fontFamily, fontWeight, fontStyle, displayedTabs, version, uppercase, showReferenceOnly, showVersion, abbreviatedBooks, fontColor }).catch(() => {});
     }
   },
 
   setFontFamily: (f) => {
-    const { json, background, fontSize, fontWeight, fontStyle, displayedTabs, version } = get();
+    const { json, background, fontSize, fontWeight, fontStyle, displayedTabs, version, uppercase, showReferenceOnly, showVersion, abbreviatedBooks, fontColor } = get();
     set({ fontFamily: f });
     if (json) {
-      json.set('bibleSettings', { background, fontSize, fontFamily: f, fontWeight, fontStyle, displayedTabs, version }).catch(() => {});
+      json.set('bibleSettings', { background, fontSize, fontFamily: f, fontWeight, fontStyle, displayedTabs, version, uppercase, showReferenceOnly, showVersion, abbreviatedBooks, fontColor }).catch(() => {});
     }
   },
 
   setFontWeight: (w) => {
-    const { json, background, fontSize, fontFamily, fontStyle, displayedTabs, version } = get();
+    const { json, background, fontSize, fontFamily, fontStyle, displayedTabs, version, uppercase, showReferenceOnly, showVersion, abbreviatedBooks, fontColor } = get();
     set({ fontWeight: w });
     if (json) {
-      json.set('bibleSettings', { background, fontSize, fontFamily, fontWeight: w, fontStyle, displayedTabs, version }).catch(() => {});
+      json.set('bibleSettings', { background, fontSize, fontFamily, fontWeight: w, fontStyle, displayedTabs, version, uppercase, showReferenceOnly, showVersion, abbreviatedBooks, fontColor }).catch(() => {});
     }
   },
 
   setFontStyle: (s) => {
-    const { json, background, fontSize, fontFamily, fontWeight, displayedTabs, version } = get();
+    const { json, background, fontSize, fontFamily, fontWeight, displayedTabs, version, uppercase, showReferenceOnly, showVersion, abbreviatedBooks, fontColor } = get();
     set({ fontStyle: s });
     if (json) {
-      json.set('bibleSettings', { background, fontSize, fontFamily, fontWeight, fontStyle: s, displayedTabs, version }).catch(() => {});
+      json.set('bibleSettings', { background, fontSize, fontFamily, fontWeight, fontStyle: s, displayedTabs, version, uppercase, showReferenceOnly, showVersion, abbreviatedBooks, fontColor }).catch(() => {});
     }
   },
 
   setDisplayedTabs: (tabs) => {
-    const { json, background, fontSize, fontFamily, fontWeight, fontStyle, version } = get();
+    const { json, background, fontSize, fontFamily, fontWeight, fontStyle, version, uppercase, showReferenceOnly, showVersion, abbreviatedBooks, fontColor } = get();
     set({ displayedTabs: tabs });
     if (json) {
-      json.set('bibleSettings', { background, fontSize, fontFamily, fontWeight, fontStyle, displayedTabs: tabs, version }).catch(() => {});
+      json.set('bibleSettings', { background, fontSize, fontFamily, fontWeight, fontStyle, displayedTabs: tabs, version, uppercase, showReferenceOnly, showVersion, abbreviatedBooks, fontColor }).catch(() => {});
+    }
+  },
+
+  setUppercase: (v) => {
+    const { json, background, fontSize, fontFamily, fontWeight, fontStyle, displayedTabs, version, showReferenceOnly, showVersion, abbreviatedBooks, fontColor } = get();
+    set({ uppercase: v });
+    if (json) {
+      json.set('bibleSettings', { background, fontSize, fontFamily, fontWeight, fontStyle, displayedTabs, version, uppercase: v, showReferenceOnly, showVersion, abbreviatedBooks, fontColor }).catch(() => {});
+    }
+  },
+
+  setShowReferenceOnly: (v) => {
+    const { json, background, fontSize, fontFamily, fontWeight, fontStyle, displayedTabs, version, uppercase, showVersion, abbreviatedBooks, fontColor } = get();
+    set({ showReferenceOnly: v });
+    if (json) {
+      json.set('bibleSettings', { background, fontSize, fontFamily, fontWeight, fontStyle, displayedTabs, version, uppercase, showReferenceOnly: v, showVersion, abbreviatedBooks, fontColor }).catch(() => {});
+    }
+  },
+
+  setShowVersion: (v) => {
+    const { json, background, fontSize, fontFamily, fontWeight, fontStyle, displayedTabs, version, uppercase, showReferenceOnly, abbreviatedBooks, fontColor } = get();
+    set({ showVersion: v });
+    if (json) {
+      json.set('bibleSettings', { background, fontSize, fontFamily, fontWeight, fontStyle, displayedTabs, version, uppercase, showReferenceOnly, showVersion: v, abbreviatedBooks, fontColor }).catch(() => {});
+    }
+  },
+
+  setAbbreviatedBooks: (v) => {
+    const { json, background, fontSize, fontFamily, fontWeight, fontStyle, displayedTabs, version, uppercase, showReferenceOnly, showVersion, fontColor } = get();
+    set({ abbreviatedBooks: v });
+    if (json) {
+      json.set('bibleSettings', { background, fontSize, fontFamily, fontWeight, fontStyle, displayedTabs, version, uppercase, showReferenceOnly, showVersion, abbreviatedBooks: v, fontColor }).catch(() => {});
+    }
+  },
+
+  setFontColor: (c) => {
+    const { json, background, fontSize, fontFamily, fontWeight, fontStyle, displayedTabs, version, uppercase, showReferenceOnly, showVersion, abbreviatedBooks } = get();
+    set({ fontColor: c });
+    if (json) {
+      json.set('bibleSettings', { background, fontSize, fontFamily, fontWeight, fontStyle, displayedTabs, version, uppercase, showReferenceOnly, showVersion, abbreviatedBooks, fontColor: c }).catch(() => {});
     }
   },
 

@@ -366,7 +366,7 @@ export function BibleController({ close, goToBook, goToChapter, goToVerse }: Bib
                               }}
                               className="shrink-0 rounded p-0.5 text-muted-foreground hover:text-foreground"
                             >
-                              <Check className={cn('h-3.5 w-3.5', isCurrent && 'text-primary')} />
+                              <Check className={cn('h-3.5 w-3.5', { 'text-primary': isCurrent })} />
                             </button>
                           ) : (
                             <button

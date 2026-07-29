@@ -1,6 +1,6 @@
 import { BookOpen } from 'lucide-react';
-import { t } from '../i18n.js';
-import { displayVersion } from '../lib/utils.js';
+import { type TranslationKey, t } from '../i18n.js';
+import { cn, displayVersion } from '../lib/utils.js';
 import { useBibleStore } from '../store.js';
 
 interface BibleSlideProps {
@@ -11,6 +11,11 @@ interface BibleSlideProps {
     chapter: number;
     verses: number[];
     text: string;
+    uppercase: boolean;
+    showReferenceOnly: boolean;
+    showVersion: boolean;
+    abbreviatedBooks: boolean;
+    fontColor: string;
   } | null;
 }
 
@@ -38,7 +43,11 @@ export function BibleSlide({ data }: BibleSlideProps) {
     );
   }
 
-  const { bookName, chapter, version, text } = data;
+  const { book, bookName, chapter, version, verses, text, uppercase, showReferenceOnly, showVersion, abbreviatedBooks, fontColor } = data;
+  const label = abbreviatedBooks
+    ? t(`bookAbbr.${book}` as TranslationKey)
+    : bookName;
+  const showVersionLabel = showVersion && !showReferenceOnly;
 
   return (
     <div className="relative flex h-full w-full flex-col items-center justify-center bg-black px-16">
@@ -49,22 +58,52 @@ export function BibleSlide({ data }: BibleSlideProps) {
           className="absolute inset-0 h-full w-full object-cover opacity-20"
         />
       )}
-      <div
-        className="relative z-10 mb-8 text-sm font-medium tracking-wide text-white/50"
-        style={{ fontFamily }}
-      >
-        {bookName} {chapter} — {displayVersion(version)}
-      </div>
-      <div
-        className="relative z-10 max-w-4xl text-center leading-snug text-white"
-        style={{ fontSize: `${fontSize}px`, fontFamily }}
-      >
-        {text.split('\n').map((line) => (
-          <p key={line.slice(0, 40)} className="mb-4 last:mb-0">
-            {line}
-          </p>
-        ))}
-      </div>
+      {showReferenceOnly ? (
+        <div className="relative z-10 flex items-center gap-6 scale-400">
+          <div className="flex min-w-0 flex-col items-center leading-tight" style={{ fontFamily }}>
+            <span
+              className={cn(
+                'truncate text-4xl font-bold',
+                { uppercase }
+              )}
+              style={{ color: fontColor }}
+            >
+              {label} {chapter}
+            </span>
+            {showVersion && (
+              <span className="truncate text-xl self-start" style={{ color: `${fontColor}99` }}>
+                {displayVersion(version)}
+              </span>
+            )}
+          </div>
+          <div className="h-16 w-px shrink-0" style={{ backgroundColor: `${fontColor}40` }} />
+          <span className="shrink-0 text-7xl font-bold" style={{ color: fontColor }}>
+            {verses[0]}{verses.length > 1 ? `-${verses[verses.length - 1]}` : ''}
+          </span>
+        </div>
+      ) : (
+        <>
+          <div
+            className="relative z-10 mb-8 text-sm font-medium tracking-wide"
+            style={{ fontFamily, color: `${fontColor}99` }}
+          >
+            {label} {chapter}{showVersionLabel ? ` — ${displayVersion(version)}` : ''}
+          </div>
+          <div
+            className={cn(
+              'relative z-10 max-w-4xl text-center leading-snug',
+              { 'uppercase': uppercase }
+            )}
+            style={{ fontSize: `${fontSize}px`, fontFamily, color: fontColor }}
+          >
+            {text.split('\n').map((line) => (
+              <p key={line.slice(0, 40)} className="mb-4 last:mb-0">
+                {line}
+              </p>
+            ))}
+          </div>
+        </>
+      )}
     </div>
   );
 }

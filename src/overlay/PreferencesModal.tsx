@@ -4,12 +4,16 @@ import {
   Card,
   Combobox,
   Dialog,
+  Popover,
   ScrollArea,
   Separator,
+  Switch,
   ToggleGroup,
 } from '@lumen-media/module-sdk/ui';
 import { Database, Download, HardDrive, Palette, Type } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { HexColorPicker } from 'react-colorful';
+import { useDebounceCallback } from 'usehooks-ts';
 import { getDownloadedVersions } from '../data/store.js';
 import { type TranslationKey, t } from '../i18n.js';
 import { cn, displayVersion } from '../lib/utils.js';
@@ -49,6 +53,20 @@ export const PreferencesModal = ({ children }: { children: React.ReactNode }) =>
   const fontStyle = useBibleStore((s) => s.fontStyle);
   const setFontWeight = useBibleStore((s) => s.setFontWeight);
   const setFontStyle = useBibleStore((s) => s.setFontStyle);
+  const uppercase = useBibleStore((s) => s.uppercase);
+  const showReferenceOnly = useBibleStore((s) => s.showReferenceOnly);
+  const showVersion = useBibleStore((s) => s.showVersion);
+  const abbreviatedBooks = useBibleStore((s) => s.abbreviatedBooks);
+  const setUppercase = useBibleStore((s) => s.setUppercase);
+  const setShowReferenceOnly = useBibleStore((s) => s.setShowReferenceOnly);
+  const setShowVersion = useBibleStore((s) => s.setShowVersion);
+  const setAbbreviatedBooks = useBibleStore((s) => s.setAbbreviatedBooks);
+  const fontColor = useBibleStore((s) => s.fontColor);
+  const setFontColor = useBibleStore((s) => s.setFontColor);
+  const selectedBook = useBibleStore((s) => s.selectedBook);
+  const chapter = useBibleStore((s) => s.chapter);
+  const selectedVerse = useBibleStore((s) => s.selectedVerse);
+  const verses = useBibleStore((s) => s.verses);
   const background = useBibleStore((s) => s.background);
   const profileBackground = useBibleStore((s) => s.profileBackground);
   const setBackground = useBibleStore((s) => s.setBackground);
@@ -72,6 +90,8 @@ export const PreferencesModal = ({ children }: { children: React.ReactNode }) =>
 
   const [fontInput, setFontInput] = useState(fontFamily);
   const [localFontSize, setLocalFontSize] = useState(String(fontSize));
+  const [localFontColor, setLocalFontColor] = useState(fontColor);
+  const debouncedSetFontColor = useDebounceCallback(setFontColor, 200);
 
   useEffect(() => {
     setFontInput(fontFamily);
@@ -80,6 +100,10 @@ export const PreferencesModal = ({ children }: { children: React.ReactNode }) =>
   useEffect(() => {
     setLocalFontSize(String(fontSize));
   }, [fontSize]);
+
+  useEffect(() => {
+    setLocalFontColor(fontColor);
+  }, [fontColor]);
 
   useEffect(() => {
     if (!json) return;
@@ -171,12 +195,13 @@ export const PreferencesModal = ({ children }: { children: React.ReactNode }) =>
   }, [fs, json, clearing]);
 
   const previewSize = Math.max(14, Math.min(48, Math.round(fontSize * 0.6)));
+  const resolvedBg = background ?? profileBackground;
 
   const renderContent = () => {
     switch (section) {
       case 'typography':
         return (
-          <div className="space-y-4 pb-8">
+          <div className="space-y-4 pb-4">
             <div>
               <h3 className="text-base font-semibold text-foreground">
                 {t('bible.typography' as TranslationKey)}
@@ -191,35 +216,110 @@ export const PreferencesModal = ({ children }: { children: React.ReactNode }) =>
                 <span className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
                   {t('bible.live-preview' as TranslationKey)}
                 </span>
-                <div className="flex flex-wrap items-center gap-2 text-[11px] text-muted-foreground">
-                  <Badge variant="secondary">John</Badge>
-                  <span className="opacity-60">|</span>
-                  <Badge variant="secondary">Chapter 3</Badge>
-                  <span className="opacity-60">|</span>
-                  <Badge variant="secondary">Verse 16</Badge>
-                  <Badge className="ml-auto">{displayVersion(version)}</Badge>
-                </div>
-                <div className="flex min-h-40 items-center justify-center rounded-md border border-border bg-muted/30 p-6 aspect-video">
-                  <p
-                    className="text-center text-foreground"
-                    style={{
-                      fontFamily,
-                      fontSize: `${previewSize}px`,
-                      fontWeight:
-                        fontWeight === 'Light'
-                          ? 300
-                          : fontWeight === 'Regular'
-                            ? 400
-                            : fontWeight === 'Medium'
-                              ? 500
-                              : 700,
-                      fontStyle: fontStyle === 'Italic' ? 'italic' : 'normal',
-                      lineHeight: 1.4,
-                    }}
-                  >
-                    {SAMPLE_VERSE}
-                  </p>
-                </div>
+                {(() => {
+                  const bookName = selectedBook
+                    ? abbreviatedBooks
+                      ? t(`bookAbbr.${selectedBook.id}` as TranslationKey)
+                      : t(`book.${selectedBook.id}` as TranslationKey)
+                    : 'John';
+                  const verseNum = selectedVerse ?? 16;
+                  const verseText = verses?.find((v) => v.number === verseNum)?.text;
+                  const previewText = verseText ?? SAMPLE_VERSE;
+
+                  if (showReferenceOnly) {
+                    return (
+                      <div className="relative flex min-h-40 items-center justify-center overflow-hidden rounded-md border border-border bg-black p-6 aspect-video">
+                        {resolvedBg ? (
+                          <img
+                            src={resolvedBg.src}
+                            alt=""
+                            className="absolute inset-0 h-full w-full object-cover"
+                            style={{ opacity: 0.5 }}
+                          />
+                        ) : (
+                          <div className="absolute inset-0 bg-linear-to-br from-card to-background" />
+                        )}
+                        <div className="relative z-10 flex items-center gap-6 scale-150">
+                          <div
+                            className="flex min-w-0 flex-col items-center leading-tight"
+                            style={{ fontFamily }}
+                          >
+                            <span
+                              className={cn('truncate text-4xl font-bold', { uppercase })}
+                              style={{ color: fontColor }}
+                            >
+                              {bookName} {chapter}
+                            </span>
+                            {showVersion && (
+                              <span
+                                className="truncate text-xl self-start"
+                                style={{ color: `${fontColor}99` }}
+                              >
+                                {displayVersion(version)}
+                              </span>
+                            )}
+                          </div>
+                          <div
+                            className="h-16 w-px shrink-0"
+                            style={{ backgroundColor: `${fontColor}40` }}
+                          />
+                          <span
+                            className="shrink-0 text-7xl font-bold"
+                            style={{ color: fontColor }}
+                          >
+                            {verseNum}
+                          </span>
+                        </div>
+                      </div>
+                    );
+                  }
+
+                  return (
+                    <>
+                      <div className="flex flex-wrap items-center gap-2 text-[11px] text-muted-foreground">
+                        <Badge variant="secondary">{bookName}</Badge>
+                        <span className="opacity-60">|</span>
+                        <Badge variant="secondary">
+                          {t('bible.chapter' as TranslationKey)} {chapter}
+                        </Badge>
+                        <span className="opacity-60">|</span>
+                        <Badge variant="secondary">
+                          {t('bible.verse' as TranslationKey)} {verseNum}
+                        </Badge>
+                        {showVersion && (
+                          <Badge className="ml-auto">{displayVersion(version)}</Badge>
+                        )}
+                      </div>
+                      <div className="relative flex min-h-40 items-center justify-center overflow-hidden rounded-md border border-border bg-black p-6 aspect-video">
+                        {resolvedBg && (
+                          <img
+                            src={resolvedBg.src}
+                            alt=""
+                            className="absolute inset-0 h-full w-full object-cover opacity-20"
+                          />
+                        )}
+                        <p
+                          className={cn(
+                            'relative z-10 text-center leading-[1.4]',
+                            { uppercase: uppercase },
+                            { 'font-light': fontWeight === 'Light' },
+                            { 'font-normal': fontWeight === 'Regular' },
+                            { 'font-medium': fontWeight === 'Medium' },
+                            { 'font-bold': fontWeight === 'Bold' },
+                            { italic: fontStyle === 'Italic' }
+                          )}
+                          style={{
+                            fontFamily,
+                            fontSize: `${previewSize}px`,
+                            color: fontColor,
+                          }}
+                        >
+                          {previewText}
+                        </p>
+                      </div>
+                    </>
+                  );
+                })()}
               </Card.CardContent>
             </Card>
 
@@ -294,11 +394,7 @@ export const PreferencesModal = ({ children }: { children: React.ReactNode }) =>
                     className="bg-background w-fit justify-between overflow-hidden"
                   >
                     {FONT_WEIGHTS.map((w) => (
-                      <ToggleGroup.ToggleGroupItem
-                        key={w}
-                        value={w}
-                        className="flex-1 px-4"
-                      >
+                      <ToggleGroup.ToggleGroupItem key={w} value={w} className="flex-1 px-4">
                         {w}
                       </ToggleGroup.ToggleGroupItem>
                     ))}
@@ -330,10 +426,7 @@ export const PreferencesModal = ({ children }: { children: React.ReactNode }) =>
                       <ToggleGroup.ToggleGroupItem
                         key={s}
                         value={s}
-                        className={cn(
-                          'flex-1 px-4',
-                          s === 'Italic' && 'italic'
-                        )}
+                        className={cn('flex-1 px-4', { italic: s === 'Italic' })}
                       >
                         {s}
                       </ToggleGroup.ToggleGroupItem>
@@ -379,6 +472,113 @@ export const PreferencesModal = ({ children }: { children: React.ReactNode }) =>
                       className="h-8 w-full bg-transparent px-2 text-xs outline-none [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
                     />
                     <span className="pr-2 text-[11px] text-muted-foreground">px</span>
+                  </div>
+                </div>
+
+                <Separator />
+
+                <div className="flex items-center justify-between gap-4">
+                  <div className="min-w-0">
+                    <p className="text-sm font-medium text-foreground">
+                      {t('bible.uppercase' as TranslationKey)}
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      {t('bible.uppercase-desc' as TranslationKey)}
+                    </p>
+                  </div>
+                  <Switch checked={uppercase} onCheckedChange={setUppercase} />
+                </div>
+
+                <Separator />
+
+                <div className="flex items-center justify-between gap-4">
+                  <div className="min-w-0">
+                    <p className="text-sm font-medium text-foreground">
+                      {t('bible.reference-only' as TranslationKey)}
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      {t('bible.reference-only-desc' as TranslationKey)}
+                    </p>
+                  </div>
+                  <Switch checked={showReferenceOnly} onCheckedChange={setShowReferenceOnly} />
+                </div>
+
+                <Separator />
+
+                <div className="flex items-center justify-between gap-4">
+                  <div className="min-w-0">
+                    <p className="text-sm font-medium text-foreground">
+                      {t('bible.show-version' as TranslationKey)}
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      {t('bible.show-version-desc' as TranslationKey)}
+                    </p>
+                  </div>
+                  <Switch checked={showVersion} onCheckedChange={setShowVersion} />
+                </div>
+
+                <Separator />
+
+                <div className="flex items-center justify-between gap-4">
+                  <div className="min-w-0">
+                    <p className="text-sm font-medium text-foreground">
+                      {t('bible.abbreviated-books' as TranslationKey)}
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      {t('bible.abbreviated-books-desc' as TranslationKey)}
+                    </p>
+                  </div>
+                  <Switch checked={abbreviatedBooks} onCheckedChange={setAbbreviatedBooks} />
+                </div>
+
+                <Separator />
+
+                <div className="flex items-center justify-between gap-4">
+                  <div className="min-w-0">
+                    <p className="text-sm font-medium text-foreground">
+                      {t('bible.font-color' as TranslationKey)}
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      {t('bible.font-color-desc' as TranslationKey)}
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="text"
+                      value={localFontColor}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        if (/^#[0-9a-fA-F]{0,6}$/.test(val)) {
+                          setLocalFontColor(val);
+                          if (/^#[0-9a-fA-F]{6}$/.test(val)) debouncedSetFontColor(val);
+                        }
+                      }}
+                      onBlur={() => {
+                        if (!/^#[0-9a-fA-F]{6}$/.test(localFontColor)) {
+                          setLocalFontColor('#FFFFFF');
+                          setFontColor('#FFFFFF');
+                        }
+                      }}
+                      className="h-8 w-20 rounded-md border border-border bg-background px-2 text-xs font-mono text-foreground outline-none"
+                    />
+                    <Popover>
+                      <Popover.PopoverTrigger>
+                        <button
+                          type="button"
+                          className="h-8 w-8 shrink-0 rounded-md border border-border"
+                          style={{ backgroundColor: localFontColor }}
+                        />
+                      </Popover.PopoverTrigger>
+                      <Popover.PopoverContent className="w-fit p-2" align="end">
+                        <HexColorPicker
+                          color={localFontColor}
+                          onChange={(c) => {
+                            setLocalFontColor(c);
+                            debouncedSetFontColor(c);
+                          }}
+                        />
+                      </Popover.PopoverContent>
+                    </Popover>
                   </div>
                 </div>
               </Card.CardContent>
@@ -625,10 +825,9 @@ export const PreferencesModal = ({ children }: { children: React.ReactNode }) =>
               <Button
                 variant="ghost"
                 onClick={() => setSection('typography')}
-                className={cn(
-                  'w-full justify-start gap-2.5',
-                  section === 'typography' && 'bg-primary/10 text-primary font-medium'
-                )}
+                className={cn('w-full justify-start gap-2.5', {
+                  'bg-primary/10 text-primary font-medium': section === 'typography',
+                })}
               >
                 <Type className="size-4" />
                 {t('bible.typography' as TranslationKey)}
@@ -636,10 +835,9 @@ export const PreferencesModal = ({ children }: { children: React.ReactNode }) =>
               <Button
                 variant="ghost"
                 onClick={() => setSection('theme')}
-                className={cn(
-                  'w-full justify-start gap-2.5',
-                  section === 'theme' && 'bg-primary/10 text-primary font-medium'
-                )}
+                className={cn('w-full justify-start gap-2.5', {
+                  'bg-primary/10 text-primary font-medium': section === 'theme',
+                })}
               >
                 <Palette className="size-4" />
                 {t('bible.theme' as TranslationKey)}
@@ -651,10 +849,9 @@ export const PreferencesModal = ({ children }: { children: React.ReactNode }) =>
               <Button
                 variant="ghost"
                 onClick={() => setSection('downloads')}
-                className={cn(
-                  'w-full justify-start gap-2.5',
-                  section === 'downloads' && 'bg-primary/10 text-primary font-medium'
-                )}
+                className={cn('w-full justify-start gap-2.5', {
+                  'bg-primary/10 text-primary font-medium': section === 'downloads',
+                })}
               >
                 <Download className="size-4" />
                 {t('bible.downloads' as TranslationKey)}
@@ -662,10 +859,9 @@ export const PreferencesModal = ({ children }: { children: React.ReactNode }) =>
               <Button
                 variant="ghost"
                 onClick={() => setSection('cache')}
-                className={cn(
-                  'w-full justify-start gap-2.5',
-                  section === 'cache' && 'bg-primary/10 text-primary font-medium'
-                )}
+                className={cn('w-full justify-start gap-2.5', {
+                  'bg-primary/10 text-primary font-medium': section === 'cache',
+                })}
               >
                 <Database className="size-4" />
                 {t('bible.cache-storage' as TranslationKey)}

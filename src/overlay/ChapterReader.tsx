@@ -52,6 +52,7 @@ export const ChapterReader = memo(function ChapterReader({
 
   const projectVerse = useCallback(
     (v: { number: number; text: string }) => {
+      const { uppercase, showReferenceOnly, showVersion, abbreviatedBooks, fontColor } = useBibleStore.getState();
       const data = {
         version,
         book: book.id,
@@ -59,6 +60,11 @@ export const ChapterReader = memo(function ChapterReader({
         chapter,
         verses: [v.number],
         text: `${v.number} ${v.text}`,
+        uppercase,
+        showReferenceOnly,
+        showVersion,
+        abbreviatedBooks,
+        fontColor,
       };
       try {
         presentation.project('bible-slide', { data });
@@ -88,6 +94,7 @@ export const ChapterReader = memo(function ChapterReader({
 
   function projectAll() {
     if (!verses || verses.length === 0) return;
+    const { uppercase, showReferenceOnly, showVersion, abbreviatedBooks, fontColor } = useBibleStore.getState();
     const data = {
       version,
       book: book.id,
@@ -95,6 +102,11 @@ export const ChapterReader = memo(function ChapterReader({
       chapter,
       verses: verses.map((v) => v.number),
       text: verses.map((v) => `${v.number} ${v.text}`).join('\n'),
+      uppercase,
+      showReferenceOnly,
+      showVersion,
+      abbreviatedBooks,
+      fontColor,
     };
     try {
       presentation.project('bible-slide', { data });
