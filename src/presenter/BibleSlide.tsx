@@ -1,6 +1,8 @@
 import { BookOpen } from 'lucide-react';
+import { useRef } from 'react';
+import { useFitFontSize } from '../hooks/useFitFontSize.js';
 import { type TranslationKey, t } from '../i18n.js';
-import { cn, displayVersion, getReferenceSize } from '../lib/utils.js';
+import { cn, displayVersion } from '../lib/utils.js';
 import { useBibleStore } from '../store.js';
 
 interface BibleSlideProps {
@@ -26,6 +28,13 @@ export function BibleSlide({ data }: BibleSlideProps) {
   const fontFamily = useBibleStore((s) => s.fontFamily);
 
   const resolvedBg = background ?? profileBg;
+
+  const containerRef = useRef<HTMLDivElement>(null);
+  const { effectiveFontSize, effectiveRefSize } = useFitFontSize(
+    containerRef,
+    data?.text ?? '',
+    fontSize
+  );
 
   if (!data) {
     return (
@@ -58,9 +67,14 @@ export function BibleSlide({ data }: BibleSlideProps) {
   } = data;
   const label = abbreviatedBooks ? t(`bookAbbr.${book}` as TranslationKey) : bookName;
   const showVersionLabel = showVersion && !showReferenceOnly;
+  const verseStr =
+    verses.length === 1 ? String(verses[0]) : `${verses[0]}-${verses[verses.length - 1]}`;
 
   return (
-    <div className="relative flex h-full w-full flex-col items-center justify-center bg-black px-16">
+    <div
+      ref={containerRef}
+      className="relative flex h-full w-full flex-col items-center justify-center bg-black px-16"
+    >
       {resolvedBg && (
         <img
           src={resolvedBg.src}
@@ -94,19 +108,19 @@ export function BibleSlide({ data }: BibleSlideProps) {
           <div
             className={cn('relative z-10 mb-8 font-medium tracking-wide', { uppercase })}
             style={{
-              fontSize: `${getReferenceSize(fontSize)}px`,
+              fontSize: `${effectiveRefSize}px`,
               fontFamily,
               color: `${fontColor}99`,
             }}
           >
-            {label} {chapter}
+            {label} {chapter}:{verseStr}
             {showVersionLabel ? ` ${displayVersion(version)}` : ''}
           </div>
           <div
-            className={cn('relative z-10 max-w-4xl text-center leading-snug', {
+            className={cn('relative z-10 w-full text-center leading-snug', {
               uppercase: uppercase,
             })}
-            style={{ fontSize: `${fontSize}px`, fontFamily, color: fontColor }}
+            style={{ fontSize: `${effectiveFontSize}px`, fontFamily, color: fontColor }}
           >
             {text.split('\n').map((line) => (
               <p key={line.slice(0, 40)} className="mb-4 last:mb-0">

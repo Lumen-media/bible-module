@@ -186,7 +186,7 @@ export const PreferencesModal = ({ children }: { children: React.ReactNode }) =>
     try {
       try {
         await fs.remove('cache');
-      } catch { }
+      } catch {}
       await json.set('bibleFonts', []);
       setDownloadedIds([]);
       setCacheBytes(0);
@@ -263,10 +263,7 @@ export const PreferencesModal = ({ children }: { children: React.ReactNode }) =>
                           className="h-16 w-px shrink-0"
                           style={{ backgroundColor: `${fontColor}40` }}
                         />
-                        <span
-                          className="shrink-0 text-7xl font-bold"
-                          style={{ color: fontColor }}
-                        >
+                        <span className="shrink-0 text-7xl font-bold" style={{ color: fontColor }}>
                           {verseNum}
                         </span>
                       </div>
@@ -293,7 +290,7 @@ export const PreferencesModal = ({ children }: { children: React.ReactNode }) =>
                         color: `${fontColor}99`,
                       }}
                     >
-                      {bookName} {chapter}
+                      {bookName} {chapter}:{verseNum}
                       {showVersion ? ` ${displayVersion(version)}` : ''}
                     </div>
                     <p
@@ -559,9 +556,8 @@ export const PreferencesModal = ({ children }: { children: React.ReactNode }) =>
                     />
                     <Popover>
                       <Popover.PopoverTrigger>
-                        <button
-                          type="button"
-                          className="h-8 w-8 shrink-0 rounded-md border border-border"
+                        <div
+                          className="h-8 w-8 shrink-0 rounded-md border border-border cursor-pointer"
                           style={{ backgroundColor: localFontColor }}
                         />
                       </Popover.PopoverTrigger>

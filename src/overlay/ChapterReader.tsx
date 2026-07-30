@@ -35,7 +35,10 @@ export const ChapterReader = memo(function ChapterReader({
   const loadChapter = useBibleStore((s) => s.loadChapter);
   const selectedVerse = useBibleStore((s) => s.selectedVerse);
   const setSelectedVerse = useBibleStore((s) => s.setSelectedVerse);
+  const projectedData = useBibleStore((s) => s.projectedData);
   const verseRefs = useRef<Map<number, HTMLButtonElement>>(new Map());
+
+  const projectedVerses = projecting ? (projectedData?.verses ?? []) : [];
 
   useEffect(() => {
     loadChapter(book.id, chapter);
@@ -60,7 +63,7 @@ export const ChapterReader = memo(function ChapterReader({
         bookName: t(`book.${book.id}` as TranslationKey),
         chapter,
         verses: [v.number],
-        text: `${v.number} ${v.text}`,
+        text: v.text,
         uppercase,
         showReferenceOnly,
         showVersion,
@@ -140,9 +143,11 @@ export const ChapterReader = memo(function ChapterReader({
                 onClick={() => handleVerseClick(v)}
                 onDoubleClick={() => handleVerseDoubleClick(v)}
                 className={`w-full rounded-md px-3 py-1.5 text-left text-sm leading-relaxed transition-colors ${
-                  selectedVerse === v.number
-                    ? 'bg-accent text-accent-foreground'
-                    : 'text-foreground hover:bg-accent/50'
+                  projectedVerses.includes(v.number)
+                    ? 'bg-primary/15 text-foreground border-l-2 border-primary'
+                    : selectedVerse === v.number
+                      ? 'bg-accent text-accent-foreground'
+                      : 'text-foreground hover:bg-accent/50'
                 }`}
               >
                 <span className="mr-1.5 text-xs text-muted-foreground">{v.number}</span>
