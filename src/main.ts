@@ -138,6 +138,13 @@ export default class BibleModulePlugin extends LumenPlugin {
       t,
       hostWindow: host.window,
     });
+
+    host.events.on('module:presenter-clear', () => {
+      useBibleStore.getState().clearProjection();
+    });
+    host.events.on('module:presenter-window-closed', () => {
+      useBibleStore.getState().clearProjection();
+    });
   }
 
   async onunload(): Promise<void> {

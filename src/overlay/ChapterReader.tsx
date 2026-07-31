@@ -144,7 +144,7 @@ export const ChapterReader = memo(function ChapterReader({
                 onDoubleClick={() => handleVerseDoubleClick(v)}
                 className={`w-full rounded-md px-3 py-1.5 text-left text-sm leading-relaxed transition-colors ${
                   projectedVerses.includes(v.number)
-                    ? 'bg-primary/15 text-foreground border-l-2 border-primary'
+                    ? 'bg-primary/20 text-foreground'
                     : selectedVerse === v.number
                       ? 'bg-accent text-accent-foreground'
                       : 'text-foreground hover:bg-accent/50'

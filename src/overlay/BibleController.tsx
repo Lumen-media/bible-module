@@ -1,7 +1,6 @@
 import { Card, Popover, ScrollArea, Select, Separator, Tabs } from '@lumen-media/module-sdk/ui';
 import { BookOpen, Check, ChevronDown, ChevronLeft, Download, Loader2, Search } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { useEventListener } from 'usehooks-ts';
 import { BOOKS } from '../data/store.js';
 import type { TranslationKey } from '../i18n.js';
 import { t } from '../i18n.js';
@@ -47,11 +46,13 @@ export function BibleController({ close, goToBook, goToChapter, goToVerse }: Bib
     downloadedVersions,
     displayedTabs,
     setDisplayedTabs,
+    projectedData,
   } = useBibleStore();
 
   const [localDownloaded, setLocalDownloaded] = useState<string[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [projecting, setProjecting] = useState(false);
+  const projectingRef = useRef(false);
   const containerRef = useRef<HTMLDivElement>(null);
 
   const bookInitials = useMemo(() => {
@@ -70,44 +71,59 @@ export function BibleController({ close, goToBook, goToChapter, goToVerse }: Bib
   }, []);
 
   const clearProjection = useCallback(() => {
-    presentation?.clear();
+    projectingRef.current = false;
     setProjecting(false);
-    useBibleStore.getState().setProjectedData(null);
-  }, [presentation]);
+    useBibleStore.getState().clearProjection();
+  }, []);
 
-  const handleProject = useCallback(() => setProjecting(true), []);
+  const handleProject = useCallback(() => {
+    setProjecting(true);
+    projectingRef.current = true;
+  }, []);
 
-  useEventListener('keydown', (e: KeyboardEvent) => {
-    if (e.key === 'Escape') {
-      if (projecting) {
-        e.preventDefault();
-        clearProjection();
+  useEffect(() => {
+    if (!projectedData) {
+      setProjecting(false);
+      projectingRef.current = false;
+    }
+  }, [projectedData]);
+
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        if (projectingRef.current) {
+          e.preventDefault();
+          clearProjection();
+        }
+        return;
       }
-      return;
-    }
 
-    const target = e.target as HTMLElement;
-    if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA') return;
+      const target = e.target as HTMLElement;
+      if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA') return;
 
-    if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
-      e.preventDefault();
-      const input = document.querySelector<HTMLInputElement>('[data-search-input]');
-      input?.focus();
-      setSearchQuery('');
-      return;
-    }
-
-    if (!e.ctrlKey && !e.metaKey && !e.altKey && e.key.length === 1) {
-      const key = e.key.toLowerCase();
-      const normalizedKey = key.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
-      if (bookInitials.has(normalizedKey)) {
+      if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
         e.preventDefault();
         const input = document.querySelector<HTMLInputElement>('[data-search-input]');
         input?.focus();
-        setSearchQuery(key);
+        setSearchQuery('');
+        return;
       }
-    }
-  });
+
+      if (!e.ctrlKey && !e.metaKey && !e.altKey && e.key.length === 1) {
+        const key = e.key.toLowerCase();
+        const normalizedKey = key.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+        if (bookInitials.has(normalizedKey)) {
+          e.preventDefault();
+          const input = document.querySelector<HTMLInputElement>('[data-search-input]');
+          input?.focus();
+          setSearchQuery(key);
+        }
+      }
+    };
+
+    document.addEventListener('keydown', handler);
+    return () => document.removeEventListener('keydown', handler);
+  }, [bookInitials, clearProjection]);
 
   useEffect(() => {
     downloadedVersions()

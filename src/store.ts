@@ -1,4 +1,5 @@
 import type {
+  BusAPI,
   DataAPI,
   FontsAPI,
   FsAPI,
@@ -83,6 +84,7 @@ export interface BibleState {
   themes: ThemesHostAPI | null;
   ui: UIAPI | null;
   fonts: FontsAPI | null;
+  events: BusAPI | null;
   hostWindow: 'main' | 'presenter' | 'surface' | null;
 
   ready: boolean;
@@ -145,6 +147,7 @@ export interface BibleActions {
     ui: UIAPI;
     fonts: FontsAPI;
     t: TFunction;
+    events: BusAPI;
     hostWindow: 'main' | 'presenter' | 'surface';
   }) => Promise<void>;
   setVersion: (v: string) => Promise<void>;
@@ -186,6 +189,7 @@ export interface BibleActions {
       text: string;
     } | null
   ) => void;
+  clearProjection: () => void;
 }
 
 export type BibleStore = BibleState & BibleActions;
@@ -230,6 +234,7 @@ export const useBibleStore = create<BibleStore>((set, get) => ({
   themes: null,
   ui: null,
   fonts: null,
+  events: null,
   hostWindow: null,
 
   ready: false,
@@ -266,8 +271,8 @@ export const useBibleStore = create<BibleStore>((set, get) => ({
   projectedData: null,
 
   init: async (services) => {
-    const { fs, net, json, presentation, themes, ui, fonts, t, hostWindow } = services;
-    set({ fs, net, json, presentation, themes, ui, fonts, t, hostWindow });
+    const { fs, net, json, presentation, themes, ui, fonts, t, events, hostWindow } = services;
+    set({ fs, net, json, presentation, themes, ui, fonts, t, events, hostWindow });
 
     const db = await services.sqlite();
     set({ sqlite: db });
@@ -1152,4 +1157,12 @@ export const useBibleStore = create<BibleStore>((set, get) => ({
   },
 
   setProjectedData: (data) => set({ projectedData: data }),
+
+  clearProjection: () => {
+    const { presentation, projectedData } = get();
+    if (!projectedData) return;
+    const p = presentation;
+    set({ projectedData: null });
+    p?.clear();
+  },
 }));

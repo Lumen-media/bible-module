@@ -19,6 +19,7 @@
     "lucide-react": "^1.25.0",
     "minisearch": "^7.2.0",
     "react": "^19.0.0",
+    "react-colorful": "^5.8.0",
     "react-dom": "^19.0.0",
     "tailwind-merge": "^3.6.0",
     "usehooks-ts": "^3.1.1",
