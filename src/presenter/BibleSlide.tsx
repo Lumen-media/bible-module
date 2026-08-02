@@ -26,6 +26,7 @@ export function BibleSlide({ data }: BibleSlideProps) {
   const profileBg = useBibleStore((s) => s.profileBackground);
   const fontSize = useBibleStore((s) => s.fontSize);
   const fontFamily = useBibleStore((s) => s.fontFamily);
+  const backgroundOpacity = useBibleStore((s) => s.backgroundOpacity);
 
   const resolvedBg = background ?? profileBg;
 
@@ -43,11 +44,12 @@ export function BibleSlide({ data }: BibleSlideProps) {
           <img
             src={resolvedBg.src}
             alt=""
-            className="absolute inset-0 h-full w-full object-cover opacity-30"
+            className="absolute inset-0 h-full w-full object-cover"
           />
         )}
-        <BookOpen className="mb-4 h-12 w-12" />
-        <p className="text-lg">{t('bible.select-verse-to-project')}</p>
+        <div className="absolute inset-0 bg-black" style={{ opacity: backgroundOpacity / 100 }} />
+        <BookOpen className="relative z-10 mb-4 h-12 w-12" />
+        <p className="relative z-10 text-lg">{t('bible.select-verse-to-project')}</p>
       </div>
     );
   }
@@ -79,9 +81,10 @@ export function BibleSlide({ data }: BibleSlideProps) {
         <img
           src={resolvedBg.src}
           alt=""
-          className="absolute inset-0 h-full w-full object-cover opacity-20"
+          className="absolute inset-0 h-full w-full object-cover"
         />
       )}
+      <div className="absolute inset-0 bg-black" style={{ opacity: backgroundOpacity / 100 }} />
       {showReferenceOnly ? (
         <div className="relative z-10 flex items-center gap-6 scale-400">
           <div className="flex min-w-0 flex-col items-center leading-tight" style={{ fontFamily }}>

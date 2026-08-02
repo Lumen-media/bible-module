@@ -18,6 +18,7 @@
     "clsx": "^2.1.1",
     "lucide-react": "^1.25.0",
     "minisearch": "^7.2.0",
+    "polished": "^4.3.1",
     "react": "^19.0.0",
     "react-colorful": "^5.8.0",
     "react-dom": "^19.0.0",

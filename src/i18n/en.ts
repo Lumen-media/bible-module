@@ -50,8 +50,9 @@ const messages = {
   'bible.font-size-desc': 'Base size for Bible verse text on slides',
   'bible.theme': 'Theme',
   'bible.theme-desc': 'Choose how Bible slides look during presentation',
-  'bible.active-theme': 'Active theme',
-  'bible.active-theme-desc': 'Theme is managed by the host application',
+  'bible.backdrop-intensity': 'Backdrop intensity',
+  'bible.backdrop-intensity-desc':
+    'Darkens the background so the text stands out more during presentation',
   'bible.default': 'Default',
   'bible.downloads': 'Downloads',
   'bible.downloads-desc': 'Manage installed Bible versions and download new ones',

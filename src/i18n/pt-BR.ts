@@ -52,8 +52,9 @@ const messages: Record<TranslationKeys, string> = {
   'bible.font-size-desc': 'Tamanho base do texto bíblico nos slides',
   'bible.theme': 'Tema',
   'bible.theme-desc': 'Escolha como os slides bíblicos aparecem na apresentação',
-  'bible.active-theme': 'Tema ativo',
-  'bible.active-theme-desc': 'O tema é gerenciado pelo aplicativo host',
+  'bible.backdrop-intensity': 'Intensidade do fundo',
+  'bible.backdrop-intensity-desc':
+    'Escurece o fundo para o texto se destacar mais durante a apresentação',
   'bible.default': 'Padrão',
   'bible.downloads': 'Downloads',
   'bible.downloads-desc': 'Gerencie versões instaladas e baixe novas',

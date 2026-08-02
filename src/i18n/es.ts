@@ -52,8 +52,9 @@ const messages: Record<TranslationKeys, string> = {
   'bible.font-size-desc': 'Tamaño base del texto bíblico en las diapositivas',
   'bible.theme': 'Tema',
   'bible.theme-desc': 'Elija cómo se ven las diapositivas bíblicas durante la presentación',
-  'bible.active-theme': 'Tema activo',
-  'bible.active-theme-desc': 'El tema es gestionado por la aplicación host',
+  'bible.backdrop-intensity': 'Intensidad del fondo',
+  'bible.backdrop-intensity-desc':
+    'Oscurece el fondo para que el texto destaque más durante la presentación',
   'bible.default': 'Predeterminado',
   'bible.downloads': 'Descargas',
   'bible.downloads-desc': 'Administre las versiones instaladas y descargue nuevas',
