@@ -4,6 +4,7 @@ import {
   Card,
   Combobox,
   Dialog,
+  Label,
   Popover,
   ScrollArea,
   Separator,
@@ -275,7 +276,7 @@ export const PreferencesModal = ({ children }: { children: React.ReactNode }) =>
     try {
       try {
         await fs.remove('cache');
-      } catch {}
+      } catch { }
       await json.set('bibleFonts', []);
       setDownloadedIds([]);
       setCacheBytes(0);
@@ -566,7 +567,7 @@ export const PreferencesModal = ({ children }: { children: React.ReactNode }) =>
 
                 <Separator />
 
-                <div className="flex items-center justify-between gap-4">
+                <Label className="flex items-center justify-between gap-4">
                   <div className="min-w-0">
                     <p className="text-sm font-medium text-foreground">
                       {t('bible.uppercase' as TranslationKey)}
@@ -576,11 +577,11 @@ export const PreferencesModal = ({ children }: { children: React.ReactNode }) =>
                     </p>
                   </div>
                   <Switch checked={uppercase} onCheckedChange={setUppercase} />
-                </div>
+                </Label>
 
                 <Separator />
 
-                <div className="flex items-center justify-between gap-4">
+                <Label className="flex items-center justify-between gap-4">
                   <div className="min-w-0">
                     <p className="text-sm font-medium text-foreground">
                       {t('bible.reference-only' as TranslationKey)}
@@ -590,11 +591,11 @@ export const PreferencesModal = ({ children }: { children: React.ReactNode }) =>
                     </p>
                   </div>
                   <Switch checked={showReferenceOnly} onCheckedChange={setShowReferenceOnly} />
-                </div>
+                </Label>
 
                 <Separator />
 
-                <div className="flex items-center justify-between gap-4">
+                <Label className="flex items-center justify-between gap-4">
                   <div className="min-w-0">
                     <p className="text-sm font-medium text-foreground">
                       {t('bible.show-version' as TranslationKey)}
@@ -604,11 +605,11 @@ export const PreferencesModal = ({ children }: { children: React.ReactNode }) =>
                     </p>
                   </div>
                   <Switch checked={showVersion} onCheckedChange={setShowVersion} />
-                </div>
+                </Label>
 
                 <Separator />
 
-                <div className="flex items-center justify-between gap-4">
+                <Label className="flex items-center justify-between gap-4">
                   <div className="min-w-0">
                     <p className="text-sm font-medium text-foreground">
                       {t('bible.abbreviated-books' as TranslationKey)}
@@ -618,7 +619,7 @@ export const PreferencesModal = ({ children }: { children: React.ReactNode }) =>
                     </p>
                   </div>
                   <Switch checked={abbreviatedBooks} onCheckedChange={setAbbreviatedBooks} />
-                </div>
+                </Label>
 
                 <Separator />
 
