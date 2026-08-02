@@ -7,6 +7,7 @@ import {
   Popover,
   ScrollArea,
   Separator,
+  Slider,
   Switch,
   ToggleGroup,
 } from '@lumen-media/module-sdk/ui';
@@ -28,19 +29,112 @@ const FONT_STYLES = ['Normal', 'Italic'] as const;
 const SAMPLE_VERSE =
   'For God so loved the world, that he gave his only Son, that whoever believes in him should not perish but have eternal life.';
 
-function normalizeTheme(v: unknown): string {
-  if (typeof v === 'string') return v;
-  if (v && typeof v === 'object' && 'name' in v) return String((v as { name: unknown }).name);
-  if (v && typeof v === 'object' && 'id' in v) return String((v as { id: unknown }).id);
-  return 'dark';
-}
-
 function formatBytes(bytes: number): string {
   if (bytes === 0) return '0 B';
   const k = 1024;
   const sizes = ['B', 'KB', 'MB', 'GB'];
   const i = Math.min(Math.floor(Math.log(bytes) / Math.log(k)), sizes.length - 1);
   return `${(bytes / k ** i).toFixed(i === 0 ? 0 : 1)} ${sizes[i]}`;
+}
+
+function SlidePreview() {
+  const fontSize = useBibleStore((s) => s.fontSize);
+  const fontFamily = useBibleStore((s) => s.fontFamily);
+  const fontWeight = useBibleStore((s) => s.fontWeight);
+  const fontStyle = useBibleStore((s) => s.fontStyle);
+  const uppercase = useBibleStore((s) => s.uppercase);
+  const showReferenceOnly = useBibleStore((s) => s.showReferenceOnly);
+  const showVersion = useBibleStore((s) => s.showVersion);
+  const abbreviatedBooks = useBibleStore((s) => s.abbreviatedBooks);
+  const fontColor = useBibleStore((s) => s.fontColor);
+  const backgroundOpacity = useBibleStore((s) => s.backgroundOpacity);
+  const selectedBook = useBibleStore((s) => s.selectedBook);
+  const chapter = useBibleStore((s) => s.chapter);
+  const selectedVerse = useBibleStore((s) => s.selectedVerse);
+  const verses = useBibleStore((s) => s.verses);
+  const background = useBibleStore((s) => s.background);
+  const profileBackground = useBibleStore((s) => s.profileBackground);
+  const version = useBibleStore((s) => s.version);
+
+  const previewSize = Math.max(14, Math.min(48, Math.round(fontSize * 0.6)));
+  const resolvedBg = background ?? profileBackground;
+
+  const bookName = selectedBook
+    ? abbreviatedBooks
+      ? t(`bookAbbr.${selectedBook.id}` as TranslationKey)
+      : t(`book.${selectedBook.id}` as TranslationKey)
+    : 'John';
+  const verseNum = selectedVerse ?? 16;
+  const verseText = verses?.find((v) => v.number === verseNum)?.text;
+  const previewText = verseText ?? SAMPLE_VERSE;
+
+  return (
+    <div className="relative aspect-video overflow-hidden rounded-md border border-border bg-black">
+      {resolvedBg ? (
+        <img
+          src={resolvedBg.src}
+          alt=""
+          className="absolute inset-0 h-full w-full object-cover"
+        />
+      ) : (
+        <div className="absolute inset-0 bg-linear-to-br from-card to-background" />
+      )}
+      <div className="absolute inset-0 bg-black" style={{ opacity: backgroundOpacity / 100 }} />
+      {showReferenceOnly ? (
+        <div className="relative z-10 flex h-full items-center justify-center gap-6 scale-150">
+          <div className="flex min-w-0 flex-col items-center leading-tight" style={{ fontFamily }}>
+            <span
+              className={cn('truncate text-4xl font-bold', { uppercase })}
+              style={{ color: fontColor }}
+            >
+              {bookName} {chapter}
+            </span>
+            {showVersion && (
+              <span className="truncate text-xl self-start" style={{ color: `${fontColor}99` }}>
+                {displayVersion(version)}
+              </span>
+            )}
+          </div>
+          <div className="h-16 w-px shrink-0" style={{ backgroundColor: `${fontColor}40` }} />
+          <span className="shrink-0 text-7xl font-bold" style={{ color: fontColor }}>
+            {verseNum}
+          </span>
+        </div>
+      ) : (
+        <div className="relative z-10 flex h-full flex-col items-center justify-center p-6">
+          <div
+            className={cn('mb-3 font-medium tracking-wide', { uppercase })}
+            style={{
+              fontFamily,
+              fontSize: `${Math.max(14, Math.round(previewSize * 0.4))}px`,
+              color: `${fontColor}99`,
+            }}
+          >
+            {bookName} {chapter}:{verseNum}
+            {showVersion ? ` ${displayVersion(version)}` : ''}
+          </div>
+          <p
+            className={cn(
+              'text-center leading-[1.4]',
+              { uppercase: uppercase },
+              { 'font-light': fontWeight === 'Light' },
+              { 'font-normal': fontWeight === 'Regular' },
+              { 'font-medium': fontWeight === 'Medium' },
+              { 'font-bold': fontWeight === 'Bold' },
+              { italic: fontStyle === 'Italic' }
+            )}
+            style={{
+              fontFamily,
+              fontSize: `${previewSize}px`,
+              color: fontColor,
+            }}
+          >
+            {previewText}
+          </p>
+        </div>
+      )}
+    </div>
+  );
 }
 
 export const PreferencesModal = ({ children }: { children: React.ReactNode }) => {
@@ -63,6 +157,10 @@ export const PreferencesModal = ({ children }: { children: React.ReactNode }) =>
   const setAbbreviatedBooks = useBibleStore((s) => s.setAbbreviatedBooks);
   const fontColor = useBibleStore((s) => s.fontColor);
   const setFontColor = useBibleStore((s) => s.setFontColor);
+  const autoFontColor = useBibleStore((s) => s.autoFontColor);
+  const setAutoFontColor = useBibleStore((s) => s.setAutoFontColor);
+  const backgroundOpacity = useBibleStore((s) => s.backgroundOpacity);
+  const setBackgroundOpacity = useBibleStore((s) => s.setBackgroundOpacity);
   const selectedBook = useBibleStore((s) => s.selectedBook);
   const chapter = useBibleStore((s) => s.chapter);
   const selectedVerse = useBibleStore((s) => s.selectedVerse);
@@ -78,21 +176,19 @@ export const PreferencesModal = ({ children }: { children: React.ReactNode }) =>
   const setVersion = useBibleStore((s) => s.setVersion);
   const json = useBibleStore((s) => s.json);
   const fs = useBibleStore((s) => s.fs);
-  const themes = useBibleStore((s) => s.themes);
 
   const [section, setSection] = useState<SectionId>('typography');
   const [downloadedIds, setDownloadedIds] = useState<string[]>([]);
   const [cacheBytes, setCacheBytes] = useState<number | null>(null);
   const [clearing, setClearing] = useState(false);
-  const [currentTheme, setCurrentTheme] = useState<string>(() =>
-    themes ? normalizeTheme(themes.current() as unknown) : 'dark'
-  );
 
   const [fontInput, setFontInput] = useState(fontFamily);
   const [localFontSize, setLocalFontSize] = useState(String(fontSize));
   const [localFontColor, setLocalFontColor] = useState(fontColor);
   const debouncedSetFontColor = useDebounceCallback(setFontColor, 200);
   const debouncedSetFontSize = useDebounceCallback(setFontSize, 100);
+  const [localBackgroundOpacity, setLocalBackgroundOpacity] = useState(backgroundOpacity);
+  const debouncedSetBackgroundOpacity = useDebounceCallback(setBackgroundOpacity, 150);
 
   useEffect(() => {
     setFontInput(fontFamily);
@@ -107,21 +203,14 @@ export const PreferencesModal = ({ children }: { children: React.ReactNode }) =>
   }, [fontColor]);
 
   useEffect(() => {
+    setLocalBackgroundOpacity(backgroundOpacity);
+  }, [backgroundOpacity]);
+
+  useEffect(() => {
     if (!json) return;
     downloadingVersions;
     getDownloadedVersions(json).then(setDownloadedIds);
   }, [json, downloadingVersions]);
-
-  useEffect(() => {
-    if (!themes) return;
-    setCurrentTheme(normalizeTheme(themes.current() as unknown));
-    const themesExt = themes as typeof themes & {
-      onChange?: (handler: (theme: unknown) => void) => { dispose(): void };
-    };
-    if (typeof themesExt.onChange !== 'function') return;
-    const dispose = themesExt.onChange((next) => setCurrentTheme(normalizeTheme(next)));
-    return () => dispose.dispose();
-  }, [themes]);
 
   const cacheCheckRef = useRef(0);
   useEffect(() => {
@@ -234,11 +323,14 @@ export const PreferencesModal = ({ children }: { children: React.ReactNode }) =>
                           src={resolvedBg.src}
                           alt=""
                           className="absolute inset-0 h-full w-full object-cover"
-                          style={{ opacity: 0.5 }}
                         />
                       ) : (
                         <div className="absolute inset-0 bg-linear-to-br from-card to-background" />
                       )}
+                      <div
+                        className="absolute inset-0 bg-black"
+                        style={{ opacity: backgroundOpacity / 100 }}
+                      />
                       <div className="relative z-10 flex items-center gap-6 scale-150">
                         <div
                           className="flex min-w-0 flex-col items-center leading-tight"
@@ -277,9 +369,13 @@ export const PreferencesModal = ({ children }: { children: React.ReactNode }) =>
                       <img
                         src={resolvedBg.src}
                         alt=""
-                        className="absolute inset-0 h-full w-full object-cover opacity-20"
+                        className="absolute inset-0 h-full w-full object-cover"
                       />
                     )}
+                    <div
+                      className="absolute inset-0 bg-black"
+                      style={{ opacity: backgroundOpacity / 100 }}
+                    />
                     <div
                       className={cn('relative z-10 mb-3 font-medium tracking-wide', {
                         uppercase,
@@ -552,12 +648,16 @@ export const PreferencesModal = ({ children }: { children: React.ReactNode }) =>
                           setFontColor('#FFFFFF');
                         }
                       }}
-                      className="h-8 w-20 rounded-md border border-border bg-background px-2 text-xs font-mono text-foreground outline-none"
+                      disabled={autoFontColor}
+                      className="h-8 w-20 rounded-md border border-border bg-background px-2 text-xs font-mono text-foreground outline-none disabled:opacity-40 disabled:cursor-not-allowed"
                     />
                     <Popover>
-                      <Popover.PopoverTrigger>
+                      <Popover.PopoverTrigger disabled={autoFontColor}>
                         <div
-                          className="h-8 w-8 shrink-0 rounded-md border border-border cursor-pointer"
+                          className={cn(
+                            'h-8 w-8 shrink-0 rounded-md border border-border',
+                            autoFontColor ? 'opacity-40 cursor-not-allowed' : 'cursor-pointer'
+                          )}
                           style={{ backgroundColor: localFontColor }}
                         />
                       </Popover.PopoverTrigger>
@@ -571,6 +671,22 @@ export const PreferencesModal = ({ children }: { children: React.ReactNode }) =>
                         />
                       </Popover.PopoverContent>
                     </Popover>
+                    <ToggleGroup
+                      value={autoFontColor ? ['auto'] : ['manual']}
+                      onValueChange={(v) => {
+                        setAutoFontColor(v.includes('auto'));
+                      }}
+                      size="sm"
+                      variant="secondary"
+                      className="bg-background w-fit overflow-hidden"
+                    >
+                      <ToggleGroup.ToggleGroupItem value="auto" className="px-2 text-[11px]">
+                        Auto
+                      </ToggleGroup.ToggleGroupItem>
+                      <ToggleGroup.ToggleGroupItem value="manual" className="px-2 text-[11px]">
+                        Manual
+                      </ToggleGroup.ToggleGroupItem>
+                    </ToggleGroup>
                   </div>
                 </div>
               </Card.CardContent>
@@ -590,22 +706,10 @@ export const PreferencesModal = ({ children }: { children: React.ReactNode }) =>
               </p>
             </div>
 
-            <Card className="flex-1">
+            <Card>
               <Card.CardContent className="space-y-3 p-4">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm font-medium text-foreground">
-                      {t('bible.active-theme' as TranslationKey)}
-                    </p>
-                    <p className="text-xs text-muted-foreground">
-                      {t('bible.active-theme-desc' as TranslationKey)}
-                    </p>
-                  </div>
-                  <Badge variant="secondary">{currentTheme}</Badge>
-                </div>
-                <Separator />
-                <div className="flex items-center justify-between">
-                  <div>
+                <div className="flex items-center justify-between gap-4">
+                  <div className="min-w-0">
                     <p className="text-sm font-medium text-foreground">
                       {t('bible.background' as TranslationKey)}
                     </p>
@@ -613,7 +717,7 @@ export const PreferencesModal = ({ children }: { children: React.ReactNode }) =>
                       {t('bible.choose-background' as TranslationKey)}
                     </p>
                   </div>
-                  <div className="flex items-center gap-2">
+                  <div className="flex shrink-0 items-center gap-2">
                     {background?.src ? (
                       <Badge variant="outline" className="max-w-40 truncate">
                         {background.name ?? background.src}
@@ -637,6 +741,44 @@ export const PreferencesModal = ({ children }: { children: React.ReactNode }) =>
                     ) : null}
                   </div>
                 </div>
+
+                <Separator />
+
+                <div className="flex items-center justify-between gap-4">
+                  <div className="min-w-0">
+                    <p className="text-sm font-medium text-foreground">
+                      {t('bible.backdrop-intensity' as TranslationKey)}
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      {t('bible.backdrop-intensity-desc' as TranslationKey)}
+                    </p>
+                  </div>
+                  <div className="flex w-52 shrink-0 items-center gap-3">
+                    <Slider
+                      value={[localBackgroundOpacity]}
+                      min={0}
+                      max={100}
+                      step={1}
+                      onValueChange={(v) => {
+                        setLocalBackgroundOpacity(v[0]);
+                        debouncedSetBackgroundOpacity(v[0]);
+                      }}
+                      className="flex-1"
+                    />
+                    <span className="w-9 shrink-0 text-right text-xs font-mono tabular-nums text-foreground">
+                      {localBackgroundOpacity}%
+                    </span>
+                  </div>
+                </div>
+              </Card.CardContent>
+            </Card>
+
+            <Card>
+              <Card.CardContent className="space-y-2 p-4">
+                <span className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+                  {t('bible.preview' as TranslationKey)}
+                </span>
+                <SlidePreview />
               </Card.CardContent>
             </Card>
           </div>
