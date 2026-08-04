@@ -4,9 +4,9 @@ import { Loader2, Search } from 'lucide-react';
 import { memo, useRef, useState } from 'react';
 import { parseReference } from '../data/ref.js';
 import { BOOKS } from '../data/store.js';
-import type { TFunction } from '../i18n.js';
+import { type TFunction, t, tForVersion } from '../i18n.js';
 import { displayVersion } from '../lib/utils.js';
-import { useBibleStore } from '../store.js';
+import { staticVersionLanguage, useBibleStore } from '../store.js';
 
 interface SearchPanelProps {
   t: TFunction;
@@ -26,7 +26,7 @@ export const SearchPanel = memo(function SearchPanel({ t }: SearchPanelProps) {
   const inputRef = useRef<HTMLInputElement>(null);
   const viewportRef = useRef<HTMLDivElement>(null);
 
-  const bookByName = new Map(BOOKS.map((b) => [b.name.toLowerCase(), b]));
+  const bookById = new Map(BOOKS.map((b) => [b.id, b]));
 
   const GAP = 6;
   const virtualizer = useVirtualizer({
@@ -57,7 +57,7 @@ export const SearchPanel = memo(function SearchPanel({ t }: SearchPanelProps) {
   function handleSelect(index: number) {
     const r = results[index];
     if (!r) return;
-    const book = bookByName.get(r.book.toLowerCase());
+    const book = bookById.get(r.book);
     if (!book) return;
     setVersion(r.version);
     goTo(book, r.chapter, r.verse);
@@ -153,7 +153,8 @@ export const SearchPanel = memo(function SearchPanel({ t }: SearchPanelProps) {
                   }}
                 >
                   <span className="font-medium">
-                    {r.book} {r.chapter}:{r.verse}
+                    {tForVersion(staticVersionLanguage(r.version), `book.${r.book}`)} {r.chapter}:
+                    {r.verse}
                   </span>
                   <span className="ml-2 text-xs text-muted-foreground">
                     {displayVersion(r.version)}

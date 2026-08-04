@@ -32,6 +32,21 @@ const MIGRATIONS = [
       PRIMARY KEY (version, book, chapter)
     );`,
   },
+  {
+    version: 5,
+    up: `CREATE TABLE IF NOT EXISTS versions (
+      version TEXT PRIMARY KEY,
+      language TEXT NOT NULL
+    );`,
+  },
+  {
+    version: 6,
+    up: `CREATE TABLE IF NOT EXISTS versions (
+      version TEXT PRIMARY KEY,
+      language TEXT NOT NULL
+    );
+    DROP TABLE IF EXISTS book_names;`,
+  },
 ];
 
 export async function initDatabase(db: SqliteHandle): Promise<void> {
@@ -68,30 +83,67 @@ export async function getChapterFromDb(
   return rows.map((r) => ({ number: r.verse, text: r.text }));
 }
 
+export async function getVersionLanguage(
+  db: SqliteHandle,
+  version: string
+): Promise<string | null> {
+  const rows = await db.query<{ language: string }>(
+    'SELECT language FROM versions WHERE version = ?',
+    [version]
+  );
+  return rows.length > 0 ? rows[0].language : null;
+}
+
+export async function setVersionLanguage(
+  db: SqliteHandle,
+  version: string,
+  language: string
+): Promise<void> {
+  await db.exec('INSERT OR REPLACE INTO versions (version, language) VALUES (?, ?)', [
+    version,
+    language,
+  ]);
+}
+
 export async function insertChapterBatch(
   db: SqliteHandle,
   version: string,
   book: string,
-  chapter: number,
+  _chapter: number,
   verses: (MidvashVerse & { chapter?: number })[]
 ): Promise<void> {
   if (verses.length === 0) return;
 
-  const placeholders = verses.map(() => '(?, ?, ?, ?, ?)').join(',\n');
-  const params: unknown[] = [];
-  for (const v of verses) {
-    const ch = v.chapter ?? chapter;
-    params.push(version, book, ch, v.number, v.text);
-  }
+  const BATCH_SIZE = 500;
+  for (let start = 0; start < verses.length; start += BATCH_SIZE) {
+    const batch = verses.slice(start, start + BATCH_SIZE);
+    const placeholders = batch.map(() => '(?, ?, ?, ?, ?)').join(',\n');
+    const params: unknown[] = [];
+    for (const v of batch) {
+      params.push(version, book, v.chapter ?? _chapter, v.number, v.text);
+    }
 
-  await db.exec(
-    `INSERT OR IGNORE INTO verses (version, book, chapter, verse, text) VALUES\n${placeholders}`,
-    params
-  );
-  await db.exec(
-    `INSERT INTO verses_fts (version, book, chapter, verse, text) VALUES\n${placeholders}`,
-    params
-  );
+    await db.exec(
+      `INSERT OR IGNORE INTO verses (version, book, chapter, verse, text) VALUES\n${placeholders}`,
+      params
+    );
+  }
+}
+
+export async function rebuildFts(db: SqliteHandle, version: string): Promise<void> {
+  try {
+    const d0 = performance.now();
+    await db.exec(`DELETE FROM verses_fts WHERE version = ?`, [version]);
+    console.log('[bible] FTS delete for', version, 'in', (performance.now() - d0).toFixed(0), 'ms');
+    const i0 = performance.now();
+    await db.exec(
+      'INSERT INTO verses_fts (version, book, chapter, verse, text) SELECT version, book, chapter, verse, text FROM verses WHERE version = ?',
+      [version]
+    );
+    console.log('[bible] FTS insert for', version, 'in', (performance.now() - i0).toFixed(0), 'ms');
+  } catch (e) {
+    console.warn('[bible] FTS rebuild failed for', version, e);
+  }
 }
 
 function decodeBytes(bytes: Uint8Array | number[]): string {
@@ -105,6 +157,7 @@ export async function importVersionFromJson(
   db: SqliteHandle,
   fs: FsAPI,
   version: string,
+  language?: string,
   onProgress?: (current: number, total: number) => void
 ): Promise<boolean> {
   let completed = 0;
@@ -125,10 +178,22 @@ export async function importVersionFromJson(
       const data = JSON.parse(raw);
 
       const chapters: { number: number; verses: MidvashVerse[] }[] = data.chapters ?? [];
+
+      const allVerses: (MidvashVerse & { chapter: number })[] = [];
       for (const ch of chapters) {
         if (ch.verses && Array.isArray(ch.verses)) {
-          await insertChapterBatch(db, version, book.id, ch.number, ch.verses);
+          for (const v of ch.verses) {
+            allVerses.push({ number: v.number, text: v.text, chapter: ch.number });
+          }
         }
+      }
+
+      if (allVerses.length > 0) {
+        await insertChapterBatch(db, version, book.id, 0, allVerses);
+      }
+
+      if (language) {
+        await setVersionLanguage(db, version, language).catch(() => {});
       }
     } catch {
       // skip corrupt file
@@ -137,6 +202,17 @@ export async function importVersionFromJson(
     completed++;
     onProgress?.(completed, total);
   }
+
+  console.log('[bible] importVersionFromJson: rebuilding FTS for', version);
+  const fts0 = performance.now();
+  await rebuildFts(db, version);
+  console.log(
+    '[bible] importVersionFromJson: FTS rebuild done for',
+    version,
+    'in',
+    (performance.now() - fts0).toFixed(0),
+    'ms'
+  );
 
   return true;
 }

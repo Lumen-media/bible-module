@@ -63,3 +63,9 @@ export function t(key: TranslationKey, params?: Record<string, string>): string 
 
   return message;
 }
+
+export function tForVersion(versionLang: string, key: string): string {
+  const resolved = _alias[versionLang.toLowerCase()] ?? versionLang;
+  const messages = _translations[resolved] ?? _translations.en;
+  return (messages as Record<string, string>)[key] ?? (en as Record<string, string>)[key] ?? key;
+}

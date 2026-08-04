@@ -12,5 +12,5 @@ export function displayVersion(id: string): string {
 }
 
 export function getReferenceSize(fontSize: number): number {
-  return Math.max(14, Math.min(48, Math.round(fontSize * 0.4)));
+  return Math.max(14, Math.min(48, Math.round(fontSize * 0.8)));
 }

@@ -1,9 +1,9 @@
 import { BookOpen } from 'lucide-react';
 import { useRef } from 'react';
 import { useFitFontSize } from '../hooks/useFitFontSize.js';
-import { type TranslationKey, t } from '../i18n.js';
+import { t, tForVersion } from '../i18n.js';
 import { cn, displayVersion } from '../lib/utils.js';
-import { useBibleStore } from '../store.js';
+import { staticVersionLanguage, useBibleStore } from '../store.js';
 
 interface BibleSlideProps {
   data: {
@@ -67,7 +67,12 @@ export function BibleSlide({ data }: BibleSlideProps) {
     abbreviatedBooks,
     fontColor,
   } = data;
-  const label = abbreviatedBooks ? t(`bookAbbr.${book}` as TranslationKey) : bookName;
+  const label = abbreviatedBooks
+    ? tForVersion(
+        useBibleStore.getState().versionLanguage ?? staticVersionLanguage(version),
+        'bookAbbr.' + book
+      )
+    : bookName;
   const showVersionLabel = showVersion && !showReferenceOnly;
   const verseStr =
     verses.length === 1 ? String(verses[0]) : `${verses[0]}-${verses[verses.length - 1]}`;
@@ -78,11 +83,7 @@ export function BibleSlide({ data }: BibleSlideProps) {
       className="relative flex h-full w-full flex-col items-center justify-center bg-black px-16"
     >
       {resolvedBg && (
-        <img
-          src={resolvedBg.src}
-          alt=""
-          className="absolute inset-0 h-full w-full object-cover"
-        />
+        <img src={resolvedBg.src} alt="" className="absolute inset-0 h-full w-full object-cover" />
       )}
       <div className="absolute inset-0 bg-black" style={{ opacity: backgroundOpacity / 100 }} />
       {showReferenceOnly ? (

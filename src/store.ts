@@ -13,11 +13,14 @@ import type {
 import { create } from 'zustand';
 import {
   getChapterFromDb,
+  getVersionLanguage,
   importVersionFromJson,
   initDatabase,
   insertChapterBatch,
   isVersionPopulated,
+  rebuildFts,
   searchVerses,
+  setVersionLanguage,
 } from './data/database.js';
 import { downloadVersion, hasAnyCache } from './data/downloader.js';
 import {
@@ -75,6 +78,10 @@ export const ALL_VERSIONS = [
   { id: 'rvr1960', name: 'Reina Valera 1960', language: 'es' },
 ];
 
+export function staticVersionLanguage(version: string): string {
+  return ALL_VERSIONS.find((v) => v.id === version)?.language ?? 'pt-br';
+}
+
 export interface BibleState {
   fs: FsAPI | null;
   net: NetAPI | null;
@@ -100,6 +107,7 @@ export interface BibleState {
   testament: 'old' | 'new';
   tab: 'browse' | 'search';
   selectedBook: Book | null;
+  versionLanguage: string | null;
   chapter: number;
 
   verses: { number: number; text: string }[] | null;
@@ -254,6 +262,7 @@ export const useBibleStore = create<BibleStore>((set, get) => ({
   testament: 'old',
   tab: 'browse',
   selectedBook: null,
+  versionLanguage: null,
   chapter: 1,
   verses: null,
   versesLoading: false,
@@ -278,6 +287,7 @@ export const useBibleStore = create<BibleStore>((set, get) => ({
   projectedData: null,
 
   init: async (services) => {
+    const t0 = performance.now();
     const { fs, net, json, presentation, themes, ui, fonts, t, events, hostWindow } = services;
     set({ fs, net, json, presentation, themes, ui, fonts, t, events, hostWindow });
 
@@ -286,8 +296,10 @@ export const useBibleStore = create<BibleStore>((set, get) => ({
     if (hostWindow === 'main') {
       await initDatabase(db);
     }
+    console.log('[bible] init: db ready in', (performance.now() - t0).toFixed(0), 'ms');
 
     if (hostWindow === 'main') {
+      const t1 = performance.now();
       const downloadedFromJson = await getDownloadedVersions(json);
 
       const needsSqlite: string[] = [];
@@ -304,6 +316,15 @@ export const useBibleStore = create<BibleStore>((set, get) => ({
             needsDownload.push(v);
           }
         })
+      );
+      console.log(
+        '[bible] init: needsSqlite=',
+        needsSqlite,
+        'needsDownload=',
+        needsDownload,
+        'in',
+        (performance.now() - t1).toFixed(0),
+        'ms'
       );
 
       if (needsSqlite.length > 0 || needsDownload.length > 0) {
@@ -335,9 +356,11 @@ export const useBibleStore = create<BibleStore>((set, get) => ({
 
         await Promise.allSettled(
           allVersions.map(async (v) => {
+            const v0 = performance.now();
             const needsDl = needsDownload.includes(v);
 
             if (needsDl) {
+              console.log('[bible] init: downloading', v);
               const ok = await downloadVersion(
                 fs,
                 net,
@@ -359,10 +382,42 @@ export const useBibleStore = create<BibleStore>((set, get) => ({
               );
               if (!ok) {
                 globalCurrent += totalChaptersPerVersion;
+                console.log(
+                  '[bible] init: download',
+                  v,
+                  'FAILED after',
+                  (performance.now() - v0).toFixed(0),
+                  'ms'
+                );
                 return;
               }
+              console.log(
+                '[bible] init: download',
+                v,
+                'done in',
+                (performance.now() - v0).toFixed(0),
+                'ms'
+              );
+              const fts0 = performance.now();
+              await rebuildFts(db, v).catch(() => {});
+              console.log(
+                '[bible] init: fts rebuild',
+                v,
+                'in',
+                (performance.now() - fts0).toFixed(0),
+                'ms'
+              );
+              await setVersionLanguage(db, v, staticVersionLanguage(v)).catch(() => {});
             } else {
-              await importVersionFromJson(db, fs, v);
+              console.log('[bible] init: importing', v, 'from cache');
+              await importVersionFromJson(db, fs, v, staticVersionLanguage(v));
+              console.log(
+                '[bible] init: import',
+                v,
+                'done in',
+                (performance.now() - v0).toFixed(0),
+                'ms'
+              );
             }
 
             if (!newDownloaded.includes(v)) {
@@ -453,6 +508,13 @@ export const useBibleStore = create<BibleStore>((set, get) => ({
       pending.version = downloadedList[0];
     }
 
+    if (pending.version) {
+      const restoredVersionId = pending.version;
+      pending.versionLanguage =
+        (await getVersionLanguage(db, restoredVersionId).catch(() => null)) ??
+        staticVersionLanguage(restoredVersionId);
+    }
+
     if (restoredDisplayedTabs) {
       const valid = restoredDisplayedTabs.filter((id) => downloadedList.includes(id));
       if (valid.length > 0) {
@@ -509,6 +571,7 @@ export const useBibleStore = create<BibleStore>((set, get) => ({
     pending.ready = true;
 
     set(pending);
+    console.log('[bible] init: state ready, total', (performance.now() - t0).toFixed(0), 'ms');
 
     if (needsChapterLoad) {
       get().loadChapter(needsChapterLoad.bookId, needsChapterLoad.chapter);
@@ -530,8 +593,12 @@ export const useBibleStore = create<BibleStore>((set, get) => ({
   },
 
   setVersion: async (version) => {
-    const { selectedBook, chapter, json } = get();
-    set({ version, verses: null });
+    const { selectedBook, chapter, json, sqlite } = get();
+    const language = sqlite
+      ? ((await getVersionLanguage(sqlite, version).catch(() => null)) ??
+        staticVersionLanguage(version))
+      : staticVersionLanguage(version);
+    set({ version, verses: null, versionLanguage: language });
     if (json) {
       const bg = get().background;
       json
@@ -625,13 +692,7 @@ export const useBibleStore = create<BibleStore>((set, get) => ({
 
     const downloaded = await getDownloadedVersions(json!);
 
-    const results = await searchVerses(sqlite, query, downloaded);
-    const bookMap = new Map(BOOKS.map((b) => [b.id, b]));
-
-    return results.map((r) => ({
-      ...r,
-      book: bookMap.get(r.book)?.name ?? r.book,
-    }));
+    return searchVerses(sqlite, query, downloaded);
   },
 
   downloadAndSetVersion: async (versionId) => {
@@ -667,6 +728,9 @@ export const useBibleStore = create<BibleStore>((set, get) => ({
         }
       );
 
+      await setVersionLanguage(db, versionId, staticVersionLanguage(versionId)).catch(() => {});
+      await rebuildFts(db, versionId).catch(() => {});
+
       const downloaded = await getDownloadedVersions(json);
       if (!downloaded.includes(versionId)) {
         await setDownloadedVersions(json, [...downloaded, versionId]);
@@ -683,20 +747,13 @@ export const useBibleStore = create<BibleStore>((set, get) => ({
   },
 
   removeVersion: async (versionId) => {
-    const { fs, json, sqlite } = get();
+    const { fs, json } = get();
     if (!fs || !json) return;
 
     for (const book of BOOKS) {
       const p = `cache/${versionId}/${book.id}.json`;
       try {
         await fs.remove(p);
-      } catch {}
-    }
-
-    if (sqlite) {
-      try {
-        const db = sqlite;
-        const { default: database } = await import('./data/database.js');
       } catch {}
     }
 
@@ -718,7 +775,21 @@ export const useBibleStore = create<BibleStore>((set, get) => ({
   },
 
   setBackground: async (bg) => {
-    const { json, autoFontColor, fontSize, fontFamily, fontWeight, fontStyle, displayedTabs, version, uppercase, showReferenceOnly, showVersion, abbreviatedBooks, backgroundOpacity } = get();
+    const {
+      json,
+      autoFontColor,
+      fontSize,
+      fontFamily,
+      fontWeight,
+      fontStyle,
+      displayedTabs,
+      version,
+      uppercase,
+      showReferenceOnly,
+      showVersion,
+      abbreviatedBooks,
+      backgroundOpacity,
+    } = get();
     set({ background: bg });
 
     if (autoFontColor && bg?.src && bg.type !== 'video') {
@@ -757,7 +828,21 @@ export const useBibleStore = create<BibleStore>((set, get) => ({
   },
 
   setFontSize: (n) => {
-    const { json, background, fontFamily, fontWeight, fontStyle, displayedTabs, version, uppercase, showReferenceOnly, showVersion, abbreviatedBooks, fontColor, backgroundOpacity } = get();
+    const {
+      json,
+      background,
+      fontFamily,
+      fontWeight,
+      fontStyle,
+      displayedTabs,
+      version,
+      uppercase,
+      showReferenceOnly,
+      showVersion,
+      abbreviatedBooks,
+      fontColor,
+      backgroundOpacity,
+    } = get();
     set({ fontSize: n });
     if (json) {
       json
@@ -781,7 +866,21 @@ export const useBibleStore = create<BibleStore>((set, get) => ({
   },
 
   setFontFamily: (f) => {
-    const { json, background, fontSize, fontWeight, fontStyle, displayedTabs, version, uppercase, showReferenceOnly, showVersion, abbreviatedBooks, fontColor, backgroundOpacity } = get();
+    const {
+      json,
+      background,
+      fontSize,
+      fontWeight,
+      fontStyle,
+      displayedTabs,
+      version,
+      uppercase,
+      showReferenceOnly,
+      showVersion,
+      abbreviatedBooks,
+      fontColor,
+      backgroundOpacity,
+    } = get();
     set({ fontFamily: f });
     if (json) {
       json
@@ -805,7 +904,21 @@ export const useBibleStore = create<BibleStore>((set, get) => ({
   },
 
   setFontWeight: (w) => {
-    const { json, background, fontSize, fontFamily, fontStyle, displayedTabs, version, uppercase, showReferenceOnly, showVersion, abbreviatedBooks, fontColor, backgroundOpacity } = get();
+    const {
+      json,
+      background,
+      fontSize,
+      fontFamily,
+      fontStyle,
+      displayedTabs,
+      version,
+      uppercase,
+      showReferenceOnly,
+      showVersion,
+      abbreviatedBooks,
+      fontColor,
+      backgroundOpacity,
+    } = get();
     set({ fontWeight: w });
     if (json) {
       json
@@ -829,7 +942,21 @@ export const useBibleStore = create<BibleStore>((set, get) => ({
   },
 
   setFontStyle: (s) => {
-    const { json, background, fontSize, fontFamily, fontWeight, displayedTabs, version, uppercase, showReferenceOnly, showVersion, abbreviatedBooks, fontColor, backgroundOpacity } = get();
+    const {
+      json,
+      background,
+      fontSize,
+      fontFamily,
+      fontWeight,
+      displayedTabs,
+      version,
+      uppercase,
+      showReferenceOnly,
+      showVersion,
+      abbreviatedBooks,
+      fontColor,
+      backgroundOpacity,
+    } = get();
     set({ fontStyle: s });
     if (json) {
       json
@@ -853,7 +980,21 @@ export const useBibleStore = create<BibleStore>((set, get) => ({
   },
 
   setDisplayedTabs: (tabs) => {
-    const { json, background, fontSize, fontFamily, fontWeight, fontStyle, version, uppercase, showReferenceOnly, showVersion, abbreviatedBooks, fontColor, backgroundOpacity } = get();
+    const {
+      json,
+      background,
+      fontSize,
+      fontFamily,
+      fontWeight,
+      fontStyle,
+      version,
+      uppercase,
+      showReferenceOnly,
+      showVersion,
+      abbreviatedBooks,
+      fontColor,
+      backgroundOpacity,
+    } = get();
     set({ displayedTabs: tabs });
     if (json) {
       json
@@ -877,7 +1018,21 @@ export const useBibleStore = create<BibleStore>((set, get) => ({
   },
 
   setUppercase: (v) => {
-    const { json, background, fontSize, fontFamily, fontWeight, fontStyle, displayedTabs, version, showReferenceOnly, showVersion, abbreviatedBooks, fontColor, backgroundOpacity } = get();
+    const {
+      json,
+      background,
+      fontSize,
+      fontFamily,
+      fontWeight,
+      fontStyle,
+      displayedTabs,
+      version,
+      showReferenceOnly,
+      showVersion,
+      abbreviatedBooks,
+      fontColor,
+      backgroundOpacity,
+    } = get();
     set({ uppercase: v });
     if (json) {
       json
@@ -901,7 +1056,21 @@ export const useBibleStore = create<BibleStore>((set, get) => ({
   },
 
   setShowReferenceOnly: (v) => {
-    const { json, background, fontSize, fontFamily, fontWeight, fontStyle, displayedTabs, version, uppercase, showVersion, abbreviatedBooks, fontColor, backgroundOpacity } = get();
+    const {
+      json,
+      background,
+      fontSize,
+      fontFamily,
+      fontWeight,
+      fontStyle,
+      displayedTabs,
+      version,
+      uppercase,
+      showVersion,
+      abbreviatedBooks,
+      fontColor,
+      backgroundOpacity,
+    } = get();
     set({ showReferenceOnly: v });
     if (json) {
       json
@@ -925,7 +1094,21 @@ export const useBibleStore = create<BibleStore>((set, get) => ({
   },
 
   setShowVersion: (v) => {
-    const { json, background, fontSize, fontFamily, fontWeight, fontStyle, displayedTabs, version, uppercase, showReferenceOnly, abbreviatedBooks, fontColor, backgroundOpacity } = get();
+    const {
+      json,
+      background,
+      fontSize,
+      fontFamily,
+      fontWeight,
+      fontStyle,
+      displayedTabs,
+      version,
+      uppercase,
+      showReferenceOnly,
+      abbreviatedBooks,
+      fontColor,
+      backgroundOpacity,
+    } = get();
     set({ showVersion: v });
     if (json) {
       json
@@ -949,7 +1132,21 @@ export const useBibleStore = create<BibleStore>((set, get) => ({
   },
 
   setAbbreviatedBooks: (v) => {
-    const { json, background, fontSize, fontFamily, fontWeight, fontStyle, displayedTabs, version, uppercase, showReferenceOnly, showVersion, fontColor, backgroundOpacity } = get();
+    const {
+      json,
+      background,
+      fontSize,
+      fontFamily,
+      fontWeight,
+      fontStyle,
+      displayedTabs,
+      version,
+      uppercase,
+      showReferenceOnly,
+      showVersion,
+      fontColor,
+      backgroundOpacity,
+    } = get();
     set({ abbreviatedBooks: v });
     if (json) {
       json
@@ -973,7 +1170,21 @@ export const useBibleStore = create<BibleStore>((set, get) => ({
   },
 
   setFontColor: (c) => {
-    const { json, background, fontSize, fontFamily, fontWeight, fontStyle, displayedTabs, version, uppercase, showReferenceOnly, showVersion, abbreviatedBooks, backgroundOpacity } = get();
+    const {
+      json,
+      background,
+      fontSize,
+      fontFamily,
+      fontWeight,
+      fontStyle,
+      displayedTabs,
+      version,
+      uppercase,
+      showReferenceOnly,
+      showVersion,
+      abbreviatedBooks,
+      backgroundOpacity,
+    } = get();
     set({ fontColor: c });
     if (json) {
       json
@@ -997,7 +1208,21 @@ export const useBibleStore = create<BibleStore>((set, get) => ({
   },
 
   setBackgroundOpacity: (n) => {
-    const { json, background, fontSize, fontFamily, fontWeight, fontStyle, displayedTabs, version, uppercase, showReferenceOnly, showVersion, abbreviatedBooks, fontColor } = get();
+    const {
+      json,
+      background,
+      fontSize,
+      fontFamily,
+      fontWeight,
+      fontStyle,
+      displayedTabs,
+      version,
+      uppercase,
+      showReferenceOnly,
+      showVersion,
+      abbreviatedBooks,
+      fontColor,
+    } = get();
     set({ backgroundOpacity: n });
     if (json) {
       json

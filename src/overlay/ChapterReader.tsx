@@ -3,8 +3,8 @@ import { Button, ScrollArea, Select } from '@lumen-media/module-sdk/ui';
 import { Loader2, Projector } from 'lucide-react';
 import { memo, useCallback, useEffect, useRef } from 'react';
 import type { Book } from '../data/types.js';
-import type { TFunction, TranslationKey } from '../i18n.js';
-import { useBibleStore } from '../store.js';
+import { type TFunction, tForVersion } from '../i18n.js';
+import { staticVersionLanguage, useBibleStore } from '../store.js';
 
 interface ChapterReaderProps {
   version: string;
@@ -55,12 +55,27 @@ export const ChapterReader = memo(function ChapterReader({
 
   const projectVerse = useCallback(
     (v: { number: number; text: string }) => {
-      const { uppercase, showReferenceOnly, showVersion, abbreviatedBooks, fontColor } =
-        useBibleStore.getState();
+      const {
+        uppercase,
+        showReferenceOnly,
+        showVersion,
+        abbreviatedBooks,
+        fontColor,
+        fontSize,
+        fontFamily,
+        fontWeight,
+        fontStyle,
+        background,
+        profileBackground,
+        backgroundOpacity,
+      } = useBibleStore.getState();
       const data = {
         version,
         book: book.id,
-        bookName: t(`book.${book.id}` as TranslationKey),
+        bookName: tForVersion(
+          useBibleStore.getState().versionLanguage ?? staticVersionLanguage(version),
+          `book.${book.id}`
+        ),
         chapter,
         verses: [v.number],
         text: v.text,
@@ -69,6 +84,13 @@ export const ChapterReader = memo(function ChapterReader({
         showVersion,
         abbreviatedBooks,
         fontColor,
+        fontSize,
+        fontFamily,
+        fontWeight,
+        fontStyle,
+        background,
+        profileBackground,
+        backgroundOpacity,
       };
       try {
         presentation.project('bible-slide', { data });
@@ -98,12 +120,27 @@ export const ChapterReader = memo(function ChapterReader({
 
   function projectAll() {
     if (!verses || verses.length === 0) return;
-    const { uppercase, showReferenceOnly, showVersion, abbreviatedBooks, fontColor } =
-      useBibleStore.getState();
+    const {
+      uppercase,
+      showReferenceOnly,
+      showVersion,
+      abbreviatedBooks,
+      fontColor,
+      fontSize,
+      fontFamily,
+      fontWeight,
+      fontStyle,
+      background,
+      profileBackground,
+      backgroundOpacity,
+    } = useBibleStore.getState();
     const data = {
       version,
       book: book.id,
-      bookName: t(`book.${book.id}` as TranslationKey),
+      bookName: tForVersion(
+        useBibleStore.getState().versionLanguage ?? staticVersionLanguage(version),
+        `book.${book.id}`
+      ),
       chapter,
       verses: verses.map((v) => v.number),
       text: verses.map((v) => `${v.number} ${v.text}`).join('\n'),
@@ -112,6 +149,13 @@ export const ChapterReader = memo(function ChapterReader({
       showVersion,
       abbreviatedBooks,
       fontColor,
+      fontSize,
+      fontFamily,
+      fontWeight,
+      fontStyle,
+      background,
+      profileBackground,
+      backgroundOpacity,
     };
     try {
       presentation.project('bible-slide', { data });

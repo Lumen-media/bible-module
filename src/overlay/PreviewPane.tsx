@@ -1,8 +1,8 @@
 import { Palette } from 'lucide-react';
 import { memo } from 'react';
-import { t } from '../i18n.js';
+import { t, tForVersion } from '../i18n.js';
 import { displayVersion } from '../lib/utils.js';
-import { useBibleStore } from '../store.js';
+import { staticVersionLanguage, useBibleStore } from '../store.js';
 
 export const PreviewPane = memo(function PreviewPane() {
   const projectedData = useBibleStore((s) => s.projectedData);
@@ -21,7 +21,10 @@ export const PreviewPane = memo(function PreviewPane() {
   const bookLabel = hasData
     ? `${data.bookName} ${data.chapter}`
     : selectedBook
-      ? `${selectedBook.name} ${chapter}`
+      ? `${tForVersion(
+          useBibleStore.getState().versionLanguage ?? staticVersionLanguage(version),
+          'book.' + selectedBook.id
+        )} ${chapter}`
       : '—';
   const versionLabel = hasData ? displayVersion(data.version) : displayVersion(version);
   const verseNumber: number | null = hasData ? (data.verses?.[0] ?? null) : selectedVerse;

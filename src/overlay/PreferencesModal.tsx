@@ -17,9 +17,9 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { HexColorPicker } from 'react-colorful';
 import { useDebounceCallback } from 'usehooks-ts';
 import { getDownloadedVersions } from '../data/store.js';
-import { type TranslationKey, t } from '../i18n.js';
+import { type TranslationKey, t, tForVersion } from '../i18n.js';
 import { cn, displayVersion } from '../lib/utils.js';
-import { ALL_VERSIONS, useBibleStore } from '../store.js';
+import { ALL_VERSIONS, staticVersionLanguage, useBibleStore } from '../store.js';
 
 type SectionId = 'typography' | 'theme' | 'downloads' | 'cache';
 
@@ -60,10 +60,12 @@ function SlidePreview() {
   const previewSize = Math.max(14, Math.min(48, Math.round(fontSize * 0.6)));
   const resolvedBg = background ?? profileBackground;
 
+  const versionLang = useBibleStore.getState().versionLanguage ?? staticVersionLanguage(version);
+
   const bookName = selectedBook
     ? abbreviatedBooks
-      ? t(`bookAbbr.${selectedBook.id}` as TranslationKey)
-      : t(`book.${selectedBook.id}` as TranslationKey)
+      ? tForVersion(versionLang, `bookAbbr.${selectedBook.id}`)
+      : tForVersion(versionLang, `book.${selectedBook.id}`)
     : 'John';
   const verseNum = selectedVerse ?? 16;
   const verseText = verses?.find((v) => v.number === verseNum)?.text;
@@ -72,11 +74,7 @@ function SlidePreview() {
   return (
     <div className="relative aspect-video overflow-hidden rounded-md border border-border bg-black">
       {resolvedBg ? (
-        <img
-          src={resolvedBg.src}
-          alt=""
-          className="absolute inset-0 h-full w-full object-cover"
-        />
+        <img src={resolvedBg.src} alt="" className="absolute inset-0 h-full w-full object-cover" />
       ) : (
         <div className="absolute inset-0 bg-linear-to-br from-card to-background" />
       )}
@@ -307,10 +305,12 @@ export const PreferencesModal = ({ children }: { children: React.ReactNode }) =>
                 {t('bible.live-preview' as TranslationKey)}
               </span>
               {(() => {
+                const versionLang =
+                  useBibleStore.getState().versionLanguage ?? staticVersionLanguage(version);
                 const bookName = selectedBook
                   ? abbreviatedBooks
-                    ? t(`bookAbbr.${selectedBook.id}` as TranslationKey)
-                    : t(`book.${selectedBook.id}` as TranslationKey)
+                    ? tForVersion(versionLang, `bookAbbr.${selectedBook.id}`)
+                    : tForVersion(versionLang, `book.${selectedBook.id}`)
                   : 'John';
                 const verseNum = selectedVerse ?? 16;
                 const verseText = verses?.find((v) => v.number === verseNum)?.text;
@@ -383,7 +383,7 @@ export const PreferencesModal = ({ children }: { children: React.ReactNode }) =>
                       })}
                       style={{
                         fontFamily,
-                        fontSize: `${Math.max(14, Math.round(previewSize * 0.4))}px`,
+                        fontSize: `${Math.max(14, Math.round(previewSize * 0.8))}px`,
                         color: `${fontColor}99`,
                       }}
                     >
