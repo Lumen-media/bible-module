@@ -9,7 +9,6 @@ import css from './styles.css?inline';
 
 const SURFACE_PANEL_ID = 'bible-controller';
 const SURFACE_OPTIONS = {
-  maximized: true,
   resizable: false,
   decorations: false,
   title: 'Bíblia',

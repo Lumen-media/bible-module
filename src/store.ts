@@ -23,6 +23,7 @@ import {
   setVersionLanguage,
 } from './data/database.js';
 import { downloadVersion, hasAnyCache } from './data/downloader.js';
+import { persistSettings } from './data/settings-persist.js';
 import {
   BOOKS,
   getDownloadedVersions,
@@ -191,6 +192,7 @@ export interface BibleActions {
   setFontColor: (c: string) => void;
   setAutoFontColor: (v: boolean) => void;
   setBackgroundOpacity: (n: number) => void;
+  saveSettings: () => void;
   loadFonts: () => Promise<void>;
   setProjectedData: (
     data: {
@@ -200,6 +202,18 @@ export interface BibleActions {
       chapter: number;
       verses: number[];
       text: string;
+      uppercase?: boolean;
+      showReferenceOnly?: boolean;
+      showVersion?: boolean;
+      abbreviatedBooks?: boolean;
+      fontColor?: string;
+      fontSize?: number;
+      fontFamily?: string;
+      fontWeight?: string;
+      fontStyle?: string;
+      background?: SelectedBackground | null;
+      profileBackground?: { type: string; src: string; name: string } | null;
+      backgroundOpacity?: number;
     } | null
   ) => void;
   clearProjection: () => void;
@@ -235,6 +249,26 @@ function getDefaultVersions(locale?: string): string[] {
             ? 'es'
             : 'pt-BR';
   return DEFAULT_VERSIONS_BY_LOCALE[prefix] ?? DEFAULT_VERSIONS_BY_LOCALE['pt-BR'];
+}
+
+function persistSettingsFromState(state: BibleState) {
+  if (!state.json) return;
+  persistSettings(state.json, {
+    background: state.background,
+    backgroundOpacity: state.backgroundOpacity,
+    fontSize: state.fontSize,
+    fontFamily: state.fontFamily,
+    fontWeight: state.fontWeight,
+    fontStyle: state.fontStyle,
+    displayedTabs: state.displayedTabs,
+    version: state.version,
+    uppercase: state.uppercase,
+    showReferenceOnly: state.showReferenceOnly,
+    showVersion: state.showVersion,
+    abbreviatedBooks: state.abbreviatedBooks,
+    fontColor: state.fontColor,
+    autoFontColor: state.autoFontColor,
+  });
 }
 
 export const useBibleStore = create<BibleStore>((set, get) => ({
@@ -283,7 +317,6 @@ export const useBibleStore = create<BibleStore>((set, get) => ({
   fontColor: '#FFFFFF',
   autoFontColor: true,
   backgroundOpacity: 30,
-
   projectedData: null,
 
   init: async (services) => {
@@ -349,7 +382,7 @@ export const useBibleStore = create<BibleStore>((set, get) => ({
           dlVersion: string;
         }) => {
           const now = Date.now();
-          if (now - lastUpdate < 100 && progress.dlCurrent < progress.dlTotal) return;
+          if (now - lastUpdate < 500 && progress.dlCurrent < progress.dlTotal) return;
           lastUpdate = now;
           set(progress);
         };
@@ -569,7 +602,6 @@ export const useBibleStore = create<BibleStore>((set, get) => ({
     }
 
     pending.ready = true;
-
     set(pending);
     console.log('[bible] init: state ready, total', (performance.now() - t0).toFixed(0), 'ms');
 
@@ -593,39 +625,19 @@ export const useBibleStore = create<BibleStore>((set, get) => ({
   },
 
   setVersion: async (version) => {
-    const { selectedBook, chapter, json, sqlite } = get();
+    const { selectedBook, chapter, sqlite } = get();
     const language = sqlite
       ? ((await getVersionLanguage(sqlite, version).catch(() => null)) ??
         staticVersionLanguage(version))
       : staticVersionLanguage(version);
     set({ version, verses: null, versionLanguage: language });
-    if (json) {
-      const bg = get().background;
-      json
-        .set('bibleSettings', {
-          background: bg,
-          backgroundOpacity: get().backgroundOpacity,
-          fontSize: get().fontSize,
-          fontFamily: get().fontFamily,
-          fontWeight: get().fontWeight,
-          fontStyle: get().fontStyle,
-          displayedTabs: get().displayedTabs,
-          version,
-          uppercase: get().uppercase,
-          showReferenceOnly: get().showReferenceOnly,
-          showVersion: get().showVersion,
-          abbreviatedBooks: get().abbreviatedBooks,
-          fontColor: get().fontColor,
-        })
-        .catch(() => {});
-    }
+    persistSettingsFromState(get());
     if (selectedBook) {
       get().loadChapter(selectedBook.id, chapter);
     }
   },
 
   setTestament: (testament) => set({ testament }),
-
   setTab: (tab) => set({ tab }),
 
   selectBook: (book) => {
@@ -775,21 +787,7 @@ export const useBibleStore = create<BibleStore>((set, get) => ({
   },
 
   setBackground: async (bg) => {
-    const {
-      json,
-      autoFontColor,
-      fontSize,
-      fontFamily,
-      fontWeight,
-      fontStyle,
-      displayedTabs,
-      version,
-      uppercase,
-      showReferenceOnly,
-      showVersion,
-      abbreviatedBooks,
-      backgroundOpacity,
-    } = get();
+    const { autoFontColor } = get();
     set({ background: bg });
 
     if (autoFontColor && bg?.src && bg.type !== 'video') {
@@ -797,26 +795,7 @@ export const useBibleStore = create<BibleStore>((set, get) => ({
       set({ fontColor: textColor });
     }
 
-    if (json) {
-      const s = get();
-      json
-        .set('bibleSettings', {
-          background: bg,
-          backgroundOpacity,
-          fontSize,
-          fontFamily,
-          fontWeight,
-          fontStyle,
-          displayedTabs,
-          version,
-          uppercase,
-          showReferenceOnly,
-          showVersion,
-          abbreviatedBooks,
-          fontColor: s.fontColor,
-        })
-        .catch(() => {});
-    }
+    persistSettingsFromState(get());
   },
 
   pickBackground: () => {
@@ -828,425 +807,56 @@ export const useBibleStore = create<BibleStore>((set, get) => ({
   },
 
   setFontSize: (n) => {
-    const {
-      json,
-      background,
-      fontFamily,
-      fontWeight,
-      fontStyle,
-      displayedTabs,
-      version,
-      uppercase,
-      showReferenceOnly,
-      showVersion,
-      abbreviatedBooks,
-      fontColor,
-      backgroundOpacity,
-    } = get();
     set({ fontSize: n });
-    if (json) {
-      json
-        .set('bibleSettings', {
-          background,
-          backgroundOpacity,
-          fontSize: n,
-          fontFamily,
-          fontWeight,
-          fontStyle,
-          displayedTabs,
-          version,
-          uppercase,
-          showReferenceOnly,
-          showVersion,
-          abbreviatedBooks,
-          fontColor,
-        })
-        .catch(() => {});
-    }
   },
 
   setFontFamily: (f) => {
-    const {
-      json,
-      background,
-      fontSize,
-      fontWeight,
-      fontStyle,
-      displayedTabs,
-      version,
-      uppercase,
-      showReferenceOnly,
-      showVersion,
-      abbreviatedBooks,
-      fontColor,
-      backgroundOpacity,
-    } = get();
     set({ fontFamily: f });
-    if (json) {
-      json
-        .set('bibleSettings', {
-          background,
-          backgroundOpacity,
-          fontSize,
-          fontFamily: f,
-          fontWeight,
-          fontStyle,
-          displayedTabs,
-          version,
-          uppercase,
-          showReferenceOnly,
-          showVersion,
-          abbreviatedBooks,
-          fontColor,
-        })
-        .catch(() => {});
-    }
+    persistSettingsFromState(get());
   },
 
   setFontWeight: (w) => {
-    const {
-      json,
-      background,
-      fontSize,
-      fontFamily,
-      fontStyle,
-      displayedTabs,
-      version,
-      uppercase,
-      showReferenceOnly,
-      showVersion,
-      abbreviatedBooks,
-      fontColor,
-      backgroundOpacity,
-    } = get();
     set({ fontWeight: w });
-    if (json) {
-      json
-        .set('bibleSettings', {
-          background,
-          backgroundOpacity,
-          fontSize,
-          fontFamily,
-          fontWeight: w,
-          fontStyle,
-          displayedTabs,
-          version,
-          uppercase,
-          showReferenceOnly,
-          showVersion,
-          abbreviatedBooks,
-          fontColor,
-        })
-        .catch(() => {});
-    }
+    persistSettingsFromState(get());
   },
 
   setFontStyle: (s) => {
-    const {
-      json,
-      background,
-      fontSize,
-      fontFamily,
-      fontWeight,
-      displayedTabs,
-      version,
-      uppercase,
-      showReferenceOnly,
-      showVersion,
-      abbreviatedBooks,
-      fontColor,
-      backgroundOpacity,
-    } = get();
     set({ fontStyle: s });
-    if (json) {
-      json
-        .set('bibleSettings', {
-          background,
-          backgroundOpacity,
-          fontSize,
-          fontFamily,
-          fontWeight,
-          fontStyle: s,
-          displayedTabs,
-          version,
-          uppercase,
-          showReferenceOnly,
-          showVersion,
-          abbreviatedBooks,
-          fontColor,
-        })
-        .catch(() => {});
-    }
+    persistSettingsFromState(get());
   },
 
   setDisplayedTabs: (tabs) => {
-    const {
-      json,
-      background,
-      fontSize,
-      fontFamily,
-      fontWeight,
-      fontStyle,
-      version,
-      uppercase,
-      showReferenceOnly,
-      showVersion,
-      abbreviatedBooks,
-      fontColor,
-      backgroundOpacity,
-    } = get();
     set({ displayedTabs: tabs });
-    if (json) {
-      json
-        .set('bibleSettings', {
-          background,
-          backgroundOpacity,
-          fontSize,
-          fontFamily,
-          fontWeight,
-          fontStyle,
-          displayedTabs: tabs,
-          version,
-          uppercase,
-          showReferenceOnly,
-          showVersion,
-          abbreviatedBooks,
-          fontColor,
-        })
-        .catch(() => {});
-    }
+    persistSettingsFromState(get());
   },
 
   setUppercase: (v) => {
-    const {
-      json,
-      background,
-      fontSize,
-      fontFamily,
-      fontWeight,
-      fontStyle,
-      displayedTabs,
-      version,
-      showReferenceOnly,
-      showVersion,
-      abbreviatedBooks,
-      fontColor,
-      backgroundOpacity,
-    } = get();
     set({ uppercase: v });
-    if (json) {
-      json
-        .set('bibleSettings', {
-          background,
-          backgroundOpacity,
-          fontSize,
-          fontFamily,
-          fontWeight,
-          fontStyle,
-          displayedTabs,
-          version,
-          uppercase: v,
-          showReferenceOnly,
-          showVersion,
-          abbreviatedBooks,
-          fontColor,
-        })
-        .catch(() => {});
-    }
+    persistSettingsFromState(get());
   },
 
   setShowReferenceOnly: (v) => {
-    const {
-      json,
-      background,
-      fontSize,
-      fontFamily,
-      fontWeight,
-      fontStyle,
-      displayedTabs,
-      version,
-      uppercase,
-      showVersion,
-      abbreviatedBooks,
-      fontColor,
-      backgroundOpacity,
-    } = get();
     set({ showReferenceOnly: v });
-    if (json) {
-      json
-        .set('bibleSettings', {
-          background,
-          backgroundOpacity,
-          fontSize,
-          fontFamily,
-          fontWeight,
-          fontStyle,
-          displayedTabs,
-          version,
-          uppercase,
-          showReferenceOnly: v,
-          showVersion,
-          abbreviatedBooks,
-          fontColor,
-        })
-        .catch(() => {});
-    }
+    persistSettingsFromState(get());
   },
 
   setShowVersion: (v) => {
-    const {
-      json,
-      background,
-      fontSize,
-      fontFamily,
-      fontWeight,
-      fontStyle,
-      displayedTabs,
-      version,
-      uppercase,
-      showReferenceOnly,
-      abbreviatedBooks,
-      fontColor,
-      backgroundOpacity,
-    } = get();
     set({ showVersion: v });
-    if (json) {
-      json
-        .set('bibleSettings', {
-          background,
-          backgroundOpacity,
-          fontSize,
-          fontFamily,
-          fontWeight,
-          fontStyle,
-          displayedTabs,
-          version,
-          uppercase,
-          showReferenceOnly,
-          showVersion: v,
-          abbreviatedBooks,
-          fontColor,
-        })
-        .catch(() => {});
-    }
+    persistSettingsFromState(get());
   },
 
   setAbbreviatedBooks: (v) => {
-    const {
-      json,
-      background,
-      fontSize,
-      fontFamily,
-      fontWeight,
-      fontStyle,
-      displayedTabs,
-      version,
-      uppercase,
-      showReferenceOnly,
-      showVersion,
-      fontColor,
-      backgroundOpacity,
-    } = get();
     set({ abbreviatedBooks: v });
-    if (json) {
-      json
-        .set('bibleSettings', {
-          background,
-          backgroundOpacity,
-          fontSize,
-          fontFamily,
-          fontWeight,
-          fontStyle,
-          displayedTabs,
-          version,
-          uppercase,
-          showReferenceOnly,
-          showVersion,
-          abbreviatedBooks: v,
-          fontColor,
-        })
-        .catch(() => {});
-    }
+    persistSettingsFromState(get());
   },
 
   setFontColor: (c) => {
-    const {
-      json,
-      background,
-      fontSize,
-      fontFamily,
-      fontWeight,
-      fontStyle,
-      displayedTabs,
-      version,
-      uppercase,
-      showReferenceOnly,
-      showVersion,
-      abbreviatedBooks,
-      backgroundOpacity,
-    } = get();
     set({ fontColor: c });
-    if (json) {
-      json
-        .set('bibleSettings', {
-          background,
-          backgroundOpacity,
-          fontSize,
-          fontFamily,
-          fontWeight,
-          fontStyle,
-          displayedTabs,
-          version,
-          uppercase,
-          showReferenceOnly,
-          showVersion,
-          abbreviatedBooks,
-          fontColor: c,
-        })
-        .catch(() => {});
-    }
-  },
-
-  setBackgroundOpacity: (n) => {
-    const {
-      json,
-      background,
-      fontSize,
-      fontFamily,
-      fontWeight,
-      fontStyle,
-      displayedTabs,
-      version,
-      uppercase,
-      showReferenceOnly,
-      showVersion,
-      abbreviatedBooks,
-      fontColor,
-    } = get();
-    set({ backgroundOpacity: n });
-    if (json) {
-      json
-        .set('bibleSettings', {
-          background,
-          backgroundOpacity: n,
-          fontSize,
-          fontFamily,
-          fontWeight,
-          fontStyle,
-          displayedTabs,
-          version,
-          uppercase,
-          showReferenceOnly,
-          showVersion,
-          abbreviatedBooks,
-          fontColor,
-        })
-        .catch(() => {});
-    }
   },
 
   setAutoFontColor: async (v) => {
     set({ autoFontColor: v });
+    persistSettingsFromState(get());
     if (v) {
       const bg = get().background ?? get().profileBackground;
       if (bg?.src && bg.type !== 'video') {
@@ -1254,6 +864,14 @@ export const useBibleStore = create<BibleStore>((set, get) => ({
         set({ fontColor: textColor });
       }
     }
+  },
+
+  setBackgroundOpacity: (n) => {
+    set({ backgroundOpacity: n });
+  },
+
+  saveSettings: () => {
+    persistSettingsFromState(get());
   },
 
   loadFonts: async () => {
@@ -1289,7 +907,7 @@ export const useBibleStore = create<BibleStore>((set, get) => ({
     }
   },
 
-  setProjectedData: (data) => set({ projectedData: data }),
+  setProjectedData: (data) => set({ projectedData: data as BibleState['projectedData'] }),
 
   clearProjection: () => {
     const { presentation, projectedData } = get();

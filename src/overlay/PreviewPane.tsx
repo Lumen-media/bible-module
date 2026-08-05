@@ -1,12 +1,13 @@
 import { Palette } from 'lucide-react';
 import { memo } from 'react';
-import { t, tForVersion } from '../i18n.js';
+import { tForVersion } from '../i18n.js';
 import { displayVersion } from '../lib/utils.js';
 import { staticVersionLanguage, useBibleStore } from '../store.js';
 
 export const PreviewPane = memo(function PreviewPane() {
   const projectedData = useBibleStore((s) => s.projectedData);
   const version = useBibleStore((s) => s.version);
+  const versionLanguage = useBibleStore((s) => s.versionLanguage);
   const background = useBibleStore((s) => s.background);
   const profileBg = useBibleStore((s) => s.profileBackground);
   const selectedBook = useBibleStore((s) => s.selectedBook);
@@ -18,13 +19,12 @@ export const PreviewPane = memo(function PreviewPane() {
   const data = projectedData;
   const hasData = !!data;
 
+  const lang = versionLanguage ?? staticVersionLanguage(version);
+
   const bookLabel = hasData
     ? `${data.bookName} ${data.chapter}`
     : selectedBook
-      ? `${tForVersion(
-          useBibleStore.getState().versionLanguage ?? staticVersionLanguage(version),
-          'book.' + selectedBook.id
-        )} ${chapter}`
+      ? `${tForVersion(lang, 'book.' + selectedBook.id)} ${chapter}`
       : '—';
   const versionLabel = hasData ? displayVersion(data.version) : displayVersion(version);
   const verseNumber: number | null = hasData ? (data.verses?.[0] ?? null) : selectedVerse;
@@ -33,7 +33,7 @@ export const PreviewPane = memo(function PreviewPane() {
     <button
       type="button"
       onClick={pickBackground}
-      title={t('bible.background' as never)}
+      title="Background"
       className="group relative flex aspect-video w-28 shrink-0 items-center overflow-hidden rounded-md border border-border bg-black text-left transition-colors hover:border-primary/50"
     >
       {resolvedBg ? (

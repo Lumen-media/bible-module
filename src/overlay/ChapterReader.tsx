@@ -101,7 +101,7 @@ export const ChapterReader = memo(function ChapterReader({
       }
       setSelectedVerse(v.number);
     },
-    [presentation, version, book.id, t, chapter, setSelectedVerse, onProject]
+    [presentation, version, book.id, chapter, setSelectedVerse, onProject]
   );
 
   const handleVerseClick = useCallback(

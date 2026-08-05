@@ -1,4 +1,5 @@
 import { Combobox } from '@lumen-media/module-sdk/ui';
+import { memo } from 'react';
 import { parseReference } from '../data/ref.js';
 import type { Book } from '../data/types.js';
 import type { TFunction, TranslationKey } from '../i18n.js';
@@ -11,7 +12,7 @@ interface QuickSearchProps {
   onInputValueChange: (value: string) => void;
 }
 
-export function QuickSearch({
+export const QuickSearch = memo(function QuickSearch({
   books,
   onSelect,
   t,
@@ -77,4 +78,4 @@ export function QuickSearch({
       </Combobox>
     </div>
   );
-}
+});

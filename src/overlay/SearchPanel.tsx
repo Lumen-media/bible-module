@@ -4,13 +4,16 @@ import { Loader2, Search } from 'lucide-react';
 import { memo, useRef, useState } from 'react';
 import { parseReference } from '../data/ref.js';
 import { BOOKS } from '../data/store.js';
-import { type TFunction, t, tForVersion } from '../i18n.js';
+import { type TFunction, tForVersion } from '../i18n.js';
 import { displayVersion } from '../lib/utils.js';
 import { staticVersionLanguage, useBibleStore } from '../store.js';
 
 interface SearchPanelProps {
   t: TFunction;
 }
+
+const ESTIMATE_HEIGHT = 72;
+const GAP = 6;
 
 export const SearchPanel = memo(function SearchPanel({ t }: SearchPanelProps) {
   const [query, setQuery] = useState('');
@@ -28,13 +31,11 @@ export const SearchPanel = memo(function SearchPanel({ t }: SearchPanelProps) {
 
   const bookById = new Map(BOOKS.map((b) => [b.id, b]));
 
-  const GAP = 6;
   const virtualizer = useVirtualizer({
     count: results.length,
     getScrollElement: () => viewportRef.current,
-    estimateSize: () => 80,
+    estimateSize: () => ESTIMATE_HEIGHT + GAP,
     overscan: 10,
-    measureElement: (el) => el.getBoundingClientRect().height + GAP,
   });
 
   async function handleSearch() {
@@ -143,7 +144,7 @@ export const SearchPanel = memo(function SearchPanel({ t }: SearchPanelProps) {
                     handleSelect(virtualItem.index);
                   }}
                   onMouseEnter={() => setFocusedIndex(virtualItem.index)}
-                  className={`absolute left-0 top-0 w-full rounded-md border px-3 py-2 mb-1.5 text-left text-sm transition-colors outline-none focus:outline-none focus-visible:outline-none ${
+                  className={`absolute left-0 top-0 w-full rounded-md border px-3 py-2 text-left text-sm transition-colors outline-none focus:outline-none focus-visible:outline-none ${
                     virtualItem.index === focusedIndex
                       ? 'border-primary bg-accent text-accent-foreground'
                       : 'border-border bg-card text-card-foreground hover:bg-accent hover:text-accent-foreground'

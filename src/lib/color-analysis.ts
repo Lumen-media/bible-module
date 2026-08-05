@@ -9,7 +9,10 @@ export async function analyzeBackgroundColor(src: string): Promise<'#FFFFFF' | '
         canvas.width = 50;
         canvas.height = 50;
         const ctx = canvas.getContext('2d');
-        if (!ctx) { resolve('#FFFFFF'); return; }
+        if (!ctx) {
+          resolve('#FFFFFF');
+          return;
+        }
         ctx.drawImage(img, 0, 0, 50, 50);
         const data = ctx.getImageData(0, 0, 50, 50).data;
         let r = 0;
