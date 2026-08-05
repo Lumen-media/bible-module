@@ -1,5 +1,5 @@
 import type { DataAPI, FsAPI } from '@lumen-media/module-sdk';
-import type { Book, Chapter, MidvashChapter, Verse } from './types.js';
+import type { Book, Chapter, MidvashChapter, MidvashVerse, Verse } from './types.js';
 
 export const BOOKS: Book[] = [
   { id: 'genesis', name: 'Gênesis', chapters: 50, testament: 'old' },

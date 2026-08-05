@@ -40,6 +40,7 @@ export default class BibleModulePlugin extends LumenPlugin {
       id: SURFACE_PANEL_ID,
       slot: 'surface.window',
       title: 'Bíblia',
+      // @ts-expect-error - SDK component type mismatch with specific prop types
       component: BibleController,
     });
 
@@ -47,6 +48,7 @@ export default class BibleModulePlugin extends LumenPlugin {
       host.panels.add({
         id: 'bible-slide',
         slot: 'presenter.content',
+        // @ts-expect-error - SDK component type mismatch with specific prop types
         component: BibleSlide,
       });
     }
@@ -136,7 +138,7 @@ export default class BibleModulePlugin extends LumenPlugin {
       fonts: host.fonts,
       events: host.events,
       t,
-      hostWindow: host.window,
+      hostWindow: host.window as 'main' | 'presenter' | 'surface',
     });
 
     host.events.on('module:presenter-clear', () => {
