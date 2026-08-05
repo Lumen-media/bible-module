@@ -6,7 +6,7 @@ import { cn, displayVersion } from '../lib/utils.js';
 import { staticVersionLanguage, useBibleStore } from '../store.js';
 
 interface BibleSlideProps {
-  data: {
+  data?: {
     version: string;
     book: string;
     bookName: string;
