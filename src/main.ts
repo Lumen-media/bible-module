@@ -134,6 +134,7 @@ export default class BibleModulePlugin extends LumenPlugin {
       themes: host.themes,
       ui: host.ui,
       fonts: host.fonts,
+      events: host.events,
       t,
       hostWindow: host.window,
     });
