@@ -146,7 +146,7 @@ const TypographySection = memo(function TypographySection() {
 
   const commitFontSize = useCallback(() => {
     const n = parseInt(localFontSize, 10);
-    if (!Number.isNaN(n) && n >= 12 && n <= 120) {
+    if (!Number.isNaN(n) && n >= 12 && n <= 2000) {
       setLocalFontSize(String(n));
       setFontSize(n);
     } else {
@@ -303,7 +303,7 @@ const TypographySection = memo(function TypographySection() {
               <input
                 type="number"
                 min={12}
-                max={120}
+                max={2000}
                 step={1}
                 value={localFontSize}
                 onChange={(e) => setLocalFontSize(e.target.value)}
@@ -318,7 +318,7 @@ const TypographySection = memo(function TypographySection() {
                     const current = parseInt(localFontSize, 10);
                     const base = Number.isNaN(current) ? fontSize : current;
                     const delta = e.key === 'ArrowUp' ? 1 : -1;
-                    const next = Math.min(120, Math.max(12, base + delta));
+                    const next = Math.min(2000, Math.max(12, base + delta));
                     setLocalFontSize(String(next));
                     debouncedSetFontSize(next);
                   }

@@ -18,15 +18,28 @@ interface BibleSlideProps {
     showVersion: boolean;
     abbreviatedBooks: boolean;
     fontColor: string;
+    fontSize: number;
+    fontFamily: string;
+    fontWeight: string;
+    fontStyle: string;
+    background: { type: string; src: string; name: string } | null;
+    profileBackground: { type: string; src: string; name: string } | null;
+    backgroundOpacity: number;
   } | null;
 }
 
 export function BibleSlide({ data }: BibleSlideProps) {
-  const background = useBibleStore((s) => s.background);
-  const profileBg = useBibleStore((s) => s.profileBackground);
-  const fontSize = useBibleStore((s) => s.fontSize);
-  const fontFamily = useBibleStore((s) => s.fontFamily);
-  const backgroundOpacity = useBibleStore((s) => s.backgroundOpacity);
+  const storeBg = useBibleStore((s) => s.background);
+  const storeProfileBg = useBibleStore((s) => s.profileBackground);
+  const storeFontSize = useBibleStore((s) => s.fontSize);
+  const storeFontFamily = useBibleStore((s) => s.fontFamily);
+  const storeBgOpacity = useBibleStore((s) => s.backgroundOpacity);
+
+  const background = data?.background ?? storeBg;
+  const profileBg = data?.profileBackground ?? storeProfileBg;
+  const fontSize = data?.fontSize ?? storeFontSize;
+  const fontFamily = data?.fontFamily ?? storeFontFamily;
+  const backgroundOpacity = data?.backgroundOpacity ?? storeBgOpacity;
 
   const resolvedBg = background ?? profileBg;
 

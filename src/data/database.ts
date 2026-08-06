@@ -47,6 +47,13 @@ const MIGRATIONS = [
     );
     DROP TABLE IF EXISTS book_names;`,
   },
+  {
+    version: 7,
+    up: `CREATE TABLE IF NOT EXISTS settings (
+      key TEXT PRIMARY KEY,
+      value TEXT NOT NULL
+    );`,
+  },
 ];
 
 export async function initDatabase(db: SqliteHandle): Promise<void> {
@@ -67,6 +74,15 @@ export async function isVersionPopulated(db: SqliteHandle, version: string): Pro
     [version]
   );
   return rows.length > 0 && rows[0].cnt > 0;
+}
+
+export async function getPopulatedVersions(db: SqliteHandle): Promise<string[]> {
+  try {
+    const rows = await db.query<{ version: string }>('SELECT DISTINCT version FROM verses');
+    return rows.map((r) => r.version);
+  } catch {
+    return [];
+  }
 }
 
 export async function getChapterFromDb(
@@ -215,6 +231,21 @@ export async function importVersionFromJson(
   );
 
   return true;
+}
+
+export async function getSetting(db: SqliteHandle, key: string): Promise<string | null> {
+  try {
+    const rows = await db.query<{ value: string }>('SELECT value FROM settings WHERE key = ?', [
+      key,
+    ]);
+    return rows.length > 0 ? rows[0].value : null;
+  } catch {
+    return null;
+  }
+}
+
+export async function setSetting(db: SqliteHandle, key: string, value: string): Promise<void> {
+  await db.exec('INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)', [key, value]);
 }
 
 export async function searchVerses(

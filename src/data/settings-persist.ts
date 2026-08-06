@@ -1,4 +1,5 @@
-import type { DataAPI } from '@lumen-media/module-sdk';
+import type { DataAPI, SqliteHandle } from '@lumen-media/module-sdk';
+import { setSetting } from './database.js';
 
 export interface PersistedSettings {
   background: { type: string; src: string; name: string } | null;
@@ -20,16 +21,25 @@ export interface PersistedSettings {
 let saveTimer: ReturnType<typeof setTimeout> | null = null;
 let pending: Partial<PersistedSettings> | null = null;
 let jsonApi: DataAPI['json'] | null = null;
+let sqliteHandle: SqliteHandle | null = null;
 
 function flush() {
   if (!jsonApi || !pending) return;
   const toSave = pending;
   pending = null;
   jsonApi.set('bibleSettings', toSave).catch(() => {});
+  if (sqliteHandle) {
+    setSetting(sqliteHandle, 'bibleSettings', JSON.stringify(toSave)).catch(() => {});
+  }
 }
 
-export function persistSettings(json: DataAPI['json'], partial: Partial<PersistedSettings>) {
+export function persistSettings(
+  json: DataAPI['json'],
+  sqlite: SqliteHandle | null,
+  partial: Partial<PersistedSettings>
+) {
   jsonApi = json;
+  sqliteHandle = sqlite;
   if (saveTimer) clearTimeout(saveTimer);
   pending = { ...pending, ...partial };
   saveTimer = setTimeout(flush, 500);
