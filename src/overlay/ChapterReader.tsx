@@ -1,7 +1,7 @@
 import type { PresentationHostAPI } from '@lumen-media/module-sdk';
 import { Button, ScrollArea, Select } from '@lumen-media/module-sdk/ui';
 import { Loader2, Projector } from 'lucide-react';
-import { memo, useCallback, useEffect, useRef } from 'react';
+import { memo, useCallback, useEffect, useRef, useState } from 'react';
 import type { Book } from '../data/types.js';
 import { type TFunction, tForVersion } from '../i18n.js';
 import { staticVersionLanguage, useBibleStore } from '../store.js';
@@ -29,6 +29,7 @@ export const ChapterReader = memo(function ChapterReader({
 }: ChapterReaderProps) {
   const versesPerPage = useBibleStore((s) => s.versesPerPage);
   const setVersesPerPage = useBibleStore((s) => s.setVersesPerPage);
+  const [localVpp, setLocalVpp] = useState(String(versesPerPage));
   const chapter = useBibleStore((s) => s.chapter);
   const verses = useBibleStore((s) => s.verses);
   const versesLoading = useBibleStore((s) => s.versesLoading);
@@ -45,6 +46,10 @@ export const ChapterReader = memo(function ChapterReader({
   }, [loadChapter, book.id, chapter]);
 
   useEffect(() => {
+    setLocalVpp(String(versesPerPage));
+  }, [versesPerPage]);
+
+  useEffect(() => {
     if (selectedVerse != null) {
       const el = verseRefs.current.get(selectedVerse);
       if (el) {
@@ -55,6 +60,23 @@ export const ChapterReader = memo(function ChapterReader({
 
   const projectVerse = useCallback(
     (v: { number: number; text: string }) => {
+      const state = useBibleStore.getState();
+      const currentVerses = state.verses;
+      const vpp = state.versesPerPage;
+
+      let verseNumbers = [v.number];
+      let verseText = `${v.number} ${v.text}`;
+
+      if (currentVerses && vpp > 1) {
+        const startIdx = currentVerses.findIndex((vv) => vv.number === v.number);
+        if (startIdx >= 0) {
+          const count = Math.min(vpp, currentVerses.length - startIdx);
+          const group = currentVerses.slice(startIdx, startIdx + count);
+          verseNumbers = group.map((vv) => vv.number);
+          verseText = group.map((vv) => `${vv.number} ${vv.text}`).join('\n');
+        }
+      }
+
       const {
         uppercase,
         showReferenceOnly,
@@ -68,17 +90,17 @@ export const ChapterReader = memo(function ChapterReader({
         background,
         profileBackground,
         backgroundOpacity,
-      } = useBibleStore.getState();
+      } = state;
       const data = {
         version,
         book: book.id,
         bookName: tForVersion(
-          useBibleStore.getState().versionLanguage ?? staticVersionLanguage(version),
-          `book.${book.id}`
+          state.versionLanguage ?? staticVersionLanguage(version),
+          `book.${book.id}`,
         ),
         chapter,
-        verses: [v.number],
-        text: v.text,
+        verses: verseNumbers,
+        text: verseText,
         uppercase,
         showReferenceOnly,
         showVersion,
@@ -209,7 +231,10 @@ export const ChapterReader = memo(function ChapterReader({
       <div className="flex shrink-0 items-center justify-between border-t border-border px-4 py-2">
         <span className="text-xs text-muted-foreground">{t('bible.verses-per-screen')}</span>
         <div className="flex items-center gap-2">
-          <Select value={String(versesPerPage)} onValueChange={(v) => setVersesPerPage(Number(v))}>
+          <Select value={localVpp} onValueChange={(v) => {
+            setLocalVpp(v);
+            setVersesPerPage(Number(v));
+          }}>
             <Select.SelectTrigger className="h-7 w-16 text-xs">
               <Select.SelectValue />
             </Select.SelectTrigger>
