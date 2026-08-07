@@ -87,6 +87,41 @@ const VersionTab = memo(function VersionTab({
   );
 });
 
+const _LANG_LABELS: Record<string, string> = {
+  'pt-br': 'PT-BR',
+  'pt-pt': 'PT-PT',
+  'en-us': 'EN-US',
+  'en-gb': 'EN-GB',
+  es: 'ES',
+};
+
+const _LANG_ORDER = ['pt-br', 'pt-pt', 'en-us', 'en-gb', 'es'];
+
+function showFlag(lang: string) {
+  switch (lang) {
+    case 'pt-br':
+      return <BrazilFlag className="h-3.5 w-3.5" />;
+    case 'pt-pt':
+      return <PortugalFlag className="h-3.5 w-3.5" />;
+    case 'en-gb':
+      return <UKFlag className="h-3.5 w-3.5" />;
+    case 'en-us':
+      return <USFlag className="h-3.5 w-3.5" />;
+    case 'es':
+      return <SpainFlag className="h-3.5 w-3.5" />;
+    default:
+      return null;
+  }
+}
+
+function resolveUserLang(): string {
+  if (navigator.language.startsWith('pt-PT') || navigator.language === 'pt') return 'pt-pt';
+  if (navigator.language.startsWith('pt')) return 'pt-br';
+  if (navigator.language.startsWith('es')) return 'es';
+  if (navigator.language === 'en-GB' || navigator.language === 'en-gb') return 'en-gb';
+  return 'en-us';
+}
+
 const VersionManagerPopover = memo(function VersionManagerPopover({
   t,
   userLang,
@@ -106,34 +141,7 @@ const VersionManagerPopover = memo(function VersionManagerPopover({
   const [filterLang, setFilterLang] = useState(userLang);
   const [vmSearch, setVmSearch] = useState('');
 
-  const langLabels: Record<string, string> = {
-    'pt-br': 'PT-BR',
-    'pt-pt': 'PT-PT',
-    'en-us': 'EN-US',
-    'en-gb': 'EN-GB',
-    es: 'ES',
-  };
-
-  const showFlag = (lang: string) => {
-    switch (lang) {
-      case 'pt-br':
-        return <BrazilFlag className="h-3.5 w-3.5" />;
-      case 'pt-pt':
-        return <PortugalFlag className="h-3.5 w-3.5" />;
-      case 'en-gb':
-        return <UKFlag className="h-3.5 w-3.5" />;
-      case 'en-us':
-        return <USFlag className="h-3.5 w-3.5" />;
-      case 'es':
-        return <SpainFlag className="h-3.5 w-3.5" />;
-      default:
-        return null;
-    }
-  };
-
-  const langOrder = ['pt-br', 'pt-pt', 'en-us', 'en-gb', 'es'];
-
-  const handleSelectVersion = (id: string) => {
+  const handleSelectVersion = useCallback((id: string) => {
     if (!displayedTabs.includes(id)) {
       const idx = displayedTabs.indexOf(version);
       if (idx < 0) {
@@ -145,7 +153,7 @@ const VersionManagerPopover = memo(function VersionManagerPopover({
       }
     }
     setVersion(id);
-  };
+  }, [displayedTabs, version, setDisplayedTabs, setVersion]);
 
   const filteredVersions = useMemo(() => {
     let list = ALL_VERSIONS.filter((v) => v.language === filterLang);
@@ -178,7 +186,7 @@ const VersionManagerPopover = memo(function VersionManagerPopover({
               {showFlag(filterLang)}
             </Select.SelectTrigger>
             <Select.SelectContent className="min-w-(--anchor-width) w-fit">
-              {langOrder.map((l) => (
+              {_LANG_ORDER.map((l) => (
                 <Select.SelectItem
                   key={l}
                   value={l}
@@ -206,7 +214,7 @@ const VersionManagerPopover = memo(function VersionManagerPopover({
                   )}
                 >
                   <span className="shrink-0 rounded bg-muted px-1 py-0.5 text-[10px] font-medium text-muted-foreground">
-                    {langLabels[v.language] || v.language}
+                    {_LANG_LABELS[v.language] || v.language}
                   </span>
                   <span className="flex-1 truncate">{v.name}</span>
                   <span className="shrink-0 text-[10px] text-muted-foreground">{v.id}</span>
@@ -285,17 +293,7 @@ const Sidebar = memo(function Sidebar({
         ))}
         <VersionManagerPopover
           t={t}
-          userLang={
-            navigator.language.startsWith('pt-PT') || navigator.language === 'pt'
-              ? 'pt-pt'
-              : navigator.language.startsWith('pt')
-                ? 'pt-br'
-                : navigator.language.startsWith('es')
-                  ? 'es'
-                  : navigator.language === 'en-GB' || navigator.language === 'en-gb'
-                    ? 'en-gb'
-                    : 'en-us'
-          }
+          userLang={resolveUserLang()}
           localDownloaded={localDownloaded}
         />
       </div>
@@ -333,6 +331,12 @@ const BrowseContent = memo(function BrowseContent() {
   const selectedBook = useBibleStore((s) => s.selectedBook);
   const selectBook = useBibleStore((s) => s.selectBook);
   const setChapter = useBibleStore((s) => s.setChapter);
+  const tFn = useBibleStore((s) => s.t);
+
+  const chapterNumbers = useMemo(
+    () => selectedBook ? Array.from({ length: selectedBook.chapters }, (_, i) => i + 1) : [],
+    [selectedBook],
+  );
 
   return (
     <ScrollArea className="min-h-0 flex-1">
@@ -343,17 +347,17 @@ const BrowseContent = memo(function BrowseContent() {
             <div className="rounded-xl border border-border bg-card p-4 pr-1.5">
               <div className="mb-4 flex items-center gap-4 pr-1.5">
                 <h3 className="text-base font-semibold text-foreground">
-                  {useBibleStore.getState().t?.(`book.${selectedBook.id}` as TranslationKey)}{' '}
-                  {useBibleStore.getState().t?.('bible.chapter')}s
+                  {tFn?.(`book.${selectedBook.id}` as TranslationKey)}{' '}
+                  {tFn?.('bible.chapter')}s
                 </h3>
                 <div className="h-px flex-1 bg-border" />
                 <span className="text-xs text-muted-foreground">
-                  {selectedBook.chapters} {useBibleStore.getState().t?.('bible.chapter')}s
+                  {selectedBook.chapters} {tFn?.('bible.chapter')}s
                 </span>
               </div>
               <ScrollArea className="h-72 pr-3">
                 <div className="grid grid-cols-[repeat(auto-fill,minmax(40px,1fr))] gap-1.5">
-                  {Array.from({ length: selectedBook.chapters }, (_, i) => i + 1).map((ch) => (
+                  {chapterNumbers.map((ch) => (
                     <button
                       key={ch}
                       type="button"
@@ -374,7 +378,7 @@ const BrowseContent = memo(function BrowseContent() {
             <div className="rounded-xl border border-border bg-card p-4 pr-1.5">
               <div className="mb-4 flex items-center gap-4">
                 <h3 className="text-base font-semibold text-foreground">
-                  {useBibleStore.getState().t?.('bible.chapter')} {chapter}
+                  {tFn?.('bible.chapter')} {chapter}
                 </h3>
                 <div className="h-px flex-1 bg-border" />
               </div>
@@ -503,37 +507,42 @@ export function BibleController({ close, goToBook, goToChapter, goToVerse }: Bib
     }
   }, [projectedData]);
 
-  useEventListener('keydown', (e: KeyboardEvent) => {
-    if (e.key === 'Escape') {
-      if (projectingRef.current) {
-        e.preventDefault();
-        clearProjection();
+  const handleKeyDown = useCallback(
+    (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        if (projectingRef.current) {
+          e.preventDefault();
+          clearProjection();
+        }
+        return;
       }
-      return;
-    }
 
-    const target = e.target as HTMLElement;
-    if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA') return;
+      const target = e.target as HTMLElement;
+      if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA') return;
 
-    if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
-      e.preventDefault();
-      const input = document.querySelector<HTMLInputElement>('[data-search-input]');
-      input?.focus();
-      setSearchQuery('');
-      return;
-    }
-
-    if (!e.ctrlKey && !e.metaKey && !e.altKey && e.key.length === 1) {
-      const key = e.key.toLowerCase();
-      const normalizedKey = key.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
-      if (bookInitials.has(normalizedKey)) {
+      if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
         e.preventDefault();
         const input = document.querySelector<HTMLInputElement>('[data-search-input]');
         input?.focus();
-        setSearchQuery(key);
+        setSearchQuery('');
+        return;
       }
-    }
-  });
+
+      if (!e.ctrlKey && !e.metaKey && !e.altKey && e.key.length === 1) {
+        const key = e.key.toLowerCase();
+        const normalizedKey = key.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+        if (bookInitials.has(normalizedKey)) {
+          e.preventDefault();
+          const input = document.querySelector<HTMLInputElement>('[data-search-input]');
+          input?.focus();
+          setSearchQuery(key);
+        }
+      }
+    },
+    [bookInitials, clearProjection],
+  );
+
+  useEventListener('keydown', handleKeyDown);
 
   useEffect(() => {
     if (!goToBook || !goToChapter) return;
