@@ -25,6 +25,7 @@ export const SearchPanel = memo(function SearchPanel({ t }: SearchPanelProps) {
   const search = useBibleStore((s) => s.search);
   const goTo = useBibleStore((s) => s.goTo);
   const setVersion = useBibleStore((s) => s.setVersion);
+  const setDisplayedTabs = useBibleStore((s) => s.setDisplayedTabs);
   const setTab = useBibleStore((s) => s.setTab);
   const inputRef = useRef<HTMLInputElement>(null);
   const viewportRef = useRef<HTMLDivElement>(null);
@@ -60,6 +61,14 @@ export const SearchPanel = memo(function SearchPanel({ t }: SearchPanelProps) {
     if (!r) return;
     const book = bookById.get(r.book);
     if (!book) return;
+
+    const tabs = useBibleStore.getState().displayedTabs;
+    if (!tabs.includes(r.version) && tabs.length > 0) {
+      const next = [...tabs];
+      next[next.length - 1] = r.version;
+      setDisplayedTabs(next);
+    }
+
     setVersion(r.version);
     goTo(book, r.chapter, r.verse);
   }
@@ -107,6 +116,7 @@ export const SearchPanel = memo(function SearchPanel({ t }: SearchPanelProps) {
           onKeyDown={handleKeyDown}
           placeholder={t('bible.search-placeholder')}
           className="flex-1"
+          autoComplete="off"
         />
         <Button
           onClick={handleSearch}
@@ -133,35 +143,41 @@ export const SearchPanel = memo(function SearchPanel({ t }: SearchPanelProps) {
           >
             {virtualizer.getVirtualItems().map((virtualItem) => {
               const r = results[virtualItem.index];
+              const isFocused = virtualItem.index === focusedIndex;
               return (
-                <button
+                <div
                   key={virtualItem.key}
                   data-index={virtualItem.index}
                   ref={virtualizer.measureElement}
-                  type="button"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    handleSelect(virtualItem.index);
-                  }}
-                  onMouseEnter={() => setFocusedIndex(virtualItem.index)}
-                  className={`absolute left-0 top-0 w-full rounded-md border px-3 py-2 text-left text-sm transition-colors outline-none focus:outline-none focus-visible:outline-none ${
-                    virtualItem.index === focusedIndex
-                      ? 'border-primary bg-accent text-accent-foreground'
-                      : 'border-border bg-card text-card-foreground hover:bg-accent hover:text-accent-foreground'
-                  }`}
+                  className="absolute left-0 top-0 w-full"
                   style={{
                     transform: `translateY(${virtualItem.start}px)`,
+                    paddingBottom: `${GAP}px`,
                   }}
                 >
-                  <span className="font-medium">
-                    {tForVersion(staticVersionLanguage(r.version), `book.${r.book}`)} {r.chapter}:
-                    {r.verse}
-                  </span>
-                  <span className="ml-2 text-xs text-muted-foreground">
-                    {displayVersion(r.version)}
-                  </span>
-                  <p className="mt-0.5 line-clamp-2 text-muted-foreground">{r.text}</p>
-                </button>
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleSelect(virtualItem.index);
+                    }}
+                    onMouseEnter={() => setFocusedIndex(virtualItem.index)}
+                    className={`w-full rounded-md border px-3 py-2 text-left text-sm transition-colors outline-none focus:outline-none focus-visible:outline-none ${
+                      isFocused
+                        ? 'border-primary bg-accent text-accent-foreground'
+                        : 'border-border bg-card text-card-foreground hover:bg-accent hover:text-accent-foreground'
+                    }`}
+                  >
+                    <span className="font-medium">
+                      {tForVersion(staticVersionLanguage(r.version), `book.${r.book}`)} {r.chapter}:
+                      {r.verse}
+                    </span>
+                    <span className="ml-2 text-xs text-muted-foreground">
+                      {displayVersion(r.version)}
+                    </span>
+                    <p className="mt-0.5 line-clamp-2 text-muted-foreground">{r.text}</p>
+                  </button>
+                </div>
               );
             })}
           </div>
