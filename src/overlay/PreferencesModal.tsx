@@ -616,14 +616,31 @@ const DownloadsSection = memo(function DownloadsSection() {
                       ) : downloaded ? (
                         <>
                           {!active && (
-                            <Button size="xs" variant="ghost" onClick={() => setVersion(v.id)}>
+                            <Button
+                              size="xs"
+                              variant="ghost"
+                              onClick={() => {
+                                const tabs = useBibleStore.getState().displayedTabs;
+                                if (!tabs.includes(v.id) && tabs.length > 0) {
+                                  const next = [...tabs];
+                                  next[next.length - 1] = v.id;
+                                  useBibleStore.getState().setDisplayedTabs(next);
+                                }
+                                setVersion(v.id);
+                              }}
+                            >
                               {t('bible.use' as TranslationKey)}
                             </Button>
                           )}
-                          <Button size="xs" variant="ghost" onClick={async () => {
-                            await removeVersion(v.id);
-                            if (json) getDownloadedVersions(json).then(setDownloadedIds);
-                          }}>
+                          <Button
+                            size="xs"
+                            variant="ghost"
+                            disabled={active || downloadedIds.length <= 3}
+                            onClick={async () => {
+                              await removeVersion(v.id);
+                              if (json) getDownloadedVersions(json).then(setDownloadedIds);
+                            }}
+                          >
                             {t('bible.remove' as TranslationKey)}
                           </Button>
                         </>

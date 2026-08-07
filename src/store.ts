@@ -814,7 +814,13 @@ export const useBibleStore = create<BibleStore>((set, get) => ({
 
     const currentTabs = get().displayedTabs;
     if (currentTabs.includes(versionId)) {
-      set({ displayedTabs: currentTabs.filter((id) => id !== versionId) });
+      const remaining = downloaded.filter((id) => !currentTabs.includes(id) && id !== versionId);
+      const replacement = remaining[0];
+      if (replacement) {
+        set({ displayedTabs: currentTabs.map((id) => (id === versionId ? replacement : id)) });
+      } else {
+        set({ displayedTabs: currentTabs.filter((id) => id !== versionId) });
+      }
     }
 
     if (get().version === versionId) {
