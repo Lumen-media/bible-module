@@ -421,6 +421,10 @@ export const useBibleStore = create<BibleStore>((set, get) => ({
         const valid = restoredDisplayedTabs.filter((id) => downloadedList.includes(id));
         if (valid.length > 0) {
           pending.displayedTabs = valid;
+          if (valid.length < 3) {
+            const remaining = downloadedList.filter((id) => !valid.includes(id));
+            pending.displayedTabs = [...valid, ...remaining].slice(0, 3);
+          }
         }
       }
 
@@ -569,6 +573,10 @@ export const useBibleStore = create<BibleStore>((set, get) => ({
         const valid = restoredDisplayedTabs.filter((id) => downloadedList.includes(id));
         if (valid.length > 0) {
           pending.displayedTabs = valid;
+          if (valid.length < 3) {
+            const remaining = downloadedList.filter((id) => !valid.includes(id));
+            pending.displayedTabs = [...valid, ...remaining].slice(0, 3);
+          }
         }
       }
 
@@ -747,7 +755,7 @@ export const useBibleStore = create<BibleStore>((set, get) => ({
 
     const already = get().downloadingVersions;
     if (already.includes(versionId)) return;
-    set({ downloadingVersions: [...already, versionId] });
+    set({ downloadingVersions: [...already, versionId], dlVersion: versionId });
 
     try {
       const db = sqlite;
@@ -803,6 +811,11 @@ export const useBibleStore = create<BibleStore>((set, get) => ({
       json,
       downloaded.filter((v) => v !== versionId)
     );
+
+    const currentTabs = get().displayedTabs;
+    if (currentTabs.includes(versionId)) {
+      set({ displayedTabs: currentTabs.filter((id) => id !== versionId) });
+    }
 
     if (get().version === versionId) {
       set({ version: 'naa', verses: null, selectedBook: null, chapter: 1, selectedVerse: null });

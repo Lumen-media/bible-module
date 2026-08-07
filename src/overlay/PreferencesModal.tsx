@@ -576,7 +576,7 @@ const DownloadsSection = memo(function DownloadsSection() {
   useEffect(() => {
     if (!json) return;
     getDownloadedVersions(json).then(setDownloadedIds);
-  }, [json]);
+  }, [json, downloadingVersions]);
 
   return (
     <div className="flex-1 min-h-0 flex flex-col gap-4">
@@ -620,7 +620,10 @@ const DownloadsSection = memo(function DownloadsSection() {
                               {t('bible.use' as TranslationKey)}
                             </Button>
                           )}
-                          <Button size="xs" variant="ghost" onClick={() => removeVersion(v.id)}>
+                          <Button size="xs" variant="ghost" onClick={async () => {
+                            await removeVersion(v.id);
+                            if (json) getDownloadedVersions(json).then(setDownloadedIds);
+                          }}>
                             {t('bible.remove' as TranslationKey)}
                           </Button>
                         </>

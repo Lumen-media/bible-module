@@ -262,12 +262,13 @@ const Sidebar = memo(function Sidebar({
 }) {
   const selectedBook = useBibleStore((s) => s.selectedBook);
   const displayedTabs = useBibleStore((s) => s.displayedTabs);
+  const downloadingVersions = useBibleStore((s) => s.downloadingVersions);
   const setVersion = useBibleStore((s) => s.setVersion);
   const [localDownloaded, setLocalDownloaded] = useState<string[]>([]);
 
   useEffect(() => {
     useBibleStore.getState().downloadedVersions().then(setLocalDownloaded);
-  }, []);
+  }, [downloadingVersions]);
 
   return (
     <Card className="flex w-80 gap-0 p-0 shrink-0 flex-col overflow-hidden border-r border-border rounded-none">
