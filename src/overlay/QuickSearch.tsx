@@ -19,9 +19,29 @@ export const QuickSearch = memo(function QuickSearch({
   inputValue,
   onInputValueChange,
 }: QuickSearchProps) {
+  const filtered = inputValue.trim()
+    ? books
+        .filter((b) => {
+          const q = inputValue.trim().toLowerCase();
+          return b.name.toLowerCase().includes(q) || b.id.toLowerCase().includes(q);
+        })
+        .slice(0, 10)
+    : [];
+
   function handleKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
     if (e.key === 'Escape') {
       onInputValueChange('');
+      return;
+    }
+    if (e.key === 'Tab' && filtered.length > 0) {
+      e.preventDefault();
+      const highlighted = document.querySelector('[role="listbox"] [data-highlighted]');
+      const bookName = highlighted?.textContent;
+      if (bookName && filtered.some((b) => t(`book.${b.id}` as TranslationKey) === bookName)) {
+        onInputValueChange(bookName);
+      } else {
+        onInputValueChange(t(`book.${filtered[0].id}` as TranslationKey));
+      }
       return;
     }
     if (e.key === 'Enter') {
@@ -33,15 +53,6 @@ export const QuickSearch = memo(function QuickSearch({
       }
     }
   }
-
-  const filtered = inputValue.trim()
-    ? books
-        .filter((b) => {
-          const q = inputValue.trim().toLowerCase();
-          return b.name.toLowerCase().includes(q) || b.id.toLowerCase().includes(q);
-        })
-        .slice(0, 10)
-    : [];
 
   return (
     <div className="w-full max-w-64">
