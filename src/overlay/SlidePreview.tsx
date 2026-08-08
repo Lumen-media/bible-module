@@ -1,4 +1,5 @@
-import { memo } from 'react';
+import { memo, useRef } from 'react';
+import { useFitFontSize } from '../hooks/useFitFontSize.js';
 import { t, tForVersion } from '../i18n.js';
 import { cn, displayVersion } from '../lib/utils.js';
 import { staticVersionLanguage, useBibleStore } from '../store.js';
@@ -39,8 +40,19 @@ export const SlidePreview = memo(function SlidePreview() {
   const verseText = verses?.find((v) => v.number === verseNum)?.text;
   const previewText = verseText ?? SAMPLE_VERSE;
 
+  const containerRef = useRef<HTMLDivElement>(null);
+  const { effectiveFontSize, effectiveRefSize } = useFitFontSize(
+    containerRef,
+    previewText,
+    previewSize,
+    { paddingX: 48, heightFraction: 0.85 }
+  );
+
   return (
-    <div className="relative aspect-video overflow-hidden rounded-md border border-border bg-black">
+    <div
+      ref={containerRef}
+      className="relative aspect-video overflow-hidden rounded-md border border-border bg-black"
+    >
       {resolvedBg ? (
         <img src={resolvedBg.src} alt="" className="absolute inset-0 h-full w-full object-cover" />
       ) : (
@@ -73,7 +85,7 @@ export const SlidePreview = memo(function SlidePreview() {
             className={cn('mb-3 font-medium tracking-wide', { uppercase })}
             style={{
               fontFamily,
-              fontSize: `${Math.max(14, Math.round(previewSize * 0.4))}px`,
+              fontSize: `${effectiveRefSize}px`,
               color: `${fontColor}99`,
             }}
           >
@@ -92,7 +104,7 @@ export const SlidePreview = memo(function SlidePreview() {
             )}
             style={{
               fontFamily,
-              fontSize: `${previewSize}px`,
+              fontSize: `${effectiveFontSize}px`,
               color: fontColor,
             }}
           >

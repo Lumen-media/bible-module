@@ -307,7 +307,7 @@ export const useBibleStore = create<BibleStore>((set, get) => ({
   background: null,
   profileBackground: null,
   fontList: ['Inter', 'Georgia', 'Times New Roman', 'Arial', 'Verdana'],
-  fontSize: 36,
+  fontSize: 70,
   fontFamily: 'Inter',
   fontWeight: 'Medium',
   fontStyle: 'Normal',
@@ -375,7 +375,7 @@ export const useBibleStore = create<BibleStore>((set, get) => ({
 
       const s = settingsResp;
       let restoredBg: SelectedBackground | null = null;
-      const restoredFontSize = s?.fontSize ?? 36;
+      const restoredFontSize = s?.fontSize ?? 70;
       const restoredFontFamily = s?.fontFamily ?? 'Inter';
       const restoredFontWeight = s?.fontWeight ?? 'Medium';
       const restoredFontStyle = s?.fontStyle ?? 'Normal';
@@ -521,7 +521,7 @@ export const useBibleStore = create<BibleStore>((set, get) => ({
 
       const s = settingsResp;
       let restoredBg: SelectedBackground | null = null;
-      const restoredFontSize = s?.fontSize ?? 36;
+      const restoredFontSize = s?.fontSize ?? 70;
       const restoredFontFamily = s?.fontFamily ?? 'Inter';
       const restoredFontWeight = s?.fontWeight ?? 'Medium';
       const restoredFontStyle = s?.fontStyle ?? 'Normal';
@@ -856,6 +856,7 @@ export const useBibleStore = create<BibleStore>((set, get) => ({
 
   setFontSize: (n) => {
     set({ fontSize: n });
+    persistSettingsFromState(get());
   },
 
   setFontFamily: (f) => {
