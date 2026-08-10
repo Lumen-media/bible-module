@@ -85,6 +85,11 @@ const messages: Record<TranslationKeys, string> = {
   'bible.font-color-desc': 'Define el color del texto en las diapositivas proyectadas',
   'bible.section-general': 'General',
   'bible.section-data': 'Datos',
+  'bible.bookmark': 'Marcar',
+  'bible.unbookmark': 'Quitar marca',
+  'bible.favorites': 'Favoritos',
+  'bible.no-favorites':
+    'Ningún versículo marcado aún. Haz clic derecho en un versículo para marcarlo.',
   'book.genesis': 'Génesis',
   'book.exodus': 'Éxodo',
   'book.leviticus': 'Levítico',

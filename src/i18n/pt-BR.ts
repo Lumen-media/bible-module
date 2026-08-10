@@ -84,6 +84,11 @@ const messages: Record<TranslationKeys, string> = {
   'bible.font-color-desc': 'Define a cor do texto nos slides projetados',
   'bible.section-general': 'Geral',
   'bible.section-data': 'Dados',
+  'bible.bookmark': 'Favoritar',
+  'bible.unbookmark': 'Remover favorito',
+  'bible.favorites': 'Favoritos',
+  'bible.no-favorites':
+    'Nenhum versículo favoritado ainda. Clique com o botão direito em um versículo para favoritá-lo.',
   'book.genesis': 'Gênesis',
   'book.exodus': 'Êxodo',
   'book.leviticus': 'Levítico',

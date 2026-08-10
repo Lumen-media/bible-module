@@ -1,6 +1,6 @@
 import type { PresentationHostAPI } from '@lumen-media/module-sdk';
 import { Button, ScrollArea, Select } from '@lumen-media/module-sdk/ui';
-import { Loader2, Projector } from 'lucide-react';
+import { Loader2, Projector, Star } from 'lucide-react';
 import { memo, useCallback, useEffect, useRef, useState } from 'react';
 import type { Book } from '../data/types.js';
 import { type TFunction, tForVersion } from '../i18n.js';
@@ -40,6 +40,13 @@ export const ChapterReader = memo(function ChapterReader({
   const verseRefs = useRef<Map<number, HTMLButtonElement>>(new Map());
 
   const projectedVerses = projecting ? (projectedData?.verses ?? []) : [];
+  const [contextMenu, setContextMenu] = useState<{
+    verse: { number: number; text: string };
+    x: number;
+    y: number;
+  } | null>(null);
+  const bookmarks = useBibleStore((s) => s.bookmarks);
+  const toggleBookmark = useBibleStore((s) => s.toggleBookmark);
 
   useEffect(() => {
     loadChapter(book.id, chapter);
@@ -140,6 +147,19 @@ export const ChapterReader = memo(function ChapterReader({
     [projectVerse]
   );
 
+  const handleContextMenu = useCallback(
+    (e: React.MouseEvent, v: { number: number; text: string }) => {
+      e.preventDefault();
+      setContextMenu({ verse: v, x: e.clientX, y: e.clientY });
+    },
+    []
+  );
+
+  const bookmarkKey = useCallback(
+    (verseNum: number) => `${version}/${book.id}/${chapter}:${verseNum}`,
+    [version, book.id, chapter]
+  );
+
   function projectAll() {
     if (!verses || verses.length === 0) return;
     const {
@@ -208,6 +228,7 @@ export const ChapterReader = memo(function ChapterReader({
                 type="button"
                 onClick={() => handleVerseClick(v)}
                 onDoubleClick={() => handleVerseDoubleClick(v)}
+                onContextMenu={(e) => handleContextMenu(e, v)}
                 className={`w-full rounded-md px-3 py-1.5 text-left text-sm leading-relaxed transition-colors ${
                   projectedVerses.includes(v.number)
                     ? 'bg-primary/20 text-foreground'
@@ -229,6 +250,52 @@ export const ChapterReader = memo(function ChapterReader({
           </div>
         )}
       </ScrollArea>
+
+      {contextMenu && (
+        <>
+          <button
+            type="button"
+            className="fixed inset-0 z-40 cursor-default"
+            aria-label="Fechar menu"
+            onClick={() => setContextMenu(null)}
+            onContextMenu={(e) => {
+              e.preventDefault();
+              setContextMenu(null);
+            }}
+          />
+          <div
+            className="fixed z-50 min-w-[160px] overflow-hidden rounded-md border border-border bg-popover p-1 shadow-md"
+            style={{ left: contextMenu.x, top: contextMenu.y }}
+          >
+            <button
+              type="button"
+              className="flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-sm text-popover-foreground hover:bg-accent hover:text-accent-foreground"
+              onClick={(e) => {
+                e.stopPropagation();
+                toggleBookmark(
+                  version,
+                  book.id,
+                  chapter,
+                  contextMenu.verse.number,
+                  contextMenu.verse.text
+                );
+                setContextMenu(null);
+              }}
+            >
+              <Star
+                className={`h-4 w-4 ${
+                  bookmarks.has(bookmarkKey(contextMenu.verse.number))
+                    ? 'fill-yellow-400 text-yellow-400'
+                    : ''
+                }`}
+              />
+              {bookmarks.has(bookmarkKey(contextMenu.verse.number))
+                ? t('bible.unbookmark')
+                : t('bible.bookmark')}
+            </button>
+          </div>
+        </>
+      )}
 
       <div className="flex shrink-0 items-center justify-between border-t border-border px-4 py-2">
         <span className="text-xs text-muted-foreground">{t('bible.verses-per-screen')}</span>

@@ -108,7 +108,7 @@ export interface BibleState {
 
   version: string;
   testament: 'old' | 'new';
-  tab: 'browse' | 'search';
+  tab: 'browse' | 'search' | 'favorites';
   selectedBook: Book | null;
   versionLanguage: string | null;
   chapter: number;
@@ -134,6 +134,9 @@ export interface BibleState {
   fontColor: string;
   autoFontColor: boolean;
   backgroundOpacity: number;
+
+  bookmarks: Set<string>;
+  bookmarkTexts: Map<string, string>;
 
   projectedData: {
     version: string;
@@ -166,7 +169,14 @@ export interface BibleActions {
   }) => Promise<void>;
   setVersion: (v: string) => Promise<void>;
   setTestament: (t: 'old' | 'new') => void;
-  setTab: (t: 'browse' | 'search') => void;
+  setTab: (t: 'browse' | 'search' | 'favorites') => void;
+  toggleBookmark: (
+    version: string,
+    book: string,
+    chapter: number,
+    verse: number,
+    text?: string
+  ) => void;
   selectBook: (book: Book) => void;
   setChapter: (chapter: number) => void;
   setVersesPerPage: (n: number) => Promise<void>;
@@ -319,6 +329,8 @@ export const useBibleStore = create<BibleStore>((set, get) => ({
   fontColor: '#FFFFFF',
   autoFontColor: true,
   backgroundOpacity: 30,
+  bookmarks: new Set<string>(),
+  bookmarkTexts: new Map<string, string>(),
   projectedData: null,
 
   init: async (services) => {
@@ -336,11 +348,12 @@ export const useBibleStore = create<BibleStore>((set, get) => ({
     if (hostWindow === 'main') {
       const t1 = performance.now();
 
-      const [downloadedList, lastPos, vpp, cachedFontsResp] = await Promise.all([
+      const [downloadedList, lastPos, vpp, cachedFontsResp, storedBookmarks] = await Promise.all([
         getDownloadedVersions(json),
         getLastPosition(json),
         getVersesPerPage(json),
         json.get<string[]>('bibleFonts').catch(() => [] as string[]),
+        json.get<Record<string, string>>('bookmarks').catch(() => ({}) as Record<string, string>),
       ]);
 
       let settingsResp: {
@@ -476,6 +489,11 @@ export const useBibleStore = create<BibleStore>((set, get) => ({
         ];
       }
 
+      if (storedBookmarks && Object.keys(storedBookmarks).length > 0) {
+        pending.bookmarks = new Set(Object.keys(storedBookmarks));
+        pending.bookmarkTexts = new Map(Object.entries(storedBookmarks));
+      }
+
       set(pending);
 
       if (needsChapterLoad) {
@@ -485,10 +503,11 @@ export const useBibleStore = create<BibleStore>((set, get) => ({
       get().loadFonts();
       _backgroundEnsureVersions();
     } else {
-      const [downloadedList, lastPos, vpp] = await Promise.all([
+      const [downloadedList, lastPos, vpp, storedBookmarks] = await Promise.all([
         getDownloadedVersions(json),
         getLastPosition(json),
         getVersesPerPage(json),
+        json.get<Record<string, string>>('bookmarks').catch(() => ({}) as Record<string, string>),
       ]);
 
       let settingsResp: {
@@ -627,6 +646,11 @@ export const useBibleStore = create<BibleStore>((set, get) => ({
         ];
       }
 
+      if (storedBookmarks && Object.keys(storedBookmarks).length > 0) {
+        pending.bookmarks = new Set(Object.keys(storedBookmarks));
+        pending.bookmarkTexts = new Map(Object.entries(storedBookmarks));
+      }
+
       set(pending);
 
       if (needsChapterLoad) {
@@ -660,6 +684,24 @@ export const useBibleStore = create<BibleStore>((set, get) => ({
 
   setTestament: (testament) => set({ testament }),
   setTab: (tab) => set({ tab }),
+
+  toggleBookmark: (version, book, chapter, verse, text) => {
+    const { json, bookmarks, bookmarkTexts } = get();
+    const key = `${version}/${book}/${chapter}:${verse}`;
+    const next = new Set(bookmarks);
+    const nextTexts = new Map(bookmarkTexts);
+    if (next.has(key)) {
+      next.delete(key);
+      nextTexts.delete(key);
+    } else {
+      next.add(key);
+      if (text) nextTexts.set(key, text);
+    }
+    set({ bookmarks: next, bookmarkTexts: nextTexts });
+    if (json) {
+      json.set('bookmarks', Object.fromEntries(nextTexts)).catch(() => {});
+    }
+  },
 
   selectBook: (book) => {
     const { json } = get();

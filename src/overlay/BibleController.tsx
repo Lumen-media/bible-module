@@ -1,5 +1,14 @@
 import { Card, Popover, ScrollArea, Select, Separator, Tabs } from '@lumen-media/module-sdk/ui';
-import { BookOpen, Check, ChevronDown, ChevronLeft, Download, Loader2, Search } from 'lucide-react';
+import {
+  BookOpen,
+  Check,
+  ChevronDown,
+  ChevronLeft,
+  Download,
+  Loader2,
+  Search,
+  Star,
+} from 'lucide-react';
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useEventListener } from 'usehooks-ts';
 import { BOOKS } from '../data/store.js';
@@ -11,6 +20,7 @@ import { BookGrid } from './BookGrid.js';
 import { ChapterPreview } from './ChapterPreview.js';
 import { ChapterReader } from './ChapterReader.js';
 import { DownloadProgress } from './DownloadProgress.js';
+import { FavoritesPanel } from './FavoritesPanel.js';
 import { BrazilFlag, PortugalFlag, SpainFlag, UKFlag, USFlag } from './flags.js';
 import { PreviewPane } from './PreviewPane.js';
 import { QuickSearch } from './QuickSearch.js';
@@ -430,7 +440,7 @@ const Header = memo(function Header({
       </div>
 
       <div className="ml-auto flex gap-1">
-        <Tabs value={tab} onValueChange={(v) => setTab(v as 'browse' | 'search')}>
+        <Tabs value={tab} onValueChange={(v) => setTab(v as 'browse' | 'search' | 'favorites')}>
           <Tabs.TabsList className="bg-background/80 gap-1.5">
             <Tabs.TabsTrigger value="browse">
               <BookOpen className="mr-1 h-3.5 w-3.5" />
@@ -439,6 +449,10 @@ const Header = memo(function Header({
             <Tabs.TabsTrigger value="search">
               <Search className="mr-1 h-3.5 w-3.5" />
               {t('bible.search')}
+            </Tabs.TabsTrigger>
+            <Tabs.TabsTrigger value="favorites">
+              <Star className="mr-1 h-3.5 w-3.5" />
+              {t('bible.favorites')}
             </Tabs.TabsTrigger>
           </Tabs.TabsList>
         </Tabs>
@@ -449,6 +463,10 @@ const Header = memo(function Header({
 
 const ContentArea = memo(function ContentArea({ t }: { t: TFunction }) {
   const tab = useBibleStore((s) => s.tab);
+
+  if (tab === 'favorites') {
+    return <FavoritesPanel t={t} />;
+  }
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">
