@@ -87,6 +87,7 @@ const messages: Record<TranslationKeys, string> = {
   'bible.section-data': 'Datos',
   'bible.bookmark': 'Marcar',
   'bible.unbookmark': 'Quitar marca',
+  'bible.add-to-queue': 'Agregar a la cola',
   'bible.favorites': 'Favoritos',
   'bible.no-favorites':
     'Ningún versículo marcado aún. Haz clic derecho en un versículo para marcarlo.',

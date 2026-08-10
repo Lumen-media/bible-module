@@ -1,10 +1,15 @@
-import { type LumenHost, LumenPlugin, type PrefixSpec } from '@lumen-media/module-sdk';
+import {
+  type LumenHost,
+  LumenPlugin,
+  type PrefixSpec,
+  type QueueActionSpec,
+} from '@lumen-media/module-sdk';
 import { parseReference } from './data/ref.js';
 import { BOOKS } from './data/store.js';
 import { setupI18n, type TranslationKey, t } from './i18n.js';
 import { BibleController } from './overlay/BibleController.js';
 import { BibleSlide } from './presenter/BibleSlide.js';
-import { useBibleStore } from './store.js';
+import { setModuleQueue, useBibleStore } from './store.js';
 import css from './styles.css?inline';
 
 const SURFACE_PANEL_ID = 'bible-controller';
@@ -125,6 +130,8 @@ export default class BibleModulePlugin extends LumenPlugin {
     else prefixes.push('bible');
     for (const p of prefixes) host.commands.addPrefix(makePrefix(p));
 
+    setModuleQueue(host.queue);
+
     useBibleStore.getState().init({
       fs: host.fs,
       net: host.net,
@@ -145,6 +152,37 @@ export default class BibleModulePlugin extends LumenPlugin {
     host.events.on('module:presenter-window-closed', () => {
       useBibleStore.getState().clearProjection();
     });
+
+    if (host.window === 'main') {
+      host.queue.registerAction({
+        id: 'bible.verse-queue',
+        onFire(config) {
+          const state = useBibleStore.getState();
+          const data = {
+            version: config.version,
+            book: config.book,
+            bookName: config.bookName,
+            chapter: config.chapter,
+            verses: [config.verse],
+            text: `${config.verse} ${config.verseText}`,
+            uppercase: state.uppercase,
+            showReferenceOnly: state.showReferenceOnly,
+            showVersion: state.showVersion,
+            abbreviatedBooks: state.abbreviatedBooks,
+            fontColor: state.fontColor,
+            fontSize: state.fontSize,
+            fontFamily: state.fontFamily,
+            fontWeight: state.fontWeight,
+            fontStyle: state.fontStyle,
+            background: state.background,
+            profileBackground: state.profileBackground,
+            backgroundOpacity: state.backgroundOpacity,
+          };
+          host.presentation.project('bible-slide', { data });
+          state.setProjectedData(data);
+        },
+      } satisfies QueueActionSpec);
+    }
   }
 
   async onunload(): Promise<void> {

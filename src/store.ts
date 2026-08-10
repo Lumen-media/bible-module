@@ -5,6 +5,7 @@ import type {
   FsAPI,
   NetAPI,
   PresentationHostAPI,
+  QueueHostAPI,
   SelectedBackground,
   SqliteHandle,
   ThemesHostAPI,
@@ -83,6 +84,16 @@ export const ALL_VERSIONS = [
 
 export function staticVersionLanguage(version: string): string {
   return ALL_VERSIONS.find((v) => v.id === version)?.language ?? 'pt-br';
+}
+
+let moduleQueue: QueueHostAPI | null = null;
+
+export function setModuleQueue(q: QueueHostAPI) {
+  moduleQueue = q;
+}
+
+export function getModuleQueue(): QueueHostAPI | null {
+  return moduleQueue;
 }
 
 export interface BibleState {
@@ -335,8 +346,21 @@ export const useBibleStore = create<BibleStore>((set, get) => ({
 
   init: async (services) => {
     const t0 = performance.now();
-    const { fs, net, json, presentation, themes, ui, fonts, t, events, hostWindow } = services;
-    set({ fs, net, json, presentation, themes, ui, fonts, t, events, hostWindow, ready: true });
+    const { fs, net, json, presentation, themes, ui, fonts, t, events, hostWindow } =
+      services;
+    set({
+      fs,
+      net,
+      json,
+      presentation,
+      themes,
+      ui,
+      fonts,
+      t,
+      events,
+      hostWindow,
+      ready: true,
+    });
 
     const db = await services.sqlite();
     set({ sqlite: db });

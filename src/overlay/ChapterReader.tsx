@@ -1,10 +1,20 @@
 import type { PresentationHostAPI } from '@lumen-media/module-sdk';
 import { Button, ScrollArea, Select } from '@lumen-media/module-sdk/ui';
-import { Loader2, Projector, Star } from 'lucide-react';
+import { ListPlus, Loader2, Projector, Star } from 'lucide-react';
 import { memo, useCallback, useEffect, useRef, useState } from 'react';
 import type { Book } from '../data/types.js';
 import { type TFunction, tForVersion } from '../i18n.js';
-import { staticVersionLanguage, useBibleStore } from '../store.js';
+import { getModuleQueue, staticVersionLanguage, useBibleStore } from '../store.js';
+
+interface BibleVerseQueueConfig {
+  version: string;
+  book: string;
+  bookName: string;
+  chapter: number;
+  verse: number;
+  verseText: string;
+  versionDisplayName: string;
+}
 
 interface ChapterReaderProps {
   version: string;
@@ -159,6 +169,27 @@ export const ChapterReader = memo(function ChapterReader({
     (verseNum: number) => `${version}/${book.id}/${chapter}:${verseNum}`,
     [version, book.id, chapter]
   );
+  const handleAddToQueue = useCallback(
+    (v: { number: number; text: string }) => {
+      const q = getModuleQueue();
+      if (!q?.addTrigger) return;
+      setContextMenu(null);
+      const state = useBibleStore.getState();
+      const versionLang = state.versionLanguage ?? staticVersionLanguage(version);
+      const versionDisplay = version.toUpperCase();
+      const config: BibleVerseQueueConfig = {
+        version,
+        book: book.id,
+        bookName: tForVersion(versionLang, `book.${book.id}` as `book.${string}`),
+        chapter,
+        verse: v.number,
+        verseText: v.text,
+        versionDisplayName: versionDisplay,
+      };
+      q.addTrigger('bible.verse-queue', config);
+    },
+    [version, book.id, chapter]
+  );
 
   function projectAll() {
     if (!verses || verses.length === 0) return;
@@ -293,6 +324,19 @@ export const ChapterReader = memo(function ChapterReader({
                 ? t('bible.unbookmark')
                 : t('bible.bookmark')}
             </button>
+            {getModuleQueue() && (
+              <button
+                type="button"
+                className="flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-sm text-popover-foreground hover:bg-accent hover:text-accent-foreground"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleAddToQueue(contextMenu.verse);
+                }}
+              >
+                <ListPlus className="h-4 w-4" />
+                {t('bible.add-to-queue')}
+              </button>
+            )}
           </div>
         </>
       )}

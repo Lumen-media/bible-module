@@ -84,6 +84,7 @@ const messages = {
   'bible.section-data': 'Data',
   'bible.bookmark': 'Bookmark',
   'bible.unbookmark': 'Remove Bookmark',
+  'bible.add-to-queue': 'Add to queue',
   'bible.favorites': 'Favorites',
   'bible.no-favorites': 'No bookmarked verses yet. Right-click a verse to bookmark it.',
   'book.genesis': 'Genesis',
