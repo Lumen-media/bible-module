@@ -1,19 +1,15 @@
-import { Button, Input, ScrollArea } from '@lumen-media/module-sdk/ui';
-import { useVirtualizer } from '@tanstack/react-virtual';
+import { Button, Input } from '@lumen-media/module-sdk/ui';
 import { Loader2, Search } from 'lucide-react';
 import { memo, useRef, useState } from 'react';
 import { parseReference } from '../data/ref.js';
 import { BOOKS } from '../data/store.js';
-import { type TFunction, tForVersion } from '../i18n.js';
-import { displayVersion } from '../lib/utils.js';
-import { staticVersionLanguage, useBibleStore } from '../store.js';
+import type { TFunction } from '../i18n.js';
+import { useBibleStore } from '../store.js';
+import { VersesList, type VersesListHandle } from './VersesList.js';
 
 interface SearchPanelProps {
   t: TFunction;
 }
-
-const ESTIMATE_HEIGHT = 72;
-const GAP = 6;
 
 export const SearchPanel = memo(function SearchPanel({ t }: SearchPanelProps) {
   const [query, setQuery] = useState('');
@@ -28,16 +24,9 @@ export const SearchPanel = memo(function SearchPanel({ t }: SearchPanelProps) {
   const setDisplayedTabs = useBibleStore((s) => s.setDisplayedTabs);
   const setTab = useBibleStore((s) => s.setTab);
   const inputRef = useRef<HTMLInputElement>(null);
-  const viewportRef = useRef<HTMLDivElement>(null);
+  const listRef = useRef<VersesListHandle>(null);
 
   const bookById = new Map(BOOKS.map((b) => [b.id, b]));
-
-  const virtualizer = useVirtualizer({
-    count: results.length,
-    getScrollElement: () => viewportRef.current,
-    estimateSize: () => ESTIMATE_HEIGHT + GAP,
-    overscan: 10,
-  });
 
   async function handleSearch() {
     if (!query.trim()) return;
@@ -80,7 +69,7 @@ export const SearchPanel = memo(function SearchPanel({ t }: SearchPanelProps) {
         e.preventDefault();
         setFocusedIndex((prev) => {
           const next = prev < results.length - 1 ? prev + 1 : 0;
-          virtualizer.scrollToIndex(next, { align: 'auto' });
+          listRef.current?.scrollToIndex(next, { align: 'auto' });
           return next;
         });
         break;
@@ -88,7 +77,7 @@ export const SearchPanel = memo(function SearchPanel({ t }: SearchPanelProps) {
         e.preventDefault();
         setFocusedIndex((prev) => {
           const next = prev > 0 ? prev - 1 : results.length - 1;
-          virtualizer.scrollToIndex(next, { align: 'auto' });
+          listRef.current?.scrollToIndex(next, { align: 'auto' });
           return next;
         });
         break;
@@ -102,6 +91,15 @@ export const SearchPanel = memo(function SearchPanel({ t }: SearchPanelProps) {
         break;
     }
   }
+
+  const verseItems = results.map((r) => ({
+    id: `${r.version}/${r.book}/${r.chapter}:${r.verse}`,
+    version: r.version,
+    book: r.book,
+    chapter: r.chapter,
+    verse: r.verse,
+    text: r.text,
+  }));
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">
@@ -132,63 +130,22 @@ export const SearchPanel = memo(function SearchPanel({ t }: SearchPanelProps) {
         </Button>
       </div>
 
-      <ScrollArea className="min-h-0 flex-1 px-3" viewportProps={{ ref: viewportRef }}>
-        {results.length > 0 ? (
-          <div
-            style={{
-              height: `${virtualizer.getTotalSize()}px`,
-              width: '100%',
-              position: 'relative',
-            }}
-          >
-            {virtualizer.getVirtualItems().map((virtualItem) => {
-              const r = results[virtualItem.index];
-              const isFocused = virtualItem.index === focusedIndex;
-              return (
-                <div
-                  key={virtualItem.key}
-                  data-index={virtualItem.index}
-                  ref={virtualizer.measureElement}
-                  className="absolute left-0 top-0 w-full"
-                  style={{
-                    transform: `translateY(${virtualItem.start}px)`,
-                    paddingBottom: `${GAP}px`,
-                  }}
-                >
-                  <button
-                    type="button"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleSelect(virtualItem.index);
-                    }}
-                    onMouseEnter={() => setFocusedIndex(virtualItem.index)}
-                    className={`w-full rounded-md border px-3 py-2 text-left text-sm transition-colors outline-none focus:outline-none focus-visible:outline-none ${
-                      isFocused
-                        ? 'border-primary bg-accent text-accent-foreground'
-                        : 'border-border bg-card text-card-foreground hover:bg-accent hover:text-accent-foreground'
-                    }`}
-                  >
-                    <span className="font-medium">
-                      {tForVersion(staticVersionLanguage(r.version), `book.${r.book}`)} {r.chapter}:
-                      {r.verse}
-                    </span>
-                    <span className="ml-2 text-xs text-muted-foreground">
-                      {displayVersion(r.version)}
-                    </span>
-                    <p className="mt-0.5 line-clamp-2 text-muted-foreground">{r.text}</p>
-                  </button>
-                </div>
-              );
-            })}
+      {results.length > 0 ? (
+        <VersesList
+          ref={listRef}
+          items={verseItems}
+          t={t}
+          focusedIndex={focusedIndex}
+          onFocusIndex={setFocusedIndex}
+          onClick={handleSelect}
+        />
+      ) : (
+        !loading && (
+          <div className="flex items-center justify-center py-16 text-muted-foreground">
+            {t('bible.no-results')}
           </div>
-        ) : (
-          !loading && (
-            <div className="flex items-center justify-center py-16 text-muted-foreground">
-              {t('bible.no-results')}
-            </div>
-          )
-        )}
-      </ScrollArea>
+        )
+      )}
     </div>
   );
 });
