@@ -96,7 +96,7 @@ export const ChapterReader = memo(function ChapterReader({
         book: book.id,
         bookName: tForVersion(
           state.versionLanguage ?? staticVersionLanguage(version),
-          `book.${book.id}`,
+          `book.${book.id}`
         ),
         chapter,
         verses: verseNumbers,
@@ -233,10 +233,13 @@ export const ChapterReader = memo(function ChapterReader({
       <div className="flex shrink-0 items-center justify-between border-t border-border px-4 py-2">
         <span className="text-xs text-muted-foreground">{t('bible.verses-per-screen')}</span>
         <div className="flex items-center gap-2">
-          <Select value={localVpp} onValueChange={(v) => {
-            setLocalVpp(v);
-            setVersesPerPage(Number(v));
-          }}>
+          <Select
+            value={localVpp}
+            onValueChange={(v) => {
+              setLocalVpp(v);
+              setVersesPerPage(Number(v));
+            }}
+          >
             <Select.SelectTrigger className="h-7 w-16 text-xs">
               <Select.SelectValue />
             </Select.SelectTrigger>

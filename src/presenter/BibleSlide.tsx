@@ -1,5 +1,5 @@
 import { BookOpen } from 'lucide-react';
-import { useRef } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useFitFontSize } from '../hooks/useFitFontSize.js';
 import { t, tForVersion } from '../i18n.js';
 import { cn, displayVersion } from '../lib/utils.js';
@@ -50,7 +50,28 @@ export function BibleSlide({ data }: BibleSlideProps) {
     fontSize
   );
 
-  if (!data) {
+  const lastDataRef = useRef(data);
+  if (data) lastDataRef.current = data;
+
+  const [exiting, setExiting] = useState(false);
+
+  useEffect(() => {
+    if (!data) {
+      setExiting(true);
+      const t = setTimeout(() => setExiting(false), 300);
+      return () => clearTimeout(t);
+    }
+    setExiting(false);
+  }, [data]);
+
+  const renderData = data ?? (exiting ? lastDataRef.current : null);
+
+  const verseKey = useMemo(() => {
+    if (!data) return 0;
+    return `${data.book}:${data.chapter}:${data.verses.join(',')}`;
+  }, [data]);
+
+  if (!renderData) {
     return (
       <div className="flex h-full w-full flex-col items-center justify-center bg-black text-white/30">
         {resolvedBg && (
@@ -79,11 +100,11 @@ export function BibleSlide({ data }: BibleSlideProps) {
     showVersion,
     abbreviatedBooks,
     fontColor,
-  } = data;
+  } = renderData;
   const label = abbreviatedBooks
     ? tForVersion(
         useBibleStore.getState().versionLanguage ?? staticVersionLanguage(version),
-        'bookAbbr.' + book
+        `bookAbbr.${book}`
       )
     : bookName;
   const showVersionLabel = showVersion && !showReferenceOnly;
@@ -99,54 +120,62 @@ export function BibleSlide({ data }: BibleSlideProps) {
         <img src={resolvedBg.src} alt="" className="absolute inset-0 h-full w-full object-cover" />
       )}
       <div className="absolute inset-0 bg-black" style={{ opacity: backgroundOpacity / 100 }} />
-      {showReferenceOnly ? (
-        <div className="relative z-10 flex items-center gap-6 scale-400">
-          <div className="flex min-w-0 flex-col items-center leading-tight" style={{ fontFamily }}>
-            <span
-              className={cn('truncate text-4xl font-bold', { uppercase })}
-              style={{ color: fontColor }}
+      <div
+        key={verseKey}
+        className={cn('flex flex-col items-center', exiting ? 'verse-exit' : 'verse-enter')}
+      >
+        {showReferenceOnly ? (
+          <div className="relative z-10 flex items-center gap-6 scale-400">
+            <div
+              className="flex min-w-0 flex-col items-center leading-tight"
+              style={{ fontFamily }}
             >
-              {label} {chapter}
-            </span>
-            {showVersion && (
-              <span className="truncate text-xl self-start" style={{ color: `${fontColor}99` }}>
-                {displayVersion(version)}
+              <span
+                className={cn('truncate text-4xl font-bold', { uppercase })}
+                style={{ color: fontColor }}
+              >
+                {label} {chapter}
               </span>
-            )}
+              {showVersion && (
+                <span className="truncate text-xl self-start" style={{ color: `${fontColor}99` }}>
+                  {displayVersion(version)}
+                </span>
+              )}
+            </div>
+            <div className="h-16 w-px shrink-0" style={{ backgroundColor: `${fontColor}40` }} />
+            <span className="shrink-0 text-7xl font-bold" style={{ color: fontColor }}>
+              {verses[0]}
+              {verses.length > 1 ? `-${verses[verses.length - 1]}` : ''}
+            </span>
           </div>
-          <div className="h-16 w-px shrink-0" style={{ backgroundColor: `${fontColor}40` }} />
-          <span className="shrink-0 text-7xl font-bold" style={{ color: fontColor }}>
-            {verses[0]}
-            {verses.length > 1 ? `-${verses[verses.length - 1]}` : ''}
-          </span>
-        </div>
-      ) : (
-        <>
-          <div
-            className={cn('relative z-10 mb-8 font-medium tracking-wide', { uppercase })}
-            style={{
-              fontSize: `${effectiveRefSize}px`,
-              fontFamily,
-              color: `${fontColor}99`,
-            }}
-          >
-            {label} {chapter}:{verseStr}
-            {showVersionLabel ? ` ${displayVersion(version)}` : ''}
-          </div>
-          <div
-            className={cn('relative z-10 w-full text-center leading-snug', {
-              uppercase: uppercase,
-            })}
-            style={{ fontSize: `${effectiveFontSize}px`, fontFamily, color: fontColor }}
-          >
-            {text.split('\n').map((line) => (
-              <p key={line.slice(0, 40)} className="mb-4 last:mb-0">
-                {line}
-              </p>
-            ))}
-          </div>
-        </>
-      )}
+        ) : (
+          <>
+            <div
+              className={cn('relative z-10 mb-8 font-medium tracking-wide', { uppercase })}
+              style={{
+                fontSize: `${effectiveRefSize}px`,
+                fontFamily,
+                color: `${fontColor}99`,
+              }}
+            >
+              {label} {chapter}:{verseStr}
+              {showVersionLabel ? ` ${displayVersion(version)}` : ''}
+            </div>
+            <div
+              className={cn('relative z-10 w-full text-center leading-snug', {
+                uppercase: uppercase,
+              })}
+              style={{ fontSize: `${effectiveFontSize}px`, fontFamily, color: fontColor }}
+            >
+              {text.split('\n').map((line) => (
+                <p key={line.slice(0, 40)} className="mb-4 last:mb-0">
+                  {line}
+                </p>
+              ))}
+            </div>
+          </>
+        )}
+      </div>
     </div>
   );
 }

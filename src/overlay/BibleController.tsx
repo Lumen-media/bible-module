@@ -141,19 +141,22 @@ const VersionManagerPopover = memo(function VersionManagerPopover({
   const [filterLang, setFilterLang] = useState(userLang);
   const [vmSearch, setVmSearch] = useState('');
 
-  const handleSelectVersion = useCallback((id: string) => {
-    if (!displayedTabs.includes(id)) {
-      const idx = displayedTabs.indexOf(version);
-      if (idx < 0) {
-        setDisplayedTabs([id, ...displayedTabs.slice(0, 2)]);
-      } else {
-        const next = [...displayedTabs];
-        next[idx] = id;
-        setDisplayedTabs(next);
+  const handleSelectVersion = useCallback(
+    (id: string) => {
+      if (!displayedTabs.includes(id)) {
+        const idx = displayedTabs.indexOf(version);
+        if (idx < 0) {
+          setDisplayedTabs([id, ...displayedTabs.slice(0, 2)]);
+        } else {
+          const next = [...displayedTabs];
+          next[idx] = id;
+          setDisplayedTabs(next);
+        }
       }
-    }
-    setVersion(id);
-  }, [displayedTabs, version, setDisplayedTabs, setVersion]);
+      setVersion(id);
+    },
+    [displayedTabs, version, setDisplayedTabs, setVersion]
+  );
 
   const filteredVersions = useMemo(() => {
     let list = ALL_VERSIONS.filter((v) => v.language === filterLang);
@@ -334,8 +337,8 @@ const BrowseContent = memo(function BrowseContent() {
   const tFn = useBibleStore((s) => s.t);
 
   const chapterNumbers = useMemo(
-    () => selectedBook ? Array.from({ length: selectedBook.chapters }, (_, i) => i + 1) : [],
-    [selectedBook],
+    () => (selectedBook ? Array.from({ length: selectedBook.chapters }, (_, i) => i + 1) : []),
+    [selectedBook]
   );
 
   return (
@@ -347,8 +350,7 @@ const BrowseContent = memo(function BrowseContent() {
             <div className="rounded-xl border border-border bg-card p-4 pr-1.5">
               <div className="mb-4 flex items-center gap-4 pr-1.5">
                 <h3 className="text-base font-semibold text-foreground">
-                  {tFn?.(`book.${selectedBook.id}` as TranslationKey)}{' '}
-                  {tFn?.('bible.chapter')}s
+                  {tFn?.(`book.${selectedBook.id}` as TranslationKey)} {tFn?.('bible.chapter')}s
                 </h3>
                 <div className="h-px flex-1 bg-border" />
                 <span className="text-xs text-muted-foreground">
@@ -539,7 +541,7 @@ export function BibleController({ close, goToBook, goToChapter, goToVerse }: Bib
         }
       }
     },
-    [bookInitials, clearProjection],
+    [bookInitials, clearProjection]
   );
 
   useEventListener('keydown', handleKeyDown);
