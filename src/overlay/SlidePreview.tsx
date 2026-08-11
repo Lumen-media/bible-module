@@ -20,6 +20,7 @@ export const SlidePreview = memo(function SlidePreview() {
   const backgroundOpacity = useBibleStore((s) => s.backgroundOpacity);
   const textAlign = useBibleStore((s) => s.textAlign);
   const lineSpacing = useBibleStore((s) => s.lineSpacing);
+  const referencePosition = useBibleStore((s) => s.referencePosition);
   const selectedBook = useBibleStore((s) => s.selectedBook);
   const chapter = useBibleStore((s) => s.chapter);
   const selectedVerse = useBibleStore((s) => s.selectedVerse);
@@ -47,7 +48,7 @@ export const SlidePreview = memo(function SlidePreview() {
     containerRef,
     previewText,
     previewSize,
-    { paddingX: 48, heightFraction: 0.85 }
+    { paddingX: 48, heightFraction: 0.85, referencePosition }
   );
 
   return (
@@ -82,13 +83,22 @@ export const SlidePreview = memo(function SlidePreview() {
           </span>
         </div>
       ) : (
-        <div className="relative z-10 flex h-full flex-col items-center justify-center p-6">
+        <div
+          className={cn(
+            'relative z-10 flex h-full flex-col items-center p-6',
+            referencePosition === 'top' ? 'justify-start' : 'justify-center'
+          )}
+        >
           <div
-            className={cn('mb-3 font-medium tracking-wide', { uppercase })}
+            className={cn(
+              'font-medium tracking-wide',
+              { uppercase },
+              referencePosition === 'top' ? 'shrink-0 w-full text-center pt-2 pb-2' : 'mb-3'
+            )}
             style={{
               fontFamily,
-              fontSize: `${effectiveRefSize}px`,
-              color: `${fontColor}99`,
+              fontSize: `${referencePosition === 'top' ? previewSize * 0.9 : effectiveRefSize}px`,
+              color: referencePosition === 'top' ? fontColor : `${fontColor}99`,
             }}
           >
             {bookName} {chapter}:{verseNum}
@@ -101,7 +111,8 @@ export const SlidePreview = memo(function SlidePreview() {
               { 'font-normal': fontWeight === 'Regular' },
               { 'font-medium': fontWeight === 'Medium' },
               { 'font-bold': fontWeight === 'Bold' },
-              { italic: fontStyle === 'Italic' }
+              { italic: fontStyle === 'Italic' },
+              referencePosition === 'top' ? 'flex-1 flex items-center justify-center' : ''
             )}
             style={{
               fontFamily,

@@ -27,6 +27,7 @@ type SectionId = 'typography' | 'theme' | 'downloads' | 'cache';
 const FONT_WEIGHTS = ['Light', 'Regular', 'Medium', 'Bold'] as const;
 const FONT_STYLES = ['Normal', 'Italic'] as const;
 const TEXT_ALIGNS = ['Left', 'Center', 'Justify'] as const;
+const REFERENCE_POSITIONS = ['Inline', 'Top'] as const;
 
 function formatBytes(bytes: number): string {
   if (bytes === 0) return '0 B';
@@ -132,6 +133,8 @@ const TypographySection = memo(function TypographySection() {
   const lineSpacing = useBibleStore((s) => s.lineSpacing);
   const setTextAlign = useBibleStore((s) => s.setTextAlign);
   const setLineSpacing = useBibleStore((s) => s.setLineSpacing);
+  const referencePosition = useBibleStore((s) => s.referencePosition);
+  const setReferencePosition = useBibleStore((s) => s.setReferencePosition);
 
   const [fontInput, setFontInput] = useState(fontFamily);
   const [localFontSize, setLocalFontSize] = useState(String(fontSize));
@@ -517,6 +520,39 @@ const TypographySection = memo(function TypographySection() {
                 {lineSpacing.toFixed(1)}
               </span>
             </div>
+          </div>
+
+          <Separator />
+
+          <div className="flex items-start justify-between gap-4">
+            <div className="min-w-0">
+              <p className="text-sm font-medium text-foreground">
+                {t('bible.reference-position' as TranslationKey)}
+              </p>
+              <p className="text-xs text-muted-foreground">
+                {t('bible.reference-position-desc' as TranslationKey)}
+              </p>
+            </div>
+            <ToggleGroup
+              value={[referencePosition]}
+              onValueChange={(v) => {
+                const next = v.find((p) => p !== referencePosition);
+                if (next) setReferencePosition(next as 'inline' | 'top');
+              }}
+              size="sm"
+              variant="secondary"
+              className="bg-background w-fit justify-between overflow-hidden"
+            >
+              {REFERENCE_POSITIONS.map((p) => (
+                <ToggleGroup.ToggleGroupItem
+                  key={p}
+                  value={p.toLowerCase()}
+                  className="flex-1 px-4 text-[11px]"
+                >
+                  {p}
+                </ToggleGroup.ToggleGroupItem>
+              ))}
+            </ToggleGroup>
           </div>
         </Card.CardContent>
       </Card>

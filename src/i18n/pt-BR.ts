@@ -86,6 +86,8 @@ const messages: Record<TranslationKeys, string> = {
   'bible.text-align-desc': 'Alinhamento horizontal do texto do versículo nos slides',
   'bible.line-spacing': 'Espaçamento entre linhas',
   'bible.line-spacing-desc': 'Espaço vertical entre as linhas do texto do versículo',
+  'bible.reference-position': 'Posição da referência',
+  'bible.reference-position-desc': 'Onde mostrar a referência do versículo em relação ao texto',
   'bible.section-general': 'Geral',
   'bible.section-data': 'Dados',
   'bible.bookmark': 'Favoritar',

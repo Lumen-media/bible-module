@@ -176,6 +176,7 @@ export default class BibleModulePlugin extends LumenPlugin {
             fontStyle: state.fontStyle,
             textAlign: state.textAlign,
             lineSpacing: state.lineSpacing,
+            referencePosition: state.referencePosition,
             background: state.background,
             profileBackground: state.profileBackground,
             backgroundOpacity: state.backgroundOpacity,

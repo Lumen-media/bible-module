@@ -24,6 +24,7 @@ interface BibleSlideProps {
     fontStyle: string;
     textAlign: 'left' | 'center' | 'justify';
     lineSpacing: number;
+    referencePosition: 'inline' | 'top';
     background: { type: string; src: string; name: string } | null;
     profileBackground: { type: string; src: string; name: string } | null;
     backgroundOpacity: number;
@@ -49,7 +50,8 @@ export function BibleSlide({ data }: BibleSlideProps) {
   const { effectiveFontSize, effectiveRefSize } = useFitFontSize(
     containerRef,
     data?.text ?? '',
-    fontSize
+    fontSize,
+    { referencePosition: data?.referencePosition }
   );
 
   const lastDataRef = useRef(data);
@@ -104,6 +106,7 @@ export function BibleSlide({ data }: BibleSlideProps) {
     fontColor,
     textAlign,
     lineSpacing,
+    referencePosition,
   } = renderData;
   const label = abbreviatedBooks
     ? tForVersion(
@@ -118,7 +121,10 @@ export function BibleSlide({ data }: BibleSlideProps) {
   return (
     <div
       ref={containerRef}
-      className="relative flex h-full w-full flex-col items-center justify-center bg-black px-16"
+      className={cn(
+        'relative flex h-full w-full flex-col items-center bg-black px-16',
+        referencePosition === 'top' && !showReferenceOnly ? 'justify-start' : 'justify-center'
+      )}
     >
       {resolvedBg && (
         <img src={resolvedBg.src} alt="" className="absolute inset-0 h-full w-full object-cover" />
@@ -126,7 +132,11 @@ export function BibleSlide({ data }: BibleSlideProps) {
       <div className="absolute inset-0 bg-black" style={{ opacity: backgroundOpacity / 100 }} />
       <div
         key={verseKey}
-        className={cn('flex flex-col items-center', exiting ? 'verse-exit' : 'verse-enter')}
+        className={cn(
+          'flex flex-col items-center',
+          referencePosition === 'top' && !showReferenceOnly ? 'h-full w-full' : '',
+          exiting ? 'verse-exit' : 'verse-enter'
+        )}
       >
         {showReferenceOnly ? (
           <div className="relative z-10 flex items-center gap-6 scale-400">
@@ -155,20 +165,26 @@ export function BibleSlide({ data }: BibleSlideProps) {
         ) : (
           <>
             <div
-              className={cn('relative z-10 mb-8 font-medium tracking-wide', { uppercase })}
+              className={cn(
+                'relative z-10 font-medium tracking-wide',
+                { uppercase },
+                referencePosition === 'top' ? 'shrink-0 w-full pt-8 pb-4 text-center' : 'mb-8'
+              )}
               style={{
-                fontSize: `${effectiveRefSize}px`,
+                fontSize: `${referencePosition === 'top' ? fontSize * 0.9 : effectiveRefSize}px`,
                 fontFamily,
-                color: `${fontColor}99`,
+                color: referencePosition === 'top' ? fontColor : `${fontColor}99`,
               }}
             >
               {label} {chapter}:{verseStr}
               {showVersionLabel ? ` ${displayVersion(version)}` : ''}
             </div>
             <div
-              className={cn('relative z-10 w-full', {
-                uppercase: uppercase,
-              })}
+              className={cn(
+                'relative z-10 w-full',
+                { uppercase: uppercase },
+                referencePosition === 'top' ? 'flex-1 flex items-center justify-center' : ''
+              )}
               style={{
                 fontSize: `${effectiveFontSize}px`,
                 fontFamily,
@@ -177,11 +193,13 @@ export function BibleSlide({ data }: BibleSlideProps) {
                 lineHeight: lineSpacing,
               }}
             >
-              {text.split('\n').map((line) => (
-                <p key={line.slice(0, 40)} className="mb-4 last:mb-0">
-                  {line}
-                </p>
-              ))}
+              <div className="w-full">
+                {text.split('\n').map((line) => (
+                  <p key={line.slice(0, 40)} className="mb-4 last:mb-0">
+                    {line}
+                  </p>
+                ))}
+              </div>
             </div>
           </>
         )}

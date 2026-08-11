@@ -84,6 +84,8 @@ const messages = {
   'bible.text-align-desc': 'Horizontal alignment of the verse text on slides',
   'bible.line-spacing': 'Line spacing',
   'bible.line-spacing-desc': 'Vertical space between lines of verse text',
+  'bible.reference-position': 'Reference position',
+  'bible.reference-position-desc': 'Where to show the verse reference relative to the text',
   'bible.section-general': 'General',
   'bible.section-data': 'Data',
   'bible.bookmark': 'Bookmark',

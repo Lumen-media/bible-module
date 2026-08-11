@@ -147,6 +147,7 @@ export interface BibleState {
   backgroundOpacity: number;
   textAlign: 'left' | 'center' | 'justify';
   lineSpacing: number;
+  referencePosition: 'inline' | 'top';
 
   bookmarks: Set<string>;
   bookmarkTexts: Map<string, string>;
@@ -165,6 +166,7 @@ export interface BibleState {
     fontColor: string;
     textAlign: 'left' | 'center' | 'justify';
     lineSpacing: number;
+    referencePosition: 'inline' | 'top';
   } | null;
 }
 
@@ -221,6 +223,7 @@ export interface BibleActions {
   setBackgroundOpacity: (n: number) => void;
   setTextAlign: (a: 'left' | 'center' | 'justify') => void;
   setLineSpacing: (n: number) => void;
+  setReferencePosition: (p: 'inline' | 'top') => void;
   saveSettings: () => void;
   loadFonts: () => Promise<void>;
   setProjectedData: (
@@ -242,6 +245,7 @@ export interface BibleActions {
       fontStyle?: string;
       textAlign?: 'left' | 'center' | 'justify';
       lineSpacing?: number;
+      referencePosition?: 'inline' | 'top';
       background?: SelectedBackground | null;
       profileBackground?: { type: string; src: string; name: string } | null;
       backgroundOpacity?: number;
@@ -301,6 +305,7 @@ function persistSettingsFromState(state: BibleState) {
     autoFontColor: state.autoFontColor,
     textAlign: state.textAlign,
     lineSpacing: state.lineSpacing,
+    referencePosition: state.referencePosition,
   });
 }
 
@@ -352,6 +357,7 @@ export const useBibleStore = create<BibleStore>((set, get) => ({
   backgroundOpacity: 30,
   textAlign: 'center' as const,
   lineSpacing: 1.4,
+  referencePosition: 'inline' as const,
   bookmarks: new Set<string>(),
   bookmarkTexts: new Map<string, string>(),
   projectedData: null,
@@ -440,6 +446,7 @@ export const useBibleStore = create<BibleStore>((set, get) => ({
       const restoredBackgroundOpacity = s?.backgroundOpacity;
       const restoredTextAlign = s?.textAlign ?? 'center';
       const restoredLineSpacing = s?.lineSpacing ?? 1.4;
+      const restoredReferencePosition = s?.referencePosition ?? 'inline';
       if (s?.background) restoredBg = s.background;
 
       let profileBg: SelectedBackground | { src: string; type: string; name: string } | null =
@@ -514,6 +521,7 @@ export const useBibleStore = create<BibleStore>((set, get) => ({
       if (restoredBackgroundOpacity != null) pending.backgroundOpacity = restoredBackgroundOpacity;
       pending.textAlign = restoredTextAlign;
       pending.lineSpacing = restoredLineSpacing;
+      pending.referencePosition = restoredReferencePosition;
       if (profileBg) pending.profileBackground = profileBg as SelectedBackground;
 
       const cachedFonts = cachedFontsResp ?? [];
@@ -598,6 +606,7 @@ export const useBibleStore = create<BibleStore>((set, get) => ({
       const restoredBackgroundOpacity = s?.backgroundOpacity;
       const restoredTextAlign = s?.textAlign ?? 'center';
       const restoredLineSpacing = s?.lineSpacing ?? 1.4;
+      const restoredReferencePosition = s?.referencePosition ?? 'inline';
       if (s?.background) restoredBg = s.background;
 
       let profileBg: SelectedBackground | { src: string; type: string; name: string } | null =
@@ -678,6 +687,7 @@ export const useBibleStore = create<BibleStore>((set, get) => ({
       if (restoredBackgroundOpacity != null) pending.backgroundOpacity = restoredBackgroundOpacity;
       pending.textAlign = restoredTextAlign;
       pending.lineSpacing = restoredLineSpacing;
+      pending.referencePosition = restoredReferencePosition;
       if (profileBg) pending.profileBackground = profileBg as SelectedBackground;
 
       if (cachedFonts.length > 0) {
@@ -1015,6 +1025,11 @@ export const useBibleStore = create<BibleStore>((set, get) => ({
 
   setLineSpacing: (n) => {
     set({ lineSpacing: n });
+    persistSettingsFromState(get());
+  },
+
+  setReferencePosition: (p) => {
+    set({ referencePosition: p });
     persistSettingsFromState(get());
   },
 

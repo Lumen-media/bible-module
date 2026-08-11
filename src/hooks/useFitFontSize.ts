@@ -5,6 +5,7 @@ interface FitFontSizeOptions {
   maxWidth?: number;
   paddingX?: number;
   heightFraction?: number;
+  referencePosition?: 'inline' | 'top';
 }
 
 export function useFitFontSize(
@@ -13,7 +14,12 @@ export function useFitFontSize(
   desiredFontSize: number,
   options: FitFontSizeOptions = {}
 ) {
-  const { maxWidth = Infinity, paddingX = 128, heightFraction = 0.85 } = options;
+  const {
+    maxWidth = Infinity,
+    paddingX = 128,
+    heightFraction = 0.85,
+    referencePosition = 'inline',
+  } = options;
   const [containerSize, setContainerSize] = useState({ width: 0, height: 0 });
 
   useEffect(() => {
@@ -46,7 +52,7 @@ export function useFitFontSize(
           totalLines += Math.max(1, Math.ceil(line.length / charsPerLine));
         }
       }
-      const refHeight = getReferenceSize(mid) + 32;
+      const refHeight = referencePosition === 'inline' ? getReferenceSize(mid) + 32 : 0;
       const textHeight = totalLines * mid * 1.375 + (totalLines - 1) * 16;
       const total = refHeight + textHeight;
       if (total <= ch * heightFraction) {
@@ -57,7 +63,7 @@ export function useFitFontSize(
       }
     }
     return best;
-  }, [containerSize, text, desiredFontSize, maxWidth, paddingX, heightFraction]);
+  }, [containerSize, text, desiredFontSize, maxWidth, paddingX, heightFraction, referencePosition]);
 
   const effectiveRefSize = useMemo(() => getReferenceSize(effectiveFontSize), [effectiveFontSize]);
 

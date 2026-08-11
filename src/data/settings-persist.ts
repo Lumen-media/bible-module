@@ -18,6 +18,7 @@ export interface PersistedSettings {
   autoFontColor?: boolean;
   textAlign: 'left' | 'center' | 'justify';
   lineSpacing: number;
+  referencePosition: 'inline' | 'top';
 }
 
 let saveTimer: ReturnType<typeof setTimeout> | null = null;
