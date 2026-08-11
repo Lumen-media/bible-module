@@ -1,61 +1,61 @@
 # Bible Module — Architecture Plan
 
-## 1. Visão Geral
+## 1. Overview
 
-Módulo de Bíblia para Lumen com duas superfícies:
+Bible module for Lumen with two surfaces:
 
-- **Overlay** (`host.overlay`): interface de controle do operador — grid de livros,
-  navegação, busca, seleção de versículos. Janela destacada, independente.
-- **Presenter** (`host.presentation`): saída para o público — exibe o texto
-  selecionado com fonte grande, sem elementos de navegação.
+- **Overlay** (`host.overlay`): operator control interface — book grid,
+  navigation, search, verse selection. Detached, standalone window.
+- **Presenter** (`host.presentation`): audience output — displays the selected
+  text in large font, without navigation elements.
 
-Versões padrão: **NAA** (Nova Almeida Atualizada), **ARA** (Almeida Revista e
-Atualizada) e **NVI** (Nova Versão Internacional). Futuramente podem ser
-adicionadas mais. UI internacionalizada (PT, EN, ES). Os dados são baixados
-da [API midvash](https://api.midvash.com) e armazenados localmente em SQLite
-via `host.data.sqlite()`, com cache raw em JSON via `host.fs`.
+Default versions: **NAA** (Nova Almeida Atualizada), **ARA** (Almeida Revista e
+Atualizada), and **NVI** (Nova Versão Internacional). Additional versions may be
+added in the future. Internationalized UI (PT, EN, ES). Data is downloaded
+from the [midvash API](https://api.midvash.com) and stored locally in SQLite
+via `host.data.sqlite()`, with raw JSON cache via `host.fs`.
 
 ---
 
-## 2. Estrutura de Diretórios
+## 2. Directory Structure
 
 ```
 src/
 ├── data/
-│   ├── downloader.ts          # Download paralelo de traduções
-│   ├── schema.ts              # Migrations SQLite
-│   ├── store.ts               # Queries e operações no banco local
-│   └── types.ts               # Tipos de dados da Bíblia
+│   ├── downloader.ts          # Parallel download of translations
+│   ├── schema.ts              # SQLite migrations
+│   ├── store.ts               # Queries and local DB operations
+│   └── types.ts               # Bible data types
 ├── i18n/
 │   ├── en.ts
 │   ├── pt-BR.ts
-│   └── es.ts                  # Suporte a espanhol
+│   └── es.ts                  # Spanish support
 ├── overlay/
-│   ├── BibleController.tsx     # Painel principal do overlay (grid de livros + leitura)
-│   ├── BookGrid.tsx            # Grid de livros estilo tabela periódica
-│   ├── ChapterReader.tsx       # Leitor de capítulo (sidebar do overlay)
-│   ├── VersionSelector.tsx     # Seletor de versão
-│   ├── QuickSearch.tsx         # Busca rápida por inicial do livro / "gn 1"
-│   ├── DownloadProgress.tsx    # Barra de progresso discreta no topo
-│   └── SearchPanel.tsx         # Painel de busca textual completa
+│   ├── BibleController.tsx     # Main overlay panel (book grid + reading)
+│   ├── BookGrid.tsx            # Periodic-table-style book grid
+│   ├── ChapterReader.tsx       # Chapter reader (overlay sidebar)
+│   ├── VersionSelector.tsx     # Version selector
+│   ├── QuickSearch.tsx         # Quick search by book initial / "gn 1"
+│   ├── DownloadProgress.tsx    # Discreet progress bar at the top
+│   └── SearchPanel.tsx         # Full-text search panel
 ├── presenter/
-│   └── BibleSlide.tsx          # Slide do presenter (texto grande para o público)
-├── commands.ts                 # Registro de comandos da palette
+│   └── BibleSlide.tsx          # Presenter slide (large text for the audience)
+├── commands.ts                 # Palette command registration
 ├── i18n.ts
-├── main.ts                     # Entry point do plugin
+├── main.ts                     # Plugin entry point
 └── styles.css
 ```
 
 ---
 
-## 3. Schema SQLite
+## 3. SQLite Schema
 
 ```sql
 -- Migration 1: verses
 CREATE TABLE verses (
   id        INTEGER PRIMARY KEY AUTOINCREMENT,
   version   TEXT NOT NULL,            -- 'naa', 'arc', 'ara', 'acf', 'as21', 'aa', 'jfaa'
-  book      TEXT NOT NULL,            -- slug do livro: 'genesis', 'exodus', etc.
+  book      TEXT NOT NULL,            -- book slug: 'genesis', 'exodus', etc.
   chapter   INTEGER NOT NULL,
   verse     INTEGER NOT NULL,
   text      TEXT NOT NULL,
@@ -70,7 +70,7 @@ CREATE TABLE metadata (
   key   TEXT PRIMARY KEY,
   value TEXT NOT NULL
 );
--- Guarda: last_download, versions_downloaded (JSON array), etc.
+-- Stores: last_download, versions_downloaded (JSON array), etc.
 
 -- Migration 3: search_index (FTS5)
 CREATE VIRTUAL TABLE verses_fts USING fts5(
@@ -83,9 +83,9 @@ CREATE VIRTUAL TABLE verses_fts USING fts5(
   content_rowid=id
 );
 
--- Triggers para manter FTS sincronizado
+-- Triggers to keep FTS in sync
 CREATE TRIGGER verses_ai AFTER INSERT ON verses BEGIN
-  INSERT INTO verses_fts(rowid, text, version, book, chapter, verse)
+  INSERT INTO verses_fts(rowid, text, version, book, chapter, verses)
   VALUES (new.id, new.text, new.version, new.book, new.chapter, new.verse);
 END;
 ```
@@ -94,27 +94,27 @@ END;
 
 ## 4. Data Layer
 
-### 4.1. Tipos (`types.ts`)
+### 4.1. Types (`types.ts`)
 
 ```typescript
 interface Book {
   id: string;          // slug: 'genesis'
-  name: string;        // nome traduzido: 'Gênesis'
-  chapters: number;    // total de capítulos
+  name: string;        // translated name: 'Genesis'
+  chapters: number;    // total chapters
   testament: 'old' | 'new';
 }
 
 interface Version {
   id: string;          // 'naa', 'arc', ...
   name: string;        // 'Nova Almeida Atualizada'
-  language: string;     // 'pt'
+  language: string;    // 'pt'
 }
 
 interface Chapter {
   version: string;
   book: string;
   number: number;
-  verses: (Verse | null)[];  // índice 1-based, null = não existe
+  verses: (Verse | null)[];  // 1-based index, null = nonexistent
 }
 
 interface Verse {
@@ -134,245 +134,302 @@ interface SearchResult {
 
 ### 4.2. Downloader (`downloader.ts`)
 
-- Usa `host.net` para buscar as traduções da midvash.
-- Meta: endpoints:
-  - `GET /v1/versions` → lista de versões disponíveis
-  - `GET /v1/books` → lista de livros (usar `?version=naa` — ou o endpoint aceita `?language=pt`)
-  - `GET /v1/{version}/{book}/{chapter}` → capítulo individual
-- Estratégia:
-  1. Buscar lista de livros (1 request).
-  2. Para cada versão, disparar requests paralelos para todos os capítulos.
-  3. Usar `Promise.allSettled` com limite de concorrência (ex.: 20 simultâneos).
-  4. Salvar JSON raw de cada capítulo em `host.fs` como backup (`{version}/{book}/{chapter}.json`).
-  5. Extrair verses do JSON e inserir em lotes no SQLite via `INSERT OR IGNORE`.
-  6. Responsividade: barra de progresso discreta no topo do overlay, emitindo
+- Uses `host.net` to fetch translations from midvash.
+- Endpoints:
+  - `GET /v1/versions` → list of available versions
+  - `GET /v1/books` → list of books (use `?version=naa` — or the endpoint accepts `?language=pt`)
+  - `GET /v1/{version}/{book}/{chapter}` → individual chapter
+- Strategy:
+  1. Fetch book list (1 request).
+  2. For each version, fire parallel requests for all chapters.
+  3. Use `Promise.allSettled` with concurrency limit (e.g., 20 simultaneous).
+  4. Save raw JSON of each chapter in `host.fs` as backup (`{version}/{book}/{chapter}.json`).
+  5. Extract verses from JSON and insert in batches into SQLite via `INSERT OR IGNORE`.
+  6. Responsiveness: discreet progress bar at the top of the overlay, emitting
      `host.events.emit('download:progress', { version, current, total })`.
-- Retry e resiliência:
-  - Cada capítulo: 3 tentativas com backoff progressivo (1s, 3s, 5s).
-  - Se falhar após 3 tentativas, marca como falha e notifica o usuário.
-  - **Download resumível**: o JSON salvo em `host.fs` serve como checkpoint.
-    Na próxima execução, capítulos com JSON existente são pulados (reidratados
-    no DB localmente).
-  - Se a midvash estiver fora, exibe notificação "Serviço indisponível" e
-    oferece tentar novamente.
-- Botão "Redownload" para forçar atualização (limpa JSON + DB e baixa de novo).
+- Retry and resilience:
+  - Each chapter: 3 attempts with progressive backoff (1s, 3s, 5s).
+  - If it fails after 3 attempts, mark as failed and notify the user.
+  - **Resumable download**: the JSON saved in `host.fs` serves as a checkpoint.
+    On the next run, chapters with existing JSON are skipped (rehydrated
+    into the DB locally).
+  - If midvash is down, display "Service unavailable" notification and
+    offer retry.
+- "Redownload" button to force update (clears JSON + DB and downloads fresh).
 
 ### 4.3. Store (`store.ts`)
 
 ```typescript
-// Inicialização — verifica se DB precisa ser reidratado dos JSONs
+// Initialization — checks if DB needs to be rehydrated from JSONs
 async function initDB(db: SqliteHandle, fs: FsAPI): Promise<void>
 
-// Download — baixa da midvash, insere no DB e salva JSON
+// Download — fetches from midvash, inserts into DB and saves JSON
 async function downloadVersion(db: SqliteHandle, net: NetAPI, fs: FsAPI, versionId: string, books: Book[]): Promise<void>
 async function downloadAll(db: SqliteHandle, net: NetAPI, fs: FsAPI, versions: string[]): Promise<void>
 
-// Reidratação — se DB vazio mas JSON existe, recria sem baixar
+// Rehydration — if DB is empty but JSON exists, rebuild without downloading
 async function rehydrateFromCache(db: SqliteHandle, fs: FsAPI, versionId: string, books: Book[]): Promise<boolean>
 
-// Leitura
+// Reading
 async function getChapter(db: SqliteHandle, version: string, book: string, chapter: number): Promise<Chapter>
 async function getBookList(db: SqliteHandle): Promise<Book[]>
 
-// Pesquisa
+// Search
 async function search(db: SqliteHandle, query: string, version?: string): Promise<SearchResult[]>
 ```
 
 ---
 
-## 5. UI / Painéis
+## 5. UI / Panels
 
 ### 5.1. BibleController (Overlay `presenter.content`)
 
-Slot: `'presenter.content'` — projetado via `host.overlay.project("bible-controller", { windowConfig, ... })`
+Slot: `'presenter.content'` — projected via `host.overlay.project("bible-controller", { windowConfig, ... })`
 
-A overlay abre maximizada, sem decorações, como se fosse um app à parte. Layout
-dividido em duas colunas:
+The overlay opens maximized, undecorated, like a standalone app. Layout
+split into two columns:
 
 ```
 ┌──────────────────────────────────────────────────────────┐
-│  ████████████████░░░░░░░  Baixando NVI... (45%)         │ ← DownloadProgress (só aparece durante download)
+│  ████████████████░░░░░░░  Downloading NVI... (45%)       │ ← DownloadProgress (only shows during download)
 ├──────────────────────────────────────────────────────────┤
-│  Bíblia  [NAA ▾]  [🔍 Buscar...]                        │ ← Top bar
+│  Bible  [NAA ▾]  [🔍 Search...]                          │ ← Top bar
 ├────────────────────────────┬─────────────────────────────┤
 │                            │                             │
-│  ┌────┐ ┌────┐ ┌────┐     │  Gênesis 1                  │
+│  ┌────┐ ┌────┐ ┌────┐     │  Genesis 1                  │
 │  │ Gn │ │ Ex │ │ Lv │     │                             │
-│  └────┘ └────┘ └────┘     │  1 No princípio, Deus       │
-│  ┌────┐ ┌────┐ ┌────┐     │  criou os céus e a          │
-│  │ Nm │ │ Dt │ │ Js │     │  terra.                     │
+│  └────┘ └────┘ └────┘     │  1 In the beginning, God     │
+│  ┌────┐ ┌────┐ ┌────┐     │  created the heavens and     │
+│  │ Nm │ │ Dt │ │ Js │     │  the earth.                  │
 │  └────┘ └────┘ └────┘     │                             │
-│  ┌────┐ ┌────┐ ┌────┐     │  2 A terra era sem          │
-│  │ Jz │ │ Rt │ │ 1Sm │    │  forma e vazia...           │
+│  ┌────┐ ┌────┐ ┌────┐     │  2 The earth was formless    │
+│  │ Jz │ │ Rt │ │ 1Sm │    │  and empty...                 │
 │  └────┘ └────┘ └────┘     │                             │
-│  ...               [AT ▼] │  [◀ 1] [2] [3] ... ▶]      │
+│  ...               [OT ▼] │  [◀ 1] [2] [3] ... ▶]       │
 │                            │                             │
-│  Grid de livros estilo    │  Leitor do capítulo         │
-│  tabela periódica         │  selecionado                │
+│  Periodic-table-style     │  Selected chapter reader     │
+│  book grid                │                              │
 │                            │                             │
 ├────────────────────────────┴─────────────────────────────┤
-│   [⏎ Projetar Gênesis 1]  [📋 Copiar seleção]           │ ← Action bar
+│   [⏎ Project Genesis 1]  [📋 Copy selection]             │ ← Action bar
 └──────────────────────────────────────────────────────────┘
 ```
 
 **QuickSearch (type-to-filter):**
-- Ao digitar qualquer tecla alfanumérica, abre um seletor no topo do overlay.
-- Filtra livros por inicial ou nome parcial.
-- Aceita comandos como `"gn"` → Gênesis, `"gn 1"` → Gênesis 1.
-- Se for caractere único, mostra grid simplificado com os livros daquela inicial.
-- Fecha ao clicar num livro ou pressionar Escape.
+- Typing any alphanumeric key opens a selector at the top of the overlay.
+- Filters books by initial or partial name.
+- Accepts commands like `"gn"` → Genesis, `"gn 1"` → Genesis 1.
+- If a single character, shows a simplified grid with books starting with that letter.
+- Closes when clicking a book or pressing Escape.
 
-**Componentes do overlay:**
+**Overlay components:**
 
-| Componente | Descrição |
+| Component | Description |
 |------------|-----------|
-| `BookGrid` | Grid de botões com abreviações dos livros (Gn, Ex, Lv...), filtrado por testamento (AT/NT) |
-| `ChapterReader` | Sidebar direita com o texto do capítulo selecionado, navegação entre capítulos |
-| `VersionSelector` | Dropdown no topo para trocar versão ativa |
-| `QuickSearch` | Busca rápida por inicial do livro / referência tipo "gn 1:2" |
-| `DownloadProgress` | Barra discreta no topo durante download, visível mas não intrusiva |
-| `SearchPanel` | Busca textual completa com resultados agrupados |
+| `BookGrid` | Grid of buttons with book abbreviations (Gn, Ex, Lv...), filtered by testament (OT/NT) |
+| `ChapterReader` | Right sidebar with the selected chapter text, inter-chapter navigation |
+| `VersionSelector` | Top dropdown to change active version |
+| `QuickSearch` | Quick search by book initial / reference like "gn 1:2" |
+| `DownloadProgress` | Discreet top bar during download, visible but not intrusive |
+| `SearchPanel` | Full-text search with grouped results |
 
-**Fluxo de uso:**
-1. Operador cliqueia num livro no grid → `ChapterReader` carrega o capítulo 1
-2. Ou digita a inicial do livro → `QuickSearch` abre sugestões
-3. Navega pelos capítulos no leitor
-4. Cliqueia "Projetar" → envia o texto para o presenter
+**Usage flow:**
+1. Operator clicks a book in the grid → `ChapterReader` loads chapter 1
+2. Or types the book's initial → `QuickSearch` opens suggestions
+3. Navigates between chapters in the reader
+4. Clicks "Project" → sends text to the presenter
 
 ### 5.2. BibleSlide (Presenter `presenter.content`)
 
-Slot: `'presenter.content'` — projetado via `host.presentation.project("bible-slide", { version, book, chapter, verses })`
+Slot: `'presenter.content'` — projected via `host.presentation.project("bible-slide", { version, book, chapter, verses })`
 
 ```
 ┌─────────────────────────────────────┐
 │                                     │
 │                                     │
-│      Gênesis 1 — NAA               │ ← Referência (pequena)
+│      Genesis 1 — NAA               │ ← Reference (small)
 │                                     │
-│   1 No princípio, Deus criou       │
-│     os céus e a terra.             │
-│   2 A terra era sem forma e        │ ← Texto grande, centralizado
-│     vazia; e as trevas cobriam     │
-│     o abismo.                      │
-│   3 Disse Deus: Haja luz; e        │
-│     houve luz.                     │
+│   1 In the beginning, God created  │
+│     the heavens and the earth.     │
+│   2 The earth was formless and     │ ← Large, centered text
+│     empty; darkness covered        │
+│     the deep.                      │
+│   3 And God said, "Let there be    │
+│     light," and there was light.   │
 │                                     │
 │                                     │
 │                                     │
 └─────────────────────────────────────┘
 ```
 
-- Fonte grande, contraste alto, sem distrações
-- Referência no topo (Gênesis 1 — NAA)
-- Versículos numerados
-- Projetado no presenter (tela do público/projetor)
+- Large font, high contrast, no distractions
+- Reference at the top (Genesis 1 — NAA)
+- Numbered verses
+- Projected on the presenter (audience/projector screen)
 
 ---
 
-## 6. Integração com Lumen
+## 6. Lumen Integration
 
-### 6.1. Overlay (Controle)
+### 6.1. Overlay (Control)
 
 ```typescript
-// Abrir a interface de controle da Bíblia
+// Open the Bible control interface
 host.overlay.project("bible-controller", {
   windowConfig: {
     maximized: true,
     resizable: false,
     decorations: false,
-    title: "Bíblia",
+    title: "Bible",
   },
 });
 ```
 
-Toda interação do operador acontece aqui: navegar livros, ler capítulos, buscar.
+All operator interaction happens here: browse books, read chapters, search.
 
-### 6.2. Presenter (Saída Pública)
+### 6.2. Presenter (Public Output)
 
 ```typescript
-// Projetar um capítulo/versículo no presenter
+// Project a chapter/verse on the presenter
 host.presentation.project("bible-slide", {
   version: "naa",
   book: "genesis",
-  bookName: "Gênesis",
+  bookName: "Genesis",
   chapter: 1,
-  verses: [1, 2, 3],   // verses específicos ou null = capítulo inteiro
-  range: "1-3",         // label opcional: "vv. 1-3"
+  verses: [1, 2, 3],   // specific verses or null = entire chapter
+  range: "1-3",         // optional label: "vv. 1-3"
 });
 
-// Limpar o presenter
+// Clear the presenter
 host.presentation.clear();
 ```
 
-O presenter mostra apenas o texto limpo, sem UI de navegação.
+The presenter shows only clean text, with no navigation UI.
 
-### 6.3. Comandos (Command Palette)
+### 6.3. Commands (Command Palette)
 
-| Comando | Ação |
+| Command | Action |
 |---------|------|
-| `bible: open` | Abrir overlay da Bíblia |
-| `bible: search [query]` | Abrir busca no overlay (com prefixo) |
-| `bible: go-to [book] [chapter]` | Navegar direto para livro/capítulo no overlay |
-| `bible: project [ref]` | Projetar referência diretamente no presenter |
-| `bible: clear` | Limpar presenter |
+| `bible: open` | Open Bible overlay |
+| `bible: search [query]` | Open search in the overlay (with prefix) |
+| `bible: go-to [book] [chapter]` | Navigate directly to book/chapter in the overlay |
+| `bible: project [ref]` | Project reference directly on the presenter |
+| `bible: clear` | Clear presenter |
 
-### 6.4. Eventos (Bus)
+### 6.4. Events (Bus)
 
 - `bible:verse-selected` → `{ version, book, chapter, verse, text }`
-  - Permite que outros módulos (ex.: letrista) insiram versículos em projetos.
+  - Allows other modules (e.g., lyric module) to insert verses into projects.
 - `bible:projected` → `{ version, book, chapter, verses }`
-  - Notifica que algo foi projetado.
+  - Notifies that something has been projected.
+
+### 6.5. Queue Integration (Verse Actions)
+
+The module registers a queue action via `host.queue.registerAction` that allows
+verses to be added to Lumen's playback queue. When the queue reaches the action,
+the presenter opens automatically with the pre-configured verse.
+
+```typescript
+// Registered once in onload (main window only):
+host.queue.registerAction({
+  id: 'bible.verse-queue',
+  onFire(config) {
+    host.presentation.project('bible-slide', { data: config });
+  },
+});
+```
+
+The operator adds verses via a context menu in the `ChapterReader`:
+
+```typescript
+// From the context menu callback:
+host.queue.addTrigger?.('bible.verse-queue', {
+  version: 'nvi',
+  book: 'psalms',
+  bookName: 'Salmos',
+  chapter: 119,
+  verse: 3,
+  verseText: '...',
+  versionDisplayName: 'NVI',
+});
+```
+
+**Flow:**
+```
+Surface window                Main window                   Presenter
+─────────────                 ───────────                   ─────────
+Right-click verse →
+"Add to queue" clicked →
+queue.addTrigger() ──IPC──→  event listener fires
+                              inserts into queue table
+                              adds to entries store
+                                                           queue advances →
+                                                           action.onFire()
+                                                           presenter opens ←
+```
+
+**Key design decisions:**
+- Uses `registerAction`, not `registerTrigger` — the action is entirely
+  module-controlled. It does not appear in the queue panel UI.
+- The action's `onFire` reads the current presentation settings (font, background,
+  color) from the module store at the time of projection.
+- The verse entry persists in Lumen's `queue` table alongside regular media
+  items, surviving app reloads. On reload, it is restored via the
+  `queue-entries-store.loadFromDb()` method.
+- The `queue` host object is stored as a plain module-level variable
+  (`setModuleQueue` / `getModuleQueue`), not inside Zustand state, to avoid
+  performance overhead from reactive subscriptions.
 
 ---
 
-## 7. Download e Cache
+## 7. Download and Cache
 
-### 7.1. Fluxo de Download
+### 7.1. Download Flow
 
 ```mermaid
 flowchart TD
-    A[Módulo carregado] --> B{DB íntegro?}
-    B -->|Não| C{JSON cache existe?}
-    B -->|Sim| G[Renderizar UI]
-    C -->|Sim| D[Reidratar DB dos JSONs]
-    C -->|Não| E[Iniciar download]
+    A[Module loaded] --> B{DB intact?}
+    B -->|No| C{JSON cache exists?}
+    B -->|Yes| G[Render UI]
+    C -->|Yes| D[Rehydrate DB from JSONs]
+    C -->|No| E[Start download]
     D --> G
-    E --> F[Buscar /v1/books]
-    F --> H[Para cada versão:]
-    H --> I[Buscar capítulos em paralelo]
-    I --> J[Salvar JSON raw em host.fs]
-    J --> K[Extrair verses → INSERT no SQLite]
-    K --> L[Atualizar metadata]
+    E --> F[Fetch /v1/books]
+    F --> H[For each version:]
+    H --> I[Fetch chapters in parallel]
+    I --> J[Save raw JSON to host.fs]
+    J --> K[Extract verses → INSERT into SQLite]
+    K --> L[Update metadata]
     L --> G
 ```
 
 ### 7.2. Performance
 
-- ~1.036 capítulos por versão (NAA/NVI têm menos capítulos que ARC/ARA).
-- 20 requests simultâneos → ~50 segundos por versão.
-- Cada capítulo ~2-5 KB → ~3-6 MB por versão (~12 MB para NAA + ARA + NVI).
-- JSON raw salvo em `host.fs`: mesmo tamanho.
-- 3 tentativas por capítulo com backoff (1s, 3s, 5s).
-- Download resumível: JSON em `host.fs` serve como checkpoint.
-- Inserção em lotes de 100 verses → commit a cada lote.
-- Download em background, UI responsiva com barra de progresso no topo.
-- Reidratação do DB a partir dos JSONs é instantânea. 
-- Se midvash falhar permanentemente: notificação "Serviço indisponível" e botão de retry.
+- ~1,036 chapters per version (NAA/NVI have fewer chapters than ARC/ARA).
+- 20 concurrent requests → ~50 seconds per version.
+- Each chapter ~2-5 KB → ~3-6 MB per version (~12 MB for NAA + ARA + NVI).
+- Raw JSON saved in `host.fs`: same size.
+- 3 attempts per chapter with backoff (1s, 3s, 5s).
+- Resumable download: JSON in `host.fs` serves as checkpoint.
+- Batch inserts of 100 verses → commit per batch.
+- Background download, responsive UI with progress bar at the top.
+- DB rehydration from JSONs is instantaneous. 
+- If midvash fails permanently: "Service unavailable" notification and retry button.
 
 ### 7.3. Midvash API Details
 
 - Base URL: `https://api.midvash.com/v1`
-- Exemplos:
+- Examples:
   - `GET /v1/versions` → `["naa","arc","ara","acf",...]`
-  - `GET /v1/books?version=naa` → lista de livros
-  - `GET /v1/{version}/{book}/{chapter}` → capítulo
-- Cache: Cloudflare immutável por 1 ano (`max-age=31536000`), sem rate limit, sem chave.
+  - `GET /v1/books?version=naa` → book list
+  - `GET /v1/{version}/{book}/{chapter}` → chapter
+- Cache: Cloudflare immutable for 1 year (`max-age=31536000`), no rate limit, no key.
 
 ### 7.4. WindowConfig (Overlay Props)
 
-O módulo do Lumen (`module-overlay-window.tsx`) foi modificado para suportar
-configuração da janela via props. Sempre que `host.overlay.project()` é chamado,
-o overlay extrai `props.windowConfig` e aplica:
+The Lumen module (`module-overlay-window.tsx`) was modified to support
+window configuration via props. Whenever `host.overlay.project()` is called,
+the overlay extracts `props.windowConfig` and applies:
 
 ```typescript
 interface WindowConfig {
@@ -388,19 +445,19 @@ interface WindowConfig {
 }
 ```
 
-Essas configs são reaplicadas a cada `project()`.
+These configs are reapplied on each `project()`.
 
 ---
 
-## 8. Internacionalização
+## 8. Internationalization
 
-### 8.1. Idiomas
+### 8.1. Languages
 
-| Chave | Idioma |
+| Key | Language |
 |-------|--------|
-| `en`  | Inglês |
-| `pt-BR` | Português (Brasil) |
-| `es`  | Espanhol |
+| `en`  | English |
+| `pt-BR` | Portuguese (Brazil) |
+| `es`  | Spanish |
 
 ### 8.2. Strings
 
@@ -414,7 +471,7 @@ Essas configs são reaplicadas a cada `project()`.
   "bible.downloading": "Downloading {version}...",
   "bible.download-complete": "Download complete",
   "bible.no-results": "No results found",
-  // ... nomes de livros
+  // ... book names
   "book.genesis": "Genesis",
   "book.exodus": "Exodus",
   // ...
@@ -423,29 +480,29 @@ Essas configs são reaplicadas a cada `project()`.
 
 ---
 
-## 9. Plano de Implementação
+## 9. Implementation Plan
 
-| Fase | Tarefa | Estimativa |
+| Phase | Task | Estimate |
 |------|--------|------------|
-| 1 | Schema SQLite + migrations + store.ts (CRUD + reidratação) | 1 dia |
-| 2 | Downloader com paralelismo, retry, resumível, JSON cache | 1 dia |
-| 3 | BibleController + BookGrid + QuickSearch + ChapterReader | 1 dia |
-| 4 | DownloadProgress (barra no topo) + VersionSelector | 0.5 dia |
-| 5 | BibleSlide (presenter) + fluxo overlay → presenter | 0.5 dia |
-| 6 | SearchPanel com FTS5 | 0.5 dia |
-| 7 | i18n (es + nomes de livros em PT/EN/ES) | 0.5 dia |
-| 8 | Comandos + Bus events + tratamento de erros + notificações | 0.5 dia |
-| **Total** | | **~5.5 dias** |
+| 1 | SQLite schema + migrations + store.ts (CRUD + rehydration) | 1 day |
+| 2 | Downloader with parallelism, retry, resumable, JSON cache | 1 day |
+| 3 | BibleController + BookGrid + QuickSearch + ChapterReader | 1 day |
+| 4 | DownloadProgress (top bar) + VersionSelector | 0.5 day |
+| 5 | BibleSlide (presenter) + overlay → presenter flow | 0.5 day |
+| 6 | SearchPanel with FTS5 | 0.5 day |
+| 7 | i18n (es + book names in PT/EN/ES) | 0.5 day |
+| 8 | Commands + Bus events + error handling + notifications | 0.5 day |
+| **Total** | | **~5.5 days** |
 
 ---
 
-## 10. Observações Técnicas
+## 10. Technical Notes
 
-- O SDK NÃO é um pacote npm externo — está embutido no código fonte do Lumen.
-- `host.data.sqlite()` retorna um `SqliteHandle` lazy (abre na primeira chamada). Chamar apenas após `onload`.
-- O `host.settings` é **in-memory apenas** (não persiste). Usar `host.data.json` para settings persistentes se necessário.
-- Cada módulo tem escopo de dados isolado. O SQLite é específico do módulo.
-- URLs de rede precisam ser permitidas no `manifest.json` → `permissions.network`.
-- O arquivo `module-overlay-window.tsx` do Lumen foi modificado para suportar
-  `windowConfig` via props do overlay. Essa modificação é necessária para o
-  funcionamento do módulo da Bíblia.
+- The SDK is NOT an external npm package — it is embedded in the Lumen source code.
+- `host.data.sqlite()` returns a lazy `SqliteHandle` (opens on first call). Only call after `onload`.
+- `host.settings` is **in-memory only** (does not persist). Use `host.data.json` for persistent settings if needed.
+- Each module has an isolated data scope. SQLite is module-specific.
+- Network URLs must be allowed in `manifest.json` → `permissions.network`.
+- The Lumen file `module-overlay-window.tsx` was modified to support
+  `windowConfig` via overlay props. This modification is required for
+  the Bible module to function.
