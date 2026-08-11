@@ -1,6 +1,6 @@
 import { memo, useRef } from 'react';
 import { useFitFontSize } from '../hooks/useFitFontSize.js';
-import { t, tForVersion } from '../i18n.js';
+import { tForVersion } from '../i18n.js';
 import { cn, displayVersion } from '../lib/utils.js';
 import { staticVersionLanguage, useBibleStore } from '../store.js';
 
@@ -18,6 +18,8 @@ export const SlidePreview = memo(function SlidePreview() {
   const abbreviatedBooks = useBibleStore((s) => s.abbreviatedBooks);
   const fontColor = useBibleStore((s) => s.fontColor);
   const backgroundOpacity = useBibleStore((s) => s.backgroundOpacity);
+  const textAlign = useBibleStore((s) => s.textAlign);
+  const lineSpacing = useBibleStore((s) => s.lineSpacing);
   const selectedBook = useBibleStore((s) => s.selectedBook);
   const chapter = useBibleStore((s) => s.chapter);
   const selectedVerse = useBibleStore((s) => s.selectedVerse);
@@ -94,7 +96,6 @@ export const SlidePreview = memo(function SlidePreview() {
           </div>
           <p
             className={cn(
-              'text-center leading-[1.4]',
               { uppercase: uppercase },
               { 'font-light': fontWeight === 'Light' },
               { 'font-normal': fontWeight === 'Regular' },
@@ -106,6 +107,8 @@ export const SlidePreview = memo(function SlidePreview() {
               fontFamily,
               fontSize: `${effectiveFontSize}px`,
               color: fontColor,
+              textAlign,
+              lineHeight: lineSpacing,
             }}
           >
             {previewText}

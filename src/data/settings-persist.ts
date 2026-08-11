@@ -16,6 +16,8 @@ export interface PersistedSettings {
   abbreviatedBooks: boolean;
   fontColor: string;
   autoFontColor?: boolean;
+  textAlign: 'left' | 'center' | 'justify';
+  lineSpacing: number;
 }
 
 let saveTimer: ReturnType<typeof setTimeout> | null = null;

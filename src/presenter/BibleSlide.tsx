@@ -22,6 +22,8 @@ interface BibleSlideProps {
     fontFamily: string;
     fontWeight: string;
     fontStyle: string;
+    textAlign: 'left' | 'center' | 'justify';
+    lineSpacing: number;
     background: { type: string; src: string; name: string } | null;
     profileBackground: { type: string; src: string; name: string } | null;
     backgroundOpacity: number;
@@ -100,6 +102,8 @@ export function BibleSlide({ data }: BibleSlideProps) {
     showVersion,
     abbreviatedBooks,
     fontColor,
+    textAlign,
+    lineSpacing,
   } = renderData;
   const label = abbreviatedBooks
     ? tForVersion(
@@ -162,10 +166,16 @@ export function BibleSlide({ data }: BibleSlideProps) {
               {showVersionLabel ? ` ${displayVersion(version)}` : ''}
             </div>
             <div
-              className={cn('relative z-10 w-full text-center leading-snug', {
+              className={cn('relative z-10 w-full', {
                 uppercase: uppercase,
               })}
-              style={{ fontSize: `${effectiveFontSize}px`, fontFamily, color: fontColor }}
+              style={{
+                fontSize: `${effectiveFontSize}px`,
+                fontFamily,
+                color: fontColor,
+                textAlign,
+                lineHeight: lineSpacing,
+              }}
             >
               {text.split('\n').map((line) => (
                 <p key={line.slice(0, 40)} className="mb-4 last:mb-0">

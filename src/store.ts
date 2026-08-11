@@ -145,6 +145,8 @@ export interface BibleState {
   fontColor: string;
   autoFontColor: boolean;
   backgroundOpacity: number;
+  textAlign: 'left' | 'center' | 'justify';
+  lineSpacing: number;
 
   bookmarks: Set<string>;
   bookmarkTexts: Map<string, string>;
@@ -161,6 +163,8 @@ export interface BibleState {
     showVersion: boolean;
     abbreviatedBooks: boolean;
     fontColor: string;
+    textAlign: 'left' | 'center' | 'justify';
+    lineSpacing: number;
   } | null;
 }
 
@@ -215,6 +219,8 @@ export interface BibleActions {
   setFontColor: (c: string) => void;
   setAutoFontColor: (v: boolean) => void;
   setBackgroundOpacity: (n: number) => void;
+  setTextAlign: (a: 'left' | 'center' | 'justify') => void;
+  setLineSpacing: (n: number) => void;
   saveSettings: () => void;
   loadFonts: () => Promise<void>;
   setProjectedData: (
@@ -234,6 +240,8 @@ export interface BibleActions {
       fontFamily?: string;
       fontWeight?: string;
       fontStyle?: string;
+      textAlign?: 'left' | 'center' | 'justify';
+      lineSpacing?: number;
       background?: SelectedBackground | null;
       profileBackground?: { type: string; src: string; name: string } | null;
       backgroundOpacity?: number;
@@ -291,6 +299,8 @@ function persistSettingsFromState(state: BibleState) {
     abbreviatedBooks: state.abbreviatedBooks,
     fontColor: state.fontColor,
     autoFontColor: state.autoFontColor,
+    textAlign: state.textAlign,
+    lineSpacing: state.lineSpacing,
   });
 }
 
@@ -340,14 +350,15 @@ export const useBibleStore = create<BibleStore>((set, get) => ({
   fontColor: '#FFFFFF',
   autoFontColor: true,
   backgroundOpacity: 30,
+  textAlign: 'center' as const,
+  lineSpacing: 1.4,
   bookmarks: new Set<string>(),
   bookmarkTexts: new Map<string, string>(),
   projectedData: null,
 
   init: async (services) => {
     const t0 = performance.now();
-    const { fs, net, json, presentation, themes, ui, fonts, t, events, hostWindow } =
-      services;
+    const { fs, net, json, presentation, themes, ui, fonts, t, events, hostWindow } = services;
     set({
       fs,
       net,
@@ -395,6 +406,8 @@ export const useBibleStore = create<BibleStore>((set, get) => ({
         fontColor?: string;
         autoFontColor?: boolean;
         backgroundOpacity?: number;
+        textAlign?: 'left' | 'center' | 'justify';
+        lineSpacing?: number;
       } | null = null;
 
       const currentDb = get().sqlite;
@@ -425,6 +438,8 @@ export const useBibleStore = create<BibleStore>((set, get) => ({
       const restoredFontColor = s?.fontColor;
       const restoredAutoFontColor = s?.autoFontColor;
       const restoredBackgroundOpacity = s?.backgroundOpacity;
+      const restoredTextAlign = s?.textAlign ?? 'center';
+      const restoredLineSpacing = s?.lineSpacing ?? 1.4;
       if (s?.background) restoredBg = s.background;
 
       let profileBg: SelectedBackground | { src: string; type: string; name: string } | null =
@@ -497,6 +512,8 @@ export const useBibleStore = create<BibleStore>((set, get) => ({
       if (restoredFontColor != null) pending.fontColor = restoredFontColor;
       if (restoredAutoFontColor != null) pending.autoFontColor = restoredAutoFontColor;
       if (restoredBackgroundOpacity != null) pending.backgroundOpacity = restoredBackgroundOpacity;
+      pending.textAlign = restoredTextAlign;
+      pending.lineSpacing = restoredLineSpacing;
       if (profileBg) pending.profileBackground = profileBg as SelectedBackground;
 
       const cachedFonts = cachedFontsResp ?? [];
@@ -549,6 +566,8 @@ export const useBibleStore = create<BibleStore>((set, get) => ({
         fontColor?: string;
         autoFontColor?: boolean;
         backgroundOpacity?: number;
+        textAlign?: 'left' | 'center' | 'justify';
+        lineSpacing?: number;
       } | null = null;
 
       const currentDb = get().sqlite;
@@ -577,6 +596,8 @@ export const useBibleStore = create<BibleStore>((set, get) => ({
       const restoredFontColor = s?.fontColor;
       const restoredAutoFontColor = s?.autoFontColor;
       const restoredBackgroundOpacity = s?.backgroundOpacity;
+      const restoredTextAlign = s?.textAlign ?? 'center';
+      const restoredLineSpacing = s?.lineSpacing ?? 1.4;
       if (s?.background) restoredBg = s.background;
 
       let profileBg: SelectedBackground | { src: string; type: string; name: string } | null =
@@ -655,6 +676,8 @@ export const useBibleStore = create<BibleStore>((set, get) => ({
       if (restoredFontColor != null) pending.fontColor = restoredFontColor;
       if (restoredAutoFontColor != null) pending.autoFontColor = restoredAutoFontColor;
       if (restoredBackgroundOpacity != null) pending.backgroundOpacity = restoredBackgroundOpacity;
+      pending.textAlign = restoredTextAlign;
+      pending.lineSpacing = restoredLineSpacing;
       if (profileBg) pending.profileBackground = profileBg as SelectedBackground;
 
       if (cachedFonts.length > 0) {
@@ -983,6 +1006,16 @@ export const useBibleStore = create<BibleStore>((set, get) => ({
 
   setBackgroundOpacity: (n) => {
     set({ backgroundOpacity: n });
+  },
+
+  setTextAlign: (a) => {
+    set({ textAlign: a });
+    persistSettingsFromState(get());
+  },
+
+  setLineSpacing: (n) => {
+    set({ lineSpacing: n });
+    persistSettingsFromState(get());
   },
 
   saveSettings: () => {

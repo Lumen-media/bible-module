@@ -26,6 +26,7 @@ type SectionId = 'typography' | 'theme' | 'downloads' | 'cache';
 
 const FONT_WEIGHTS = ['Light', 'Regular', 'Medium', 'Bold'] as const;
 const FONT_STYLES = ['Normal', 'Italic'] as const;
+const TEXT_ALIGNS = ['Left', 'Center', 'Justify'] as const;
 
 function formatBytes(bytes: number): string {
   if (bytes === 0) return '0 B';
@@ -127,6 +128,10 @@ const TypographySection = memo(function TypographySection() {
   const setFontColor = useBibleStore((s) => s.setFontColor);
   const autoFontColor = useBibleStore((s) => s.autoFontColor);
   const setAutoFontColor = useBibleStore((s) => s.setAutoFontColor);
+  const textAlign = useBibleStore((s) => s.textAlign);
+  const lineSpacing = useBibleStore((s) => s.lineSpacing);
+  const setTextAlign = useBibleStore((s) => s.setTextAlign);
+  const setLineSpacing = useBibleStore((s) => s.setLineSpacing);
 
   const [fontInput, setFontInput] = useState(fontFamily);
   const [localFontSize, setLocalFontSize] = useState(String(fontSize));
@@ -452,6 +457,65 @@ const TypographySection = memo(function TypographySection() {
                   Manual
                 </ToggleGroup.ToggleGroupItem>
               </ToggleGroup>
+            </div>
+          </div>
+
+          <Separator />
+
+          <div className="flex items-start justify-between gap-4">
+            <div className="min-w-0">
+              <p className="text-sm font-medium text-foreground">
+                {t('bible.text-align' as TranslationKey)}
+              </p>
+              <p className="text-xs text-muted-foreground">
+                {t('bible.text-align-desc' as TranslationKey)}
+              </p>
+            </div>
+            <ToggleGroup
+              value={[textAlign]}
+              onValueChange={(v) => {
+                const next = v.find((a) => a !== textAlign);
+                if (next) setTextAlign(next as 'left' | 'center' | 'justify');
+              }}
+              size="sm"
+              variant="secondary"
+              className="bg-background w-fit justify-between overflow-hidden"
+            >
+              {TEXT_ALIGNS.map((a) => (
+                <ToggleGroup.ToggleGroupItem
+                  key={a}
+                  value={a.toLowerCase()}
+                  className="flex-1 px-4 text-[11px]"
+                >
+                  {a}
+                </ToggleGroup.ToggleGroupItem>
+              ))}
+            </ToggleGroup>
+          </div>
+
+          <Separator />
+
+          <div className="flex items-center justify-between gap-4">
+            <div className="min-w-0">
+              <p className="text-sm font-medium text-foreground">
+                {t('bible.line-spacing' as TranslationKey)}
+              </p>
+              <p className="text-xs text-muted-foreground">
+                {t('bible.line-spacing-desc' as TranslationKey)}
+              </p>
+            </div>
+            <div className="flex w-52 shrink-0 items-center gap-3">
+              <Slider
+                value={[lineSpacing]}
+                min={0.8}
+                max={2.5}
+                step={0.1}
+                onValueChange={(v) => setLineSpacing(v[0])}
+                className="flex-1"
+              />
+              <span className="w-9 shrink-0 text-right text-xs font-mono tabular-nums text-foreground">
+                {lineSpacing.toFixed(1)}
+              </span>
             </div>
           </div>
         </Card.CardContent>
