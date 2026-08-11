@@ -12,14 +12,14 @@ import {
   Switch,
   ToggleGroup,
 } from '@lumen-media/module-sdk/ui';
-import { Database, Download, HardDrive, Palette, Type } from 'lucide-react';
+import { Database, Download, HardDrive, Loader2, Palette, RefreshCw, Type } from 'lucide-react';
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { HexColorPicker } from 'react-colorful';
 import { useDebounceCallback } from 'usehooks-ts';
-import { getDownloadedVersions } from '../data/store.js';
+import { getDownloadedVersions, getSyncedVersions } from '../data/store.js';
 import { type TranslationKey, t } from '../i18n.js';
 import { cn } from '../lib/utils.js';
-import { ALL_VERSIONS, useBibleStore } from '../store.js';
+import { ALL_VERSIONS, UPDATED_VERSIONS, useBibleStore } from '../store.js';
 import { SlidePreview } from './SlidePreview.js';
 
 type SectionId = 'typography' | 'theme' | 'downloads' | 'cache';
@@ -702,17 +702,35 @@ const ThemeSection = memo(function ThemeSection() {
 const DownloadsSection = memo(function DownloadsSection() {
   const version = useBibleStore((s) => s.version);
   const downloadingVersions = useBibleStore((s) => s.downloadingVersions);
+  const syncingVersions = useBibleStore((s) => s.syncingVersions);
   const downloadVersionOnly = useBibleStore((s) => s.downloadVersionOnly);
+  const syncVersion = useBibleStore((s) => s.syncVersion);
   const removeVersion = useBibleStore((s) => s.removeVersion);
   const setVersion = useBibleStore((s) => s.setVersion);
   const json = useBibleStore((s) => s.json);
 
   const [downloadedIds, setDownloadedIds] = useState<string[]>([]);
+  const [syncedMap, setSyncedMap] = useState<Record<string, number>>({});
 
   useEffect(() => {
     if (!json) return;
     getDownloadedVersions(json).then(setDownloadedIds);
-  }, [json, downloadingVersions]);
+    getSyncedVersions(json).then(setSyncedMap);
+  }, [json, downloadingVersions, syncingVersions]);
+
+  function formatLastUpdated(ts: number): string {
+    const diff = Date.now() - ts;
+    if (diff < 60_000) return t('bible.synced' as TranslationKey);
+    if (diff < 3_600_000) {
+      const mins = Math.floor(diff / 60_000);
+      return `${mins}min ago`;
+    }
+    if (diff < 86_400_000) {
+      const hours = Math.floor(diff / 3_600_000);
+      return `${hours}h ago`;
+    }
+    return new Date(ts).toLocaleDateString();
+  }
 
   return (
     <div className="flex-1 min-h-0 flex flex-col gap-4">
@@ -732,7 +750,11 @@ const DownloadsSection = memo(function DownloadsSection() {
               {ALL_VERSIONS.map((v) => {
                 const downloaded = downloadedIds.includes(v.id);
                 const downloading = downloadingVersions.includes(v.id);
+                const syncing = syncingVersions.includes(v.id);
                 const active = version === v.id;
+                const lastSync = syncedMap[v.id];
+                const hasUpdate = UPDATED_VERSIONS.includes(v.id) && downloaded;
+
                 return (
                   <li key={v.id} className="flex items-center justify-between gap-3 px-4 py-2.5">
                     <div className="min-w-0 flex-1">
@@ -740,6 +762,14 @@ const DownloadsSection = memo(function DownloadsSection() {
                       <p className="text-[11px] uppercase tracking-wide text-muted-foreground">
                         {v.language} · {v.id}
                       </p>
+                      {downloaded && !downloading && !syncing && (
+                        <span className="text-[10px] text-muted-foreground">
+                          {t('bible.last-updated' as TranslationKey)}:{' '}
+                          {lastSync
+                            ? formatLastUpdated(lastSync)
+                            : t('bible.never' as TranslationKey)}
+                        </span>
+                      )}
                     </div>
                     <div className="flex items-center gap-2">
                       {active ? (
@@ -747,8 +777,18 @@ const DownloadsSection = memo(function DownloadsSection() {
                       ) : downloaded ? (
                         <Badge variant="outline">{t('bible.downloaded' as TranslationKey)}</Badge>
                       ) : null}
-                      {downloading ? (
-                        <Badge>{t('bible.downloading' as TranslationKey, { version: v.id })}</Badge>
+                      {hasUpdate && (
+                        <Badge className="bg-amber-500/15 text-amber-500 border-amber-500/20">
+                          {t('bible.update-available' as TranslationKey)}
+                        </Badge>
+                      )}
+                      {downloading || syncing ? (
+                        <Badge>
+                          <Loader2 className="mr-1 h-3 w-3 animate-spin" />
+                          {syncing
+                            ? t('bible.syncing' as TranslationKey, { version: v.id })
+                            : t('bible.downloading' as TranslationKey, { version: v.id })}
+                        </Badge>
                       ) : downloaded ? (
                         <>
                           {!active && (
@@ -768,6 +808,10 @@ const DownloadsSection = memo(function DownloadsSection() {
                               {t('bible.use' as TranslationKey)}
                             </Button>
                           )}
+                          <Button size="xs" variant="ghost" onClick={() => syncVersion(v.id)}>
+                            <RefreshCw className="mr-1 h-3.5 w-3.5" />
+                            {t('bible.sync' as TranslationKey)}
+                          </Button>
                           <Button
                             size="xs"
                             variant="ghost"

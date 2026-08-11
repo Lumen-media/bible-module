@@ -31,10 +31,12 @@ import {
   getChapter,
   getDownloadedVersions,
   getLastPosition,
+  getSyncedVersions,
   getVersesPerPage,
   setVersesPerPage as persistVersesPerPage,
   setDownloadedVersions,
   setLastPosition,
+  setSyncedVersion,
 } from './data/store.js';
 import type { Book } from './data/types.js';
 import type { TFunction } from './i18n.js';
@@ -82,6 +84,8 @@ export const ALL_VERSIONS = [
   { id: 'rvr1960', name: 'Reina Valera 1960', language: 'es' },
 ];
 
+export const UPDATED_VERSIONS: string[] = ['naa'];
+
 export function staticVersionLanguage(version: string): string {
   return ALL_VERSIONS.find((v) => v.id === version)?.language ?? 'pt-br';
 }
@@ -116,6 +120,7 @@ export interface BibleState {
   dlVersion: string;
   downloadingVersion: string | null;
   downloadingVersions: string[];
+  syncingVersions: string[];
 
   version: string;
   testament: 'old' | 'new';
@@ -206,8 +211,10 @@ export interface BibleActions {
   ) => Promise<{ version: string; book: string; chapter: number; verse: number; text: string }[]>;
   downloadAndSetVersion: (versionId: string) => Promise<void>;
   downloadVersionOnly: (versionId: string) => Promise<void>;
+  syncVersion: (versionId: string) => Promise<void>;
   removeVersion: (versionId: string) => Promise<void>;
   downloadedVersions: () => Promise<string[]>;
+  getSyncedVersionsState: () => Promise<Record<string, number>>;
   setBackground: (bg: SelectedBackground | null) => void;
   pickBackground: () => void;
   setFontSize: (n: number) => void;
@@ -332,6 +339,7 @@ export const useBibleStore = create<BibleStore>((set, get) => ({
   dlVersion: '',
   downloadingVersion: null,
   downloadingVersions: [],
+  syncingVersions: [],
 
   version: 'naa',
   testament: 'old',
@@ -906,6 +914,61 @@ export const useBibleStore = create<BibleStore>((set, get) => ({
     }));
   },
 
+  syncVersion: async (versionId) => {
+    const { fs, net, json, sqlite } = get();
+    if (!fs || !net || !json || !sqlite) return;
+
+    const already = get().syncingVersions;
+    if (already.includes(versionId)) return;
+    set({ syncingVersions: [...already, versionId], dlVersion: versionId });
+
+    try {
+      for (const book of BOOKS) {
+        const p = `cache/${versionId}/${book.id}.json`;
+        try {
+          await fs.remove(p);
+        } catch {}
+      }
+
+      const db = sqlite;
+      await downloadVersion(
+        fs,
+        net,
+        versionId,
+        (current) => {
+          set({ dlCurrent: current, dlTotal: 66 });
+        },
+        async (bookId, chapter, verses) => {
+          await insertChapterBatch(
+            db,
+            versionId,
+            bookId,
+            chapter,
+            verses as { number: number; text: string; chapter?: number }[]
+          ).catch(() => {});
+        }
+      );
+
+      await setVersionLanguage(db, versionId, staticVersionLanguage(versionId)).catch(() => {});
+      await rebuildFts(db, versionId).catch(() => {});
+
+      const downloaded = await getDownloadedVersions(json);
+      if (!downloaded.includes(versionId)) {
+        await setDownloadedVersions(json, [...downloaded, versionId]);
+      }
+
+      await setSyncedVersion(json, versionId);
+    } catch (e) {
+      console.error('[bible] sync failed:', versionId, e);
+    }
+
+    set((s) => ({
+      syncingVersions: s.syncingVersions.filter((v) => v !== versionId),
+      dlCurrent: 0,
+      dlTotal: 0,
+    }));
+  },
+
   removeVersion: async (versionId) => {
     const { fs, json } = get();
     if (!fs || !json) return;
@@ -943,6 +1006,12 @@ export const useBibleStore = create<BibleStore>((set, get) => ({
     const { json } = get();
     if (!json) return [];
     return getDownloadedVersions(json);
+  },
+
+  getSyncedVersionsState: async () => {
+    const { json } = get();
+    if (!json) return {};
+    return getSyncedVersions(json);
   },
 
   setBackground: async (bg) => {

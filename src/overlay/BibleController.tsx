@@ -6,16 +6,17 @@ import {
   ChevronLeft,
   Download,
   Loader2,
+  RefreshCw,
   Search,
   Star,
 } from 'lucide-react';
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useEventListener } from 'usehooks-ts';
-import { BOOKS } from '../data/store.js';
+import { BOOKS, getSyncedVersions } from '../data/store.js';
 
 import type { TFunction, TranslationKey } from '../i18n.js';
 import { cn, displayVersion } from '../lib/utils.js';
-import { ALL_VERSIONS, useBibleStore } from '../store.js';
+import { ALL_VERSIONS, UPDATED_VERSIONS, useBibleStore } from '../store.js';
 import { BookGrid } from './BookGrid.js';
 import { ChapterPreview } from './ChapterPreview.js';
 import { ChapterReader } from './ChapterReader.js';
@@ -285,12 +286,25 @@ const Sidebar = memo(function Sidebar({
   const selectedBook = useBibleStore((s) => s.selectedBook);
   const displayedTabs = useBibleStore((s) => s.displayedTabs);
   const downloadingVersions = useBibleStore((s) => s.downloadingVersions);
+  const syncingVersions = useBibleStore((s) => s.syncingVersions);
   const setVersion = useBibleStore((s) => s.setVersion);
+  const syncVersion = useBibleStore((s) => s.syncVersion);
+  const json = useBibleStore((s) => s.json);
   const [localDownloaded, setLocalDownloaded] = useState<string[]>([]);
+  const [syncedMap, setSyncedMap] = useState<Record<string, number>>({});
 
   useEffect(() => {
     useBibleStore.getState().downloadedVersions().then(setLocalDownloaded);
   }, [downloadingVersions]);
+
+  useEffect(() => {
+    if (!json) return;
+    getSyncedVersions(json).then(setSyncedMap);
+  }, [json, syncingVersions]);
+
+  const tabsWithUpdates = displayedTabs.filter(
+    (id) => UPDATED_VERSIONS.includes(id) && localDownloaded.includes(id) && !syncedMap[id]
+  );
 
   return (
     <Card className="flex w-80 gap-0 p-0 shrink-0 flex-col overflow-hidden border-r border-border rounded-none">
@@ -304,6 +318,16 @@ const Sidebar = memo(function Sidebar({
             localDownloaded={localDownloaded}
           />
         ))}
+        {tabsWithUpdates.length > 0 && (
+          <button
+            type="button"
+            onClick={() => syncVersion(tabsWithUpdates[0])}
+            className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md text-amber-500 hover:bg-amber-500/10"
+            title={t('bible.update-available')}
+          >
+            <RefreshCw className="h-3.5 w-3.5" />
+          </button>
+        )}
         <VersionManagerPopover
           t={t}
           userLang={resolveUserLang()}
