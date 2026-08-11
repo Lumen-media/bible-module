@@ -25,6 +25,7 @@ interface BibleSlideProps {
     textAlign: 'left' | 'center' | 'justify';
     lineSpacing: number;
     referencePosition: 'inline' | 'top';
+    verseNumberStyle: 'superscript' | 'inline' | 'hidden';
     background: { type: string; src: string; name: string } | null;
     profileBackground: { type: string; src: string; name: string } | null;
     backgroundOpacity: number;
@@ -107,6 +108,7 @@ export function BibleSlide({ data }: BibleSlideProps) {
     textAlign,
     lineSpacing,
     referencePosition,
+    verseNumberStyle,
   } = renderData;
   const label = abbreviatedBooks
     ? tForVersion(
@@ -194,11 +196,23 @@ export function BibleSlide({ data }: BibleSlideProps) {
               }}
             >
               <div className="w-full">
-                {text.split('\n').map((line) => (
-                  <p key={line.slice(0, 40)} className="mb-4 last:mb-0">
-                    {line}
-                  </p>
-                ))}
+                {text.split('\n').map((line) => {
+                  const match = line.match(/^(\d+)\s/);
+                  return (
+                    <p key={line.slice(0, 40)} className="mb-4 last:mb-0">
+                      {match && verseNumberStyle !== 'hidden' ? (
+                        verseNumberStyle === 'superscript' ? (
+                          <sup className="mr-0.5" style={{ fontSize: '0.55em' }}>
+                            {match[1]}
+                          </sup>
+                        ) : (
+                          <>{match[1]} </>
+                        )
+                      ) : null}
+                      {match ? line.slice(match[0].length) : line}
+                    </p>
+                  );
+                })}
               </div>
             </div>
           </>

@@ -19,6 +19,7 @@ export interface PersistedSettings {
   textAlign: 'left' | 'center' | 'justify';
   lineSpacing: number;
   referencePosition: 'inline' | 'top';
+  verseNumberStyle: 'superscript' | 'inline' | 'hidden';
 }
 
 let saveTimer: ReturnType<typeof setTimeout> | null = null;

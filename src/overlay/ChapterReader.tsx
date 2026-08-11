@@ -82,7 +82,7 @@ export const ChapterReader = memo(function ChapterReader({
       const vpp = state.versesPerPage;
 
       let verseNumbers = [v.number];
-      let verseText = v.text;
+      let verseText = `${v.number} ${v.text}`;
 
       if (currentVerses && vpp > 1) {
         const startIdx = currentVerses.findIndex((vv) => vv.number === v.number);
@@ -90,7 +90,7 @@ export const ChapterReader = memo(function ChapterReader({
           const count = Math.min(vpp, currentVerses.length - startIdx);
           const group = currentVerses.slice(startIdx, startIdx + count);
           verseNumbers = group.map((vv) => vv.number);
-          verseText = group.map((vv) => vv.text).join('\n');
+          verseText = group.map((vv) => `${vv.number} ${vv.text}`).join('\n');
         }
       }
 
@@ -107,6 +107,7 @@ export const ChapterReader = memo(function ChapterReader({
         textAlign,
         lineSpacing,
         referencePosition,
+        verseNumberStyle,
         background,
         profileBackground,
         backgroundOpacity,
@@ -133,6 +134,7 @@ export const ChapterReader = memo(function ChapterReader({
         textAlign,
         lineSpacing,
         referencePosition,
+        verseNumberStyle,
         background,
         profileBackground,
         backgroundOpacity,
@@ -212,6 +214,7 @@ export const ChapterReader = memo(function ChapterReader({
       textAlign,
       lineSpacing,
       referencePosition,
+      verseNumberStyle,
       background,
       profileBackground,
       backgroundOpacity,
@@ -225,7 +228,7 @@ export const ChapterReader = memo(function ChapterReader({
       ),
       chapter,
       verses: verses.map((v) => v.number),
-      text: verses.map((v) => v.text).join('\n'),
+      text: verses.map((v) => `${v.number} ${v.text}`).join('\n'),
       uppercase,
       showReferenceOnly,
       showVersion,
@@ -238,6 +241,7 @@ export const ChapterReader = memo(function ChapterReader({
       textAlign,
       lineSpacing,
       referencePosition,
+      verseNumberStyle,
       background,
       profileBackground,
       backgroundOpacity,

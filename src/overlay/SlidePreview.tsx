@@ -21,6 +21,7 @@ export const SlidePreview = memo(function SlidePreview() {
   const textAlign = useBibleStore((s) => s.textAlign);
   const lineSpacing = useBibleStore((s) => s.lineSpacing);
   const referencePosition = useBibleStore((s) => s.referencePosition);
+  const verseNumberStyle = useBibleStore((s) => s.verseNumberStyle);
   const selectedBook = useBibleStore((s) => s.selectedBook);
   const chapter = useBibleStore((s) => s.chapter);
   const selectedVerse = useBibleStore((s) => s.selectedVerse);
@@ -41,7 +42,7 @@ export const SlidePreview = memo(function SlidePreview() {
     : 'John';
   const verseNum = selectedVerse ?? 16;
   const verseText = verses?.find((v) => v.number === verseNum)?.text;
-  const previewText = verseText ?? SAMPLE_VERSE;
+  const previewText = verseText ? `${verseNum} ${verseText}` : `${verseNum} ${SAMPLE_VERSE}`;
 
   const containerRef = useRef<HTMLDivElement>(null);
   const { effectiveFontSize, effectiveRefSize } = useFitFontSize(
@@ -122,7 +123,23 @@ export const SlidePreview = memo(function SlidePreview() {
               lineHeight: lineSpacing,
             }}
           >
-            {previewText}
+            {(() => {
+              const match = previewText.match(/^(\d+)\s/);
+              return (
+                <>
+                  {match && verseNumberStyle !== 'hidden' ? (
+                    verseNumberStyle === 'superscript' ? (
+                      <sup className="mr-0.5" style={{ fontSize: '0.55em' }}>
+                        {match[1]}
+                      </sup>
+                    ) : (
+                      <>{match[1]} </>
+                    )
+                  ) : null}
+                  {match ? previewText.slice(match[0].length) : previewText}
+                </>
+              );
+            })()}
           </p>
         </div>
       )}

@@ -28,6 +28,7 @@ const FONT_WEIGHTS = ['Light', 'Regular', 'Medium', 'Bold'] as const;
 const FONT_STYLES = ['Normal', 'Italic'] as const;
 const TEXT_ALIGNS = ['Left', 'Center', 'Justify'] as const;
 const REFERENCE_POSITIONS = ['Inline', 'Top'] as const;
+const VERSE_NUMBER_STYLES = ['Superscript', 'Inline', 'Hidden'] as const;
 
 function formatBytes(bytes: number): string {
   if (bytes === 0) return '0 B';
@@ -135,6 +136,8 @@ const TypographySection = memo(function TypographySection() {
   const setLineSpacing = useBibleStore((s) => s.setLineSpacing);
   const referencePosition = useBibleStore((s) => s.referencePosition);
   const setReferencePosition = useBibleStore((s) => s.setReferencePosition);
+  const verseNumberStyle = useBibleStore((s) => s.verseNumberStyle);
+  const setVerseNumberStyle = useBibleStore((s) => s.setVerseNumberStyle);
 
   const [fontInput, setFontInput] = useState(fontFamily);
   const [localFontSize, setLocalFontSize] = useState(String(fontSize));
@@ -550,6 +553,39 @@ const TypographySection = memo(function TypographySection() {
                   className="flex-1 px-4 text-[11px]"
                 >
                   {p}
+                </ToggleGroup.ToggleGroupItem>
+              ))}
+            </ToggleGroup>
+          </div>
+
+          <Separator />
+
+          <div className="flex items-start justify-between gap-4">
+            <div className="min-w-0">
+              <p className="text-sm font-medium text-foreground">
+                {t('bible.verse-number-style' as TranslationKey)}
+              </p>
+              <p className="text-xs text-muted-foreground">
+                {t('bible.verse-number-style-desc' as TranslationKey)}
+              </p>
+            </div>
+            <ToggleGroup
+              value={[verseNumberStyle]}
+              onValueChange={(v) => {
+                const next = v.find((s) => s !== verseNumberStyle);
+                if (next) setVerseNumberStyle(next as 'superscript' | 'inline' | 'hidden');
+              }}
+              size="sm"
+              variant="secondary"
+              className="bg-background w-fit justify-between overflow-hidden"
+            >
+              {VERSE_NUMBER_STYLES.map((s) => (
+                <ToggleGroup.ToggleGroupItem
+                  key={s}
+                  value={s.toLowerCase()}
+                  className="flex-1 px-4 text-[11px]"
+                >
+                  {s}
                 </ToggleGroup.ToggleGroupItem>
               ))}
             </ToggleGroup>

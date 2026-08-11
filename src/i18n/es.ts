@@ -89,6 +89,9 @@ const messages: Record<TranslationKeys, string> = {
   'bible.line-spacing-desc': 'Espacio vertical entre las líneas del texto del versículo',
   'bible.reference-position': 'Posición de la referencia',
   'bible.reference-position-desc': 'Dónde mostrar la referencia del versículo en relación al texto',
+  'bible.verse-number-style': 'Estilo del número del versículo',
+  'bible.verse-number-style-desc':
+    'Cómo aparecen los números de los versículos en el panel de lectura',
   'bible.section-general': 'General',
   'bible.section-data': 'Datos',
   'bible.bookmark': 'Marcar',

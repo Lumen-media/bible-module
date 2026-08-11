@@ -167,6 +167,7 @@ export interface BibleState {
     textAlign: 'left' | 'center' | 'justify';
     lineSpacing: number;
     referencePosition: 'inline' | 'top';
+    verseNumberStyle: 'superscript' | 'inline' | 'hidden';
   } | null;
 }
 
@@ -224,6 +225,7 @@ export interface BibleActions {
   setTextAlign: (a: 'left' | 'center' | 'justify') => void;
   setLineSpacing: (n: number) => void;
   setReferencePosition: (p: 'inline' | 'top') => void;
+  setVerseNumberStyle: (s: 'superscript' | 'inline' | 'hidden') => void;
   saveSettings: () => void;
   loadFonts: () => Promise<void>;
   setProjectedData: (
@@ -306,6 +308,7 @@ function persistSettingsFromState(state: BibleState) {
     textAlign: state.textAlign,
     lineSpacing: state.lineSpacing,
     referencePosition: state.referencePosition,
+    verseNumberStyle: state.verseNumberStyle,
   });
 }
 
@@ -358,6 +361,7 @@ export const useBibleStore = create<BibleStore>((set, get) => ({
   textAlign: 'center' as const,
   lineSpacing: 1.4,
   referencePosition: 'inline' as const,
+  verseNumberStyle: 'superscript' as const,
   bookmarks: new Set<string>(),
   bookmarkTexts: new Map<string, string>(),
   projectedData: null,
@@ -414,6 +418,8 @@ export const useBibleStore = create<BibleStore>((set, get) => ({
         backgroundOpacity?: number;
         textAlign?: 'left' | 'center' | 'justify';
         lineSpacing?: number;
+        referencePosition?: 'inline' | 'top';
+        verseNumberStyle?: 'superscript' | 'inline' | 'hidden';
       } | null = null;
 
       const currentDb = get().sqlite;
@@ -447,6 +453,7 @@ export const useBibleStore = create<BibleStore>((set, get) => ({
       const restoredTextAlign = s?.textAlign ?? 'center';
       const restoredLineSpacing = s?.lineSpacing ?? 1.4;
       const restoredReferencePosition = s?.referencePosition ?? 'inline';
+      const restoredVerseNumberStyle = s?.verseNumberStyle ?? 'superscript';
       if (s?.background) restoredBg = s.background;
 
       let profileBg: SelectedBackground | { src: string; type: string; name: string } | null =
@@ -522,6 +529,7 @@ export const useBibleStore = create<BibleStore>((set, get) => ({
       pending.textAlign = restoredTextAlign;
       pending.lineSpacing = restoredLineSpacing;
       pending.referencePosition = restoredReferencePosition;
+      pending.verseNumberStyle = restoredVerseNumberStyle;
       if (profileBg) pending.profileBackground = profileBg as SelectedBackground;
 
       const cachedFonts = cachedFontsResp ?? [];
@@ -576,6 +584,8 @@ export const useBibleStore = create<BibleStore>((set, get) => ({
         backgroundOpacity?: number;
         textAlign?: 'left' | 'center' | 'justify';
         lineSpacing?: number;
+        referencePosition?: 'inline' | 'top';
+        verseNumberStyle?: 'superscript' | 'inline' | 'hidden';
       } | null = null;
 
       const currentDb = get().sqlite;
@@ -607,6 +617,7 @@ export const useBibleStore = create<BibleStore>((set, get) => ({
       const restoredTextAlign = s?.textAlign ?? 'center';
       const restoredLineSpacing = s?.lineSpacing ?? 1.4;
       const restoredReferencePosition = s?.referencePosition ?? 'inline';
+      const restoredVerseNumberStyle = s?.verseNumberStyle ?? 'superscript';
       if (s?.background) restoredBg = s.background;
 
       let profileBg: SelectedBackground | { src: string; type: string; name: string } | null =
@@ -688,6 +699,7 @@ export const useBibleStore = create<BibleStore>((set, get) => ({
       pending.textAlign = restoredTextAlign;
       pending.lineSpacing = restoredLineSpacing;
       pending.referencePosition = restoredReferencePosition;
+      pending.verseNumberStyle = restoredVerseNumberStyle;
       if (profileBg) pending.profileBackground = profileBg as SelectedBackground;
 
       if (cachedFonts.length > 0) {
@@ -1030,6 +1042,11 @@ export const useBibleStore = create<BibleStore>((set, get) => ({
 
   setReferencePosition: (p) => {
     set({ referencePosition: p });
+    persistSettingsFromState(get());
+  },
+
+  setVerseNumberStyle: (s) => {
+    set({ verseNumberStyle: s });
     persistSettingsFromState(get());
   },
 

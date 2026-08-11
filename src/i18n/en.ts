@@ -86,6 +86,8 @@ const messages = {
   'bible.line-spacing-desc': 'Vertical space between lines of verse text',
   'bible.reference-position': 'Reference position',
   'bible.reference-position-desc': 'Where to show the verse reference relative to the text',
+  'bible.verse-number-style': 'Verse number style',
+  'bible.verse-number-style-desc': 'How verse numbers appear in the reading panel',
   'bible.section-general': 'General',
   'bible.section-data': 'Data',
   'bible.bookmark': 'Bookmark',
