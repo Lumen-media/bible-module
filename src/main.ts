@@ -164,7 +164,7 @@ export default class BibleModulePlugin extends LumenPlugin {
             bookName: config.bookName,
             chapter: config.chapter,
             verses: [config.verse],
-            text: `${config.verse} ${config.verseText}`,
+            text: config.verseText,
             uppercase: state.uppercase,
             showReferenceOnly: state.showReferenceOnly,
             showVersion: state.showVersion,
