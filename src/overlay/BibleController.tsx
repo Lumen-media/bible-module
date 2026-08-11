@@ -11,6 +11,7 @@ import {
   Star,
 } from 'lucide-react';
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { toast } from 'sonner';
 import { useEventListener } from 'usehooks-ts';
 import { BOOKS, getSyncedVersions } from '../data/store.js';
 
@@ -286,25 +287,12 @@ const Sidebar = memo(function Sidebar({
   const selectedBook = useBibleStore((s) => s.selectedBook);
   const displayedTabs = useBibleStore((s) => s.displayedTabs);
   const downloadingVersions = useBibleStore((s) => s.downloadingVersions);
-  const syncingVersions = useBibleStore((s) => s.syncingVersions);
   const setVersion = useBibleStore((s) => s.setVersion);
-  const syncVersion = useBibleStore((s) => s.syncVersion);
-  const json = useBibleStore((s) => s.json);
   const [localDownloaded, setLocalDownloaded] = useState<string[]>([]);
-  const [syncedMap, setSyncedMap] = useState<Record<string, number>>({});
 
   useEffect(() => {
     useBibleStore.getState().downloadedVersions().then(setLocalDownloaded);
   }, [downloadingVersions]);
-
-  useEffect(() => {
-    if (!json) return;
-    getSyncedVersions(json).then(setSyncedMap);
-  }, [json, syncingVersions]);
-
-  const tabsWithUpdates = displayedTabs.filter(
-    (id) => UPDATED_VERSIONS.includes(id) && localDownloaded.includes(id) && !syncedMap[id]
-  );
 
   return (
     <Card className="flex w-80 gap-0 p-0 shrink-0 flex-col overflow-hidden border-r border-border rounded-none">
@@ -318,16 +306,6 @@ const Sidebar = memo(function Sidebar({
             localDownloaded={localDownloaded}
           />
         ))}
-        {tabsWithUpdates.length > 0 && (
-          <button
-            type="button"
-            onClick={() => syncVersion(tabsWithUpdates[0])}
-            className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md text-amber-500 hover:bg-amber-500/10"
-            title={t('bible.update-available')}
-          >
-            <RefreshCw className="h-3.5 w-3.5" />
-          </button>
-        )}
         <VersionManagerPopover
           t={t}
           userLang={resolveUserLang()}
@@ -441,6 +419,39 @@ const Header = memo(function Header({
   const tab = useBibleStore((s) => s.tab);
   const setTab = useBibleStore((s) => s.setTab);
   const goTo = useBibleStore((s) => s.goTo);
+  const displayedTabs = useBibleStore((s) => s.displayedTabs);
+  const syncingVersions = useBibleStore((s) => s.syncingVersions);
+  const syncVersion = useBibleStore((s) => s.syncVersion);
+  const json = useBibleStore((s) => s.json);
+  const [downloadedIds, setDownloadedIds] = useState<string[]>([]);
+  const [syncedMap, setSyncedMap] = useState<Record<string, number>>({});
+
+  useEffect(() => {
+    const store = useBibleStore.getState();
+    store.downloadedVersions().then(setDownloadedIds);
+  }, [syncingVersions]);
+
+  useEffect(() => {
+    if (!json) return;
+    getSyncedVersions(json).then(setSyncedMap);
+  }, [json, syncingVersions]);
+
+  const pendingUpdates = displayedTabs.filter(
+    (id) => UPDATED_VERSIONS.includes(id) && downloadedIds.includes(id) && !syncedMap[id]
+  );
+  const hasUpdate = pendingUpdates.length > 0;
+  const isSyncing = hasUpdate && syncingVersions.includes(pendingUpdates[0]);
+
+  const handleSync = () => {
+    if (pendingUpdates.length === 0) return;
+    const versionId = pendingUpdates[0];
+    const versionName = displayVersion(versionId);
+    toast.promise(syncVersion(versionId), {
+      loading: t('bible.syncing', { version: versionName }),
+      success: `${versionName} ${t('bible.synced')}`,
+      error: t('bible.service-unavailable'),
+    });
+  };
 
   return (
     <header className="grid grid-cols-3 gap-3 px-4 py-2 bg-card">
@@ -463,7 +474,20 @@ const Header = memo(function Header({
         />
       </div>
 
-      <div className="ml-auto flex gap-1">
+      <div className="ml-auto flex gap-1 items-center">
+        {hasUpdate && (
+          <button
+            type="button"
+            onClick={handleSync}
+            className={cn(
+              'flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-amber-500 hover:bg-amber-500/10',
+              isSyncing && 'pointer-events-none'
+            )}
+            title={t('bible.update-available')}
+          >
+            <RefreshCw className={cn('h-3.5 w-3.5', isSyncing && 'animate-spin')} />
+          </button>
+        )}
         <Tabs value={tab} onValueChange={(v) => setTab(v as 'browse' | 'search' | 'favorites')}>
           <Tabs.TabsList className="bg-background/80 gap-1.5">
             <Tabs.TabsTrigger value="browse">
