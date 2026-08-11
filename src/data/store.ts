@@ -186,16 +186,19 @@ export async function setVersesPerPage(json: DataAPI['json'], n: number): Promis
   await json.set('versesPerPage', n);
 }
 
-export interface SyncRecord {
-  syncedVersions: Record<string, number>;
+export function getSyncedVersions(): Record<string, number> {
+  try {
+    const raw = localStorage.getItem('bibleSyncedVersions');
+    return raw ? JSON.parse(raw) : {};
+  } catch {
+    return {};
+  }
 }
 
-export async function getSyncedVersions(json: DataAPI['json']): Promise<Record<string, number>> {
-  return (await json.get<Record<string, number>>('syncedVersions', {})) ?? {};
-}
-
-export async function setSyncedVersion(json: DataAPI['json'], versionId: string): Promise<void> {
-  const current = await getSyncedVersions(json);
+export function setSyncedVersion(versionId: string): void {
+  const current = getSyncedVersions();
   current[versionId] = Date.now();
-  await json.set('syncedVersions', current);
+  try {
+    localStorage.setItem('bibleSyncedVersions', JSON.stringify(current));
+  } catch {}
 }

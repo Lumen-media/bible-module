@@ -33,10 +33,10 @@ import {
   getLastPosition,
   getSyncedVersions,
   getVersesPerPage,
-  setVersesPerPage as persistVersesPerPage,
   setDownloadedVersions,
   setLastPosition,
   setSyncedVersion,
+  setVersesPerPage as persistVersesPerPage,
 } from './data/store.js';
 import type { Book } from './data/types.js';
 import type { TFunction } from './i18n.js';
@@ -84,7 +84,7 @@ export const ALL_VERSIONS = [
   { id: 'rvr1960', name: 'Reina Valera 1960', language: 'es' },
 ];
 
-export const UPDATED_VERSIONS: string[] = ['naa'];
+export const UPDATED_VERSIONS: string[] = [];
 
 export function staticVersionLanguage(version: string): string {
   return ALL_VERSIONS.find((v) => v.id === version)?.language ?? 'pt-br';
@@ -957,7 +957,7 @@ export const useBibleStore = create<BibleStore>((set, get) => ({
         await setDownloadedVersions(json, [...downloaded, versionId]);
       }
 
-      await setSyncedVersion(json, versionId);
+      setSyncedVersion(versionId);
     } catch (e) {
       console.error('[bible] sync failed:', versionId, e);
     }
@@ -1009,9 +1009,7 @@ export const useBibleStore = create<BibleStore>((set, get) => ({
   },
 
   getSyncedVersionsState: async () => {
-    const { json } = get();
-    if (!json) return {};
-    return getSyncedVersions(json);
+    return getSyncedVersions();
   },
 
   setBackground: async (bg) => {

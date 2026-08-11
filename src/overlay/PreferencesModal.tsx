@@ -715,7 +715,7 @@ const DownloadsSection = memo(function DownloadsSection() {
   useEffect(() => {
     if (!json) return;
     getDownloadedVersions(json).then(setDownloadedIds);
-    getSyncedVersions(json).then(setSyncedMap);
+    setSyncedMap(getSyncedVersions());
   }, [json, downloadingVersions, syncingVersions]);
 
   function formatLastUpdated(ts: number): string {

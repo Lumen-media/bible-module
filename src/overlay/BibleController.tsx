@@ -11,7 +11,6 @@ import {
   Star,
 } from 'lucide-react';
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { toast } from 'sonner';
 import { useEventListener } from 'usehooks-ts';
 import { BOOKS, getSyncedVersions } from '../data/store.js';
 
@@ -422,19 +421,16 @@ const Header = memo(function Header({
   const displayedTabs = useBibleStore((s) => s.displayedTabs);
   const syncingVersions = useBibleStore((s) => s.syncingVersions);
   const syncVersion = useBibleStore((s) => s.syncVersion);
-  const json = useBibleStore((s) => s.json);
   const [downloadedIds, setDownloadedIds] = useState<string[]>([]);
   const [syncedMap, setSyncedMap] = useState<Record<string, number>>({});
 
   useEffect(() => {
-    const store = useBibleStore.getState();
-    store.downloadedVersions().then(setDownloadedIds);
+    useBibleStore.getState().downloadedVersions().then(setDownloadedIds);
   }, [syncingVersions]);
 
   useEffect(() => {
-    if (!json) return;
-    getSyncedVersions(json).then(setSyncedMap);
-  }, [json, syncingVersions]);
+    setSyncedMap(getSyncedVersions());
+  }, [syncingVersions]);
 
   const pendingUpdates = displayedTabs.filter(
     (id) => UPDATED_VERSIONS.includes(id) && downloadedIds.includes(id) && !syncedMap[id]
@@ -442,15 +438,27 @@ const Header = memo(function Header({
   const hasUpdate = pendingUpdates.length > 0;
   const isSyncing = hasUpdate && syncingVersions.includes(pendingUpdates[0]);
 
-  const handleSync = () => {
+  const handleSync = async () => {
     if (pendingUpdates.length === 0) return;
     const versionId = pendingUpdates[0];
     const versionName = displayVersion(versionId);
-    toast.promise(syncVersion(versionId), {
-      loading: t('bible.syncing', { version: versionName }),
-      success: `${versionName} ${t('bible.synced')}`,
-      error: t('bible.service-unavailable'),
+    const { ui } = useBibleStore.getState();
+    ui?.notify({
+      message: t('bible.syncing', { version: versionName }),
+      level: 'loading',
     });
+    try {
+      await syncVersion(versionId);
+      ui?.notify({
+        message: `${versionName} ${t('bible.synced')}`,
+        level: 'success',
+      });
+    } catch {
+      ui?.notify({
+        message: t('bible.service-unavailable'),
+        level: 'error',
+      });
+    }
   };
 
   return (
