@@ -60,7 +60,14 @@ export const ChapterReader = memo(function ChapterReader({
     el?.scrollIntoView({ block: 'center', behavior: 'smooth' });
   }, []);
 
-  const projectedVerses = projecting ? (projectedData?.verses ?? []) : [];
+  const projectedVerses =
+    projecting &&
+    projectedData &&
+    projectedData.version === version &&
+    projectedData.book === book.id &&
+    projectedData.chapter === chapter
+      ? projectedData.verses
+      : [];
   const [contextMenu, setContextMenu] = useState<{
     verse: { number: number; text: string };
     x: number;
