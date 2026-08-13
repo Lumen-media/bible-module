@@ -7,7 +7,6 @@ export function SettingsPanel() {
     <PreferencesModal>
       <div className="flex items-center" title={t('bible.settings' as TranslationKey)}>
         <Settings className="h-3.5 w-3.5" />
-        {t('bible.settings' as TranslationKey)}
       </div>
     </PreferencesModal>
   );

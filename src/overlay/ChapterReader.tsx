@@ -1,6 +1,6 @@
 import type { PresentationHostAPI } from '@lumen-media/module-sdk';
-import { Button, ScrollArea, Select } from '@lumen-media/module-sdk/ui';
-import { ListPlus, Loader2, Projector, Star } from 'lucide-react';
+import { ScrollArea } from '@lumen-media/module-sdk/ui';
+import { ListPlus, Loader2, Star } from 'lucide-react';
 import { memo, useCallback, useEffect, useRef, useState } from 'react';
 import type { Book } from '../data/types.js';
 import { type TFunction, tForVersion } from '../i18n.js';
@@ -23,10 +23,7 @@ interface ChapterReaderProps {
   t: TFunction;
   projecting: boolean;
   onProject: () => void;
-  onClear: () => void;
 }
-
-const VERSES_PER_PAGE_OPTIONS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
 
 export const ChapterReader = memo(function ChapterReader({
   version,
@@ -35,11 +32,8 @@ export const ChapterReader = memo(function ChapterReader({
   t,
   projecting,
   onProject,
-  onClear,
 }: ChapterReaderProps) {
   const versesPerPage = useBibleStore((s) => s.versesPerPage);
-  const setVersesPerPage = useBibleStore((s) => s.setVersesPerPage);
-  const [localVpp, setLocalVpp] = useState(String(versesPerPage));
   const chapter = useBibleStore((s) => s.chapter);
   const verses = useBibleStore((s) => s.verses);
   const versesLoading = useBibleStore((s) => s.versesLoading);
@@ -47,7 +41,24 @@ export const ChapterReader = memo(function ChapterReader({
   const selectedVerse = useBibleStore((s) => s.selectedVerse);
   const setSelectedVerse = useBibleStore((s) => s.setSelectedVerse);
   const projectedData = useBibleStore((s) => s.projectedData);
+
   const verseRefs = useRef<Map<number, HTMLButtonElement>>(new Map());
+  const internalSelectRef = useRef(false);
+
+  const setVerseRef = useCallback((el: HTMLButtonElement | null) => {
+    if (el) {
+      const n = Number(el.dataset.verseNumber);
+      if (Number.isFinite(n)) verseRefs.current.set(n, el);
+    }
+  }, []);
+
+  const scrollToVerse = useCallback((verse: number) => {
+    for (const [n, node] of verseRefs.current) {
+      if (!node.isConnected) verseRefs.current.delete(n);
+    }
+    const el = verseRefs.current.get(verse);
+    el?.scrollIntoView({ block: 'center', behavior: 'smooth' });
+  }, []);
 
   const projectedVerses = projecting ? (projectedData?.verses ?? []) : [];
   const [contextMenu, setContextMenu] = useState<{
@@ -63,17 +74,14 @@ export const ChapterReader = memo(function ChapterReader({
   }, [loadChapter, book.id, chapter]);
 
   useEffect(() => {
-    setLocalVpp(String(versesPerPage));
-  }, [versesPerPage]);
-
-  useEffect(() => {
-    if (selectedVerse != null) {
-      const el = verseRefs.current.get(selectedVerse);
-      if (el) {
-        el.scrollIntoView({ block: 'center', behavior: 'smooth' });
-      }
+    if (internalSelectRef.current) {
+      internalSelectRef.current = false;
+      return;
     }
-  }, [selectedVerse]);
+    if (selectedVerse != null) {
+      scrollToVerse(selectedVerse);
+    }
+  }, [selectedVerse, verses, scrollToVerse]);
 
   const projectVerse = useCallback(
     (v: { number: number; text: string }) => {
@@ -153,6 +161,7 @@ export const ChapterReader = memo(function ChapterReader({
 
   const handleVerseClick = useCallback(
     (v: { number: number; text: string }) => {
+      internalSelectRef.current = true;
       setSelectedVerse(v.number);
     },
     [setSelectedVerse]
@@ -199,62 +208,6 @@ export const ChapterReader = memo(function ChapterReader({
     [version, book.id, chapter]
   );
 
-  function projectAll() {
-    if (!verses || verses.length === 0) return;
-    const {
-      uppercase,
-      showReferenceOnly,
-      showVersion,
-      abbreviatedBooks,
-      fontColor,
-      fontSize,
-      fontFamily,
-      fontWeight,
-      fontStyle,
-      textAlign,
-      lineSpacing,
-      referencePosition,
-      verseNumberStyle,
-      background,
-      profileBackground,
-      backgroundOpacity,
-    } = useBibleStore.getState();
-    const data = {
-      version,
-      book: book.id,
-      bookName: tForVersion(
-        useBibleStore.getState().versionLanguage ?? staticVersionLanguage(version),
-        `book.${book.id}`
-      ),
-      chapter,
-      verses: verses.map((v) => v.number),
-      text: verses.map((v) => `${v.number} ${v.text}`).join('\n'),
-      uppercase,
-      showReferenceOnly,
-      showVersion,
-      abbreviatedBooks,
-      fontColor,
-      fontSize,
-      fontFamily,
-      fontWeight,
-      fontStyle,
-      textAlign,
-      lineSpacing,
-      referencePosition,
-      verseNumberStyle,
-      background,
-      profileBackground,
-      backgroundOpacity,
-    };
-    try {
-      presentation.project('bible-slide', { data });
-      useBibleStore.getState().setProjectedData(data);
-      onProject();
-    } catch (e) {
-      console.error('[bible] projectAll error:', e);
-    }
-  }
-
   return (
     <div className="flex min-h-0 flex-1 flex-col">
       <ScrollArea className="min-h-0 flex-1 px-4 py-3">
@@ -268,10 +221,8 @@ export const ChapterReader = memo(function ChapterReader({
             {verses.map((v) => (
               <button
                 key={v.number}
-                ref={(el) => {
-                  if (el) verseRefs.current.set(v.number, el);
-                  else verseRefs.current.delete(v.number);
-                }}
+                data-verse-number={v.number}
+                ref={setVerseRef}
                 type="button"
                 onClick={() => handleVerseClick(v)}
                 onDoubleClick={() => handleVerseDoubleClick(v)}
@@ -356,39 +307,6 @@ export const ChapterReader = memo(function ChapterReader({
           </div>
         </>
       )}
-
-      <div className="flex shrink-0 items-center justify-between border-t border-border px-4 py-2">
-        <span className="text-xs text-muted-foreground">{t('bible.verses-per-screen')}</span>
-        <div className="flex items-center gap-2">
-          <Select
-            value={localVpp}
-            onValueChange={(v) => {
-              setLocalVpp(v);
-              setVersesPerPage(Number(v));
-            }}
-          >
-            <Select.SelectTrigger className="h-7 w-16 text-xs">
-              <Select.SelectValue />
-            </Select.SelectTrigger>
-            <Select.SelectContent>
-              {VERSES_PER_PAGE_OPTIONS.map((n) => (
-                <Select.SelectItem key={n} value={String(n)}>
-                  {n}
-                </Select.SelectItem>
-              ))}
-            </Select.SelectContent>
-          </Select>
-          <Button
-            size="sm"
-            onClick={projecting ? onClear : projectAll}
-            disabled={!projecting && (!verses || verses.length === 0 || versesLoading)}
-            variant={projecting ? 'secondary' : 'default'}
-          >
-            <Projector className="mr-1 h-4 w-4" />
-            {projecting ? t('bible.clear') : t('bible.project')}
-          </Button>
-        </div>
-      </div>
     </div>
   );
 });

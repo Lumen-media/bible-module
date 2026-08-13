@@ -153,6 +153,7 @@ export interface BibleState {
   textAlign: 'left' | 'center' | 'justify';
   lineSpacing: number;
   referencePosition: 'inline' | 'top';
+  verseNumberStyle: 'superscript' | 'inline' | 'hidden';
 
   bookmarks: Set<string>;
   bookmarkTexts: Map<string, string>;

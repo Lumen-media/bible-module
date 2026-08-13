@@ -1,4 +1,12 @@
-import { Card, Popover, ScrollArea, Select, Separator, Tabs } from '@lumen-media/module-sdk/ui';
+import {
+  Button,
+  Card,
+  Popover,
+  ScrollArea,
+  Select,
+  Separator,
+  Tabs,
+} from '@lumen-media/module-sdk/ui';
 import {
   BookOpen,
   Check,
@@ -14,9 +22,9 @@ import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useEventListener } from 'usehooks-ts';
 import { BOOKS, getSyncedVersions } from '../data/store.js';
 
-import type { TFunction, TranslationKey } from '../i18n.js';
+import { type TFunction, type TranslationKey, tForVersion } from '../i18n.js';
 import { cn, displayVersion } from '../lib/utils.js';
-import { ALL_VERSIONS, UPDATED_VERSIONS, useBibleStore } from '../store.js';
+import { ALL_VERSIONS, staticVersionLanguage, UPDATED_VERSIONS, useBibleStore } from '../store.js';
 import { BookGrid } from './BookGrid.js';
 import { ChapterPreview } from './ChapterPreview.js';
 import { ChapterReader } from './ChapterReader.js';
@@ -107,6 +115,8 @@ const _LANG_LABELS: Record<string, string> = {
 };
 
 const _LANG_ORDER = ['pt-br', 'pt-pt', 'en-us', 'en-gb', 'es'];
+
+const _VERSES_PER_PAGE_OPTIONS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
 
 function showFlag(lang: string) {
   switch (lang) {
@@ -268,6 +278,140 @@ const VersionManagerPopover = memo(function VersionManagerPopover({
   );
 });
 
+const VPP_OPTIONS = Array.from({ length: 17 }, (_, i) => i + 4);
+
+const ReaderFooter = memo(function ReaderFooter({
+  version,
+  presentation,
+  t,
+  projecting,
+  onProject,
+  onClear,
+}: {
+  version: string;
+  presentation: any;
+  t: TFunction;
+  projecting: boolean;
+  onProject: () => void;
+  onClear: () => void;
+}) {
+  const selectedBook = useBibleStore((s) => s.selectedBook);
+  const versesPerPage = useBibleStore((s) => s.versesPerPage);
+  const setVersesPerPage = useBibleStore((s) => s.setVersesPerPage);
+  const verses = useBibleStore((s) => s.verses);
+  const versesLoading = useBibleStore((s) => s.versesLoading);
+  const [_localVpp, setLocalVpp] = useState(String(versesPerPage));
+
+  useEffect(() => {
+    setLocalVpp(String(versesPerPage));
+  }, [versesPerPage]);
+
+  function projectAll() {
+    if (!verses || verses.length === 0 || !selectedBook) return;
+    const state = useBibleStore.getState();
+    const data = {
+      version,
+      book: selectedBook.id,
+      bookName: tForVersion(
+        state.versionLanguage ?? staticVersionLanguage(version),
+        `book.${selectedBook.id}`
+      ),
+      chapter: state.chapter,
+      verses: verses.map((v) => v.number),
+      text: verses.map((v) => `${v.number} ${v.text}`).join('\n'),
+      uppercase: state.uppercase,
+      showReferenceOnly: state.showReferenceOnly,
+      showVersion: state.showVersion,
+      abbreviatedBooks: state.abbreviatedBooks,
+      fontColor: state.fontColor,
+      fontSize: state.fontSize,
+      fontFamily: state.fontFamily,
+      fontWeight: state.fontWeight,
+      fontStyle: state.fontStyle,
+      textAlign: state.textAlign,
+      lineSpacing: state.lineSpacing,
+      referencePosition: state.referencePosition,
+      verseNumberStyle: state.verseNumberStyle,
+      background: state.background,
+      profileBackground: state.profileBackground,
+      backgroundOpacity: state.backgroundOpacity,
+    };
+    try {
+      presentation.project('bible-slide', { data });
+      useBibleStore.getState().setProjectedData(data);
+      onProject();
+    } catch (e) {
+      console.error('[bible] projectAll error:', e);
+    }
+  }
+
+  return (
+    <>
+      <div className="flex flex-col gap-1">
+        <div className="flex gap-1">
+          {Array.from({ length: 3 }, (_, i) => i + 1).map((v) => (
+            <Button
+              key={v}
+              variant="outline"
+              onClick={() => {
+                setLocalVpp(String(v));
+                setVersesPerPage(v);
+              }}
+              className={cn("p-0 min-h-auto aspect-square h-auto w-5 text-[10px] rounded-[6px]", {
+                'bg-primary hover:bg-primary/70 text-primary-foreground': versesPerPage === v,
+              })}
+            >
+              {v}
+            </Button>
+          ))}
+        </div>
+        <Popover>
+          <Popover.PopoverTrigger
+            render={
+              <Button
+                variant="outline"
+                className={cn("w-full justify-center gap-1 py-px h-auto text-[10px] rounded-[6px] group relative", {
+                  'bg-primary hover:bg-primary/70 text-primary-foreground': versesPerPage >= 4,
+                })}
+              >
+                {versesPerPage >= 4 ? versesPerPage : 4}
+                <ChevronDown className="h-3 w-3 opacity-60 top-1/2 translate-y-[-50%] right-1 absolute group-data-[popup-open=open]:rotate-180" />
+              </Button>
+            }
+          />
+          <Popover.PopoverContent className="w-44 p-1" align="center">
+            <div className="grid grid-cols-5 gap-1">
+              {VPP_OPTIONS.map((v) => (
+                <Button
+                  key={v}
+                  variant="outline"
+                  onClick={() => {
+                    setLocalVpp(String(v));
+                    setVersesPerPage(v);
+                  }}
+                  className={cn("py-px h-auto text-[10px] rounded-[6px]", {
+                    'bg-primary text-primary-foreground': versesPerPage === v,
+                  })}
+                >
+                  {v}
+                </Button>
+              ))}
+            </div>
+          </Popover.PopoverContent>
+        </Popover>
+      </div>
+      <Button
+        size="sm"
+        onClick={projecting ? onClear : projectAll}
+        disabled={!projecting && (!verses || verses.length === 0 || versesLoading)}
+        variant={projecting ? 'secondary' : 'default'}
+      >
+        {projecting ? t('bible.clear') : t('bible.project')}
+      </Button>
+    </>
+  );
+});
+
 const Sidebar = memo(function Sidebar({
   version,
   presentation,
@@ -285,13 +429,13 @@ const Sidebar = memo(function Sidebar({
 }) {
   const selectedBook = useBibleStore((s) => s.selectedBook);
   const displayedTabs = useBibleStore((s) => s.displayedTabs);
-  const downloadingVersions = useBibleStore((s) => s.downloadingVersions);
+  const _downloadingVersions = useBibleStore((s) => s.downloadingVersions);
   const setVersion = useBibleStore((s) => s.setVersion);
   const [localDownloaded, setLocalDownloaded] = useState<string[]>([]);
 
   useEffect(() => {
     useBibleStore.getState().downloadedVersions().then(setLocalDownloaded);
-  }, [downloadingVersions]);
+  }, []);
 
   return (
     <Card className="flex w-80 gap-0 p-0 shrink-0 flex-col overflow-hidden border-r border-border rounded-none">
@@ -322,7 +466,6 @@ const Sidebar = memo(function Sidebar({
           t={t}
           projecting={projecting}
           onProject={onProject}
-          onClear={onClear}
         />
       ) : (
         <div className="flex flex-1 items-center justify-center text-muted-foreground">
@@ -332,9 +475,19 @@ const Sidebar = memo(function Sidebar({
           </div>
         </div>
       )}
-      <Card.CardFooter className="flex shrink-0 items-center gap-2 border-t border-border px-3 py-2">
-        <PreviewPane />
-        <SettingsPanel />
+      <Card.CardFooter className="flex justify-between shrink-0 items-center gap-2 border-t border-border px-3 py-2">
+        <div className="flex items-center gap-2">
+          <PreviewPane />
+          <SettingsPanel />
+        </div>
+        <ReaderFooter
+          version={version}
+          presentation={presentation}
+          t={t}
+          projecting={projecting}
+          onProject={onProject}
+          onClear={onClear}
+        />
       </Card.CardFooter>
     </Card>
   );
@@ -426,11 +579,11 @@ const Header = memo(function Header({
 
   useEffect(() => {
     useBibleStore.getState().downloadedVersions().then(setDownloadedIds);
-  }, [syncingVersions]);
+  }, []);
 
   useEffect(() => {
     setSyncedMap(getSyncedVersions());
-  }, [syncingVersions]);
+  }, []);
 
   const pendingUpdates = displayedTabs.filter(
     (id) => UPDATED_VERSIONS.includes(id) && downloadedIds.includes(id) && !syncedMap[id]
@@ -642,8 +795,8 @@ export function BibleController({ close, goToBook, goToChapter, goToVerse }: Bib
         <span className="text-sm">
           {downloading
             ? tFn('bible.downloading', {
-                version: dlVersion.split(', ').map(displayVersion).join(', '),
-              })
+              version: dlVersion.split(', ').map(displayVersion).join(', '),
+            })
             : tFn('bible.preparing')}
         </span>
       </div>
