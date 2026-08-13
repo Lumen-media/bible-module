@@ -7,19 +7,24 @@ import {
   Separator,
   Tabs,
 } from '@lumen-media/module-sdk/ui';
+import { animate, type JSAnimation } from 'animejs';
 import {
   BookOpen,
   Check,
   ChevronDown,
   ChevronLeft,
-  Download, History, Loader2,
+  Download,
+  History,
+  Loader2,
+  type LucideIcon,
   RefreshCw,
-  Repeat2, Search,
+  Repeat2,
+  Search,
   Star,
   StarCheck,
-  StarPlus
+  StarPlus,
 } from 'lucide-react';
-import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { useEventListener } from 'usehooks-ts';
 import { BOOKS } from '../data/store.js';
 
@@ -388,7 +393,7 @@ const ReaderFooter = memo(function ReaderFooter({
             render={
               <Button
                 variant="outline"
-                size='sm'
+                size="sm"
                 className={cn(
                   'w-full justify-center gap-1 py-px h-6 text-[10px] rounded-[6px] group relative',
                   {
@@ -422,14 +427,14 @@ const ReaderFooter = memo(function ReaderFooter({
           </Popover.PopoverContent>
         </Popover>
       </div>
-      <div className='flex flex-col gap-1.5'>
+      <div className="flex flex-col gap-1.5">
         <div className="flex gap-1">
           <SettingsPanel />
 
           <Button
-            className='p-1'
-            variant='outline'
-            size='icon-xs'
+            className="p-1"
+            variant="outline"
+            size="icon-xs"
             title={isFavorited ? t('bible.unbookmark') : t('bible.bookmark')}
             disabled={!selectedBook || selectedVerse == null}
             onClick={toggleFavorite}
@@ -437,12 +442,18 @@ const ReaderFooter = memo(function ReaderFooter({
             {isFavorited ? <StarCheck /> : <StarPlus />}
           </Button>
 
-          <Button className='p-1' disabled variant='outline' size='icon-xs' title='Automatic presentation'>
+          <Button
+            className="p-1"
+            disabled
+            variant="outline"
+            size="icon-xs"
+            title="Automatic presentation"
+          >
             <Repeat2 />
           </Button>
         </div>
         <Button
-          className='h-6'
+          className="h-6"
           size="sm"
           onClick={projecting ? onClear : projectAll}
           disabled={!projecting && (!verses || verses.length === 0 || versesLoading)}
@@ -595,6 +606,108 @@ const BrowseContent = memo(function BrowseContent() {
   );
 });
 
+type TabId = 'browse' | 'search' | 'favorites' | 'history';
+
+const TAB_DEFS: { id: TabId; icon: LucideIcon; labelKey: TranslationKey }[] = [
+  { id: 'browse', icon: BookOpen, labelKey: 'bible.book' },
+  { id: 'search', icon: Search, labelKey: 'bible.search' },
+  { id: 'favorites', icon: Star, labelKey: 'bible.favorites' },
+  { id: 'history', icon: History, labelKey: 'bible.history' },
+];
+
+const AnimatedTabs = memo(function AnimatedTabs({
+  value,
+  onValueChange,
+  t,
+}: {
+  value: TabId;
+  onValueChange: (v: TabId) => void;
+  t: TFunction;
+}) {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const indicatorRef = useRef<HTMLSpanElement>(null);
+  const animRef = useRef<JSAnimation | null>(null);
+  const hasMounted = useRef(false);
+
+  const positionIndicator = useCallback(
+    (animated: boolean) => {
+      const container = containerRef.current;
+      const indicator = indicatorRef.current;
+      if (!container || !indicator) return;
+      const trigger = container.querySelector<HTMLButtonElement>(`[data-tab-id="${value}"]`);
+      if (!trigger) return;
+      const to = { left: trigger.offsetLeft, width: trigger.offsetWidth };
+      indicator.style.top = `${trigger.offsetTop}px`;
+      indicator.style.height = `${trigger.offsetHeight}px`;
+      if (!animated) {
+        indicator.style.left = `${to.left}px`;
+        indicator.style.width = `${to.width}px`;
+        return;
+      }
+      animRef.current?.cancel();
+      const state = {
+        left: parseFloat(indicator.style.left) || to.left,
+        width: parseFloat(indicator.style.width) || to.width,
+      };
+      animRef.current = animate(state, {
+        left: to.left,
+        width: to.width,
+        ease: 'outExpo',
+        duration: 600,
+        onUpdate: () => {
+          indicator.style.left = `${state.left}px`;
+          indicator.style.width = `${state.width}px`;
+        },
+      });
+    },
+    [value]
+  );
+
+  const positionIndicatorRef = useRef(positionIndicator);
+  positionIndicatorRef.current = positionIndicator;
+
+  useLayoutEffect(() => {
+    positionIndicator(hasMounted.current);
+    hasMounted.current = true;
+  }, [positionIndicator]);
+
+  useEffect(() => {
+    const onResize = () => positionIndicatorRef.current(false);
+    window.addEventListener('resize', onResize);
+    const raf = requestAnimationFrame(() => positionIndicatorRef.current(false));
+    return () => {
+      window.removeEventListener('resize', onResize);
+      cancelAnimationFrame(raf);
+      animRef.current?.cancel();
+    };
+  }, []);
+
+  return (
+    <div ref={containerRef}>
+      <Tabs value={value} onValueChange={(v) => onValueChange(v as TabId)}>
+        <Tabs.TabsList className="relative bg-background/80 gap-1.5">
+          <span
+            ref={indicatorRef}
+            aria-hidden
+            className="pointer-events-none border border-input absolute rounded-md bg-input/30"
+          />
+          {TAB_DEFS.map(({ id, icon: Icon, labelKey }) => (
+            <Tabs.TabsTrigger
+              key={id}
+              value={id}
+              data-tab-id={id}
+              className="relative border-none hover:bg-input/30 data-active:bg-transparent dark:data-active:bg-transparent"
+            >
+              <Icon className="mr-1 h-3.5 w-3.5" />
+              {t(labelKey)}
+            </Tabs.TabsTrigger>
+          ))}
+        </Tabs.TabsList>
+      </Tabs>
+    </div>
+  );
+});
+
 const Header = memo(function Header({
   close,
   t,
@@ -679,26 +792,7 @@ const Header = memo(function Header({
             <RefreshCw className={cn('h-3.5 w-3.5', isSyncing && 'animate-spin')} />
           </button>
         )}
-        <Tabs value={tab} onValueChange={(v) => setTab(v as 'browse' | 'search' | 'favorites' | 'history')}>
-          <Tabs.TabsList className="bg-background/80 gap-1.5">
-            <Tabs.TabsTrigger value="browse">
-              <BookOpen className="mr-1 h-3.5 w-3.5" />
-              {t('bible.book')}
-            </Tabs.TabsTrigger>
-            <Tabs.TabsTrigger value="search">
-              <Search className="mr-1 h-3.5 w-3.5" />
-              {t('bible.search')}
-            </Tabs.TabsTrigger>
-            <Tabs.TabsTrigger value="favorites">
-              <Star className="mr-1 h-3.5 w-3.5" />
-              {t('bible.favorites')}
-            </Tabs.TabsTrigger>
-            <Tabs.TabsTrigger value="history">
-              <History className="mr-1 h-3.5 w-3.5" />
-              {t('bible.history')}
-            </Tabs.TabsTrigger>
-          </Tabs.TabsList>
-        </Tabs>
+        <AnimatedTabs value={tab} onValueChange={setTab} t={t} />
       </div>
     </header>
   );

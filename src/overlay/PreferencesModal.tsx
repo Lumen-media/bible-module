@@ -881,7 +881,7 @@ const CacheSection = memo(function CacheSection() {
             if (data instanceof Uint8Array) total += data.byteLength;
             else if (Array.isArray(data)) total += (data as number[]).length;
             else if (typeof data === 'string') total += new Blob([data]).size;
-          } catch { }
+          } catch {}
         }
         if (cancelled || requestId !== cacheCheckRef.current) return;
         setCacheBytes(total);
@@ -900,7 +900,7 @@ const CacheSection = memo(function CacheSection() {
     try {
       try {
         await fs.remove('cache');
-      } catch { }
+      } catch {}
       await json.set('bibleFonts', []);
       setDownloadedIds([]);
       setCacheBytes(0);
@@ -976,11 +976,7 @@ const CacheSection = memo(function CacheSection() {
   );
 });
 
-export const PreferencesModal = ({
-  children,
-}: {
-  children: React.ReactElement;
-}) => {
+export const PreferencesModal = ({ children }: { children: React.ReactElement }) => {
   const [section, setSection] = useState<SectionId>('typography');
   const saveSettings = useBibleStore((s) => s.saveSettings);
 

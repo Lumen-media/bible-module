@@ -156,7 +156,14 @@ export default class BibleModulePlugin extends LumenPlugin {
     if (host.window === 'main') {
       host.queue.registerAction({
         id: 'bible.verse-queue',
-         onFire(config: { version: string; book: string; bookName: string; chapter: number; verse: number; verseText: string }) {
+        onFire(config: {
+          version: string;
+          book: string;
+          bookName: string;
+          chapter: number;
+          verse: number;
+          verseText: string;
+        }) {
           const state = useBibleStore.getState();
           const data = {
             version: config.version,

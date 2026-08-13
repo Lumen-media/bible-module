@@ -6,7 +6,12 @@ import { PreferencesModal } from './PreferencesModal.js';
 export function SettingsPanel() {
   return (
     <PreferencesModal>
-      <Button className='p-1' size="icon-xs" variant="outline" title={t('bible.settings' as TranslationKey)}>
+      <Button
+        className="p-1"
+        size="icon-xs"
+        variant="outline"
+        title={t('bible.settings' as TranslationKey)}
+      >
         <Settings />
       </Button>
     </PreferencesModal>
