@@ -92,6 +92,8 @@ export function staticVersionLanguage(version: string): string {
 
 let moduleQueue: QueueHostAPI | null = null;
 
+const chapterCache = new Map<string, { number: number; text: string }[] | null>();
+
 export function setModuleQueue(q: QueueHostAPI) {
   moduleQueue = q;
 }
@@ -121,6 +123,8 @@ export interface BibleState {
   downloadingVersion: string | null;
   downloadingVersions: string[];
   syncingVersions: string[];
+  downloadedVersionList: string[];
+  syncedVersions: Record<string, number>;
 
   version: string;
   testament: 'old' | 'new';
@@ -341,6 +345,8 @@ export const useBibleStore = create<BibleStore>((set, get) => ({
   downloadingVersion: null,
   downloadingVersions: [],
   syncingVersions: [],
+  downloadedVersionList: [],
+  syncedVersions: {},
 
   version: 'naa',
   testament: 'old',
@@ -523,6 +529,8 @@ export const useBibleStore = create<BibleStore>((set, get) => ({
       }
 
       pending.versesPerPage = vpp;
+      pending.downloadedVersionList = downloadedList;
+      pending.syncedVersions = getSyncedVersions();
       if (restoredBg) pending.background = restoredBg;
       pending.fontSize = restoredFontSize;
       pending.fontFamily = restoredFontFamily;
@@ -693,6 +701,8 @@ export const useBibleStore = create<BibleStore>((set, get) => ({
       }
 
       pending.versesPerPage = vpp;
+      pending.downloadedVersionList = downloadedList;
+      pending.syncedVersions = getSyncedVersions();
       if (restoredBg) pending.background = restoredBg;
       pending.fontSize = restoredFontSize;
       pending.fontFamily = restoredFontFamily;
@@ -830,6 +840,13 @@ export const useBibleStore = create<BibleStore>((set, get) => ({
     const { sqlite, version, fs } = get();
     if (!sqlite) return;
 
+    const key = `${version}/${book}/${chapter}`;
+    if (chapterCache.has(key)) {
+      const cached = chapterCache.get(key)!;
+      set({ verses: cached, versesLoading: false });
+      return;
+    }
+
     set({ versesLoading: true });
     try {
       let verses = await getChapterFromDb(sqlite, version, book, chapter);
@@ -839,6 +856,7 @@ export const useBibleStore = create<BibleStore>((set, get) => ({
           verses = chap.verses.filter((v) => v !== null);
         }
       }
+      chapterCache.set(key, verses);
       set({ verses, versesLoading: false });
     } catch {
       if (fs) {
@@ -846,11 +864,13 @@ export const useBibleStore = create<BibleStore>((set, get) => ({
           const chap = await getChapter(fs, version, book, chapter);
           if (chap) {
             const verses = chap.verses.filter((v) => v !== null);
+            chapterCache.set(key, verses);
             set({ verses, versesLoading: false });
             return;
           }
         } catch {}
       }
+      chapterCache.set(key, null);
       set({ verses: null, versesLoading: false });
     }
   },

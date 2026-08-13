@@ -20,7 +20,7 @@ import {
 } from 'lucide-react';
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useEventListener } from 'usehooks-ts';
-import { BOOKS, getSyncedVersions } from '../data/store.js';
+import { BOOKS } from '../data/store.js';
 
 import { type TFunction, type TranslationKey, tForVersion } from '../i18n.js';
 import { cn, displayVersion } from '../lib/utils.js';
@@ -357,7 +357,7 @@ const ReaderFooter = memo(function ReaderFooter({
                 setLocalVpp(String(v));
                 setVersesPerPage(v);
               }}
-              className={cn("p-0 min-h-auto aspect-square h-auto w-5 text-[10px] rounded-[6px]", {
+              className={cn('p-0 min-h-auto aspect-square h-auto w-5 text-[10px] rounded-[6px]', {
                 'bg-primary hover:bg-primary/70 text-primary-foreground': versesPerPage === v,
               })}
             >
@@ -370,9 +370,12 @@ const ReaderFooter = memo(function ReaderFooter({
             render={
               <Button
                 variant="outline"
-                className={cn("w-full justify-center gap-1 py-px h-auto text-[10px] rounded-[6px] group relative", {
-                  'bg-primary hover:bg-primary/70 text-primary-foreground': versesPerPage >= 4,
-                })}
+                className={cn(
+                  'w-full justify-center gap-1 py-px h-auto text-[10px] rounded-[6px] group relative',
+                  {
+                    'bg-primary hover:bg-primary/70 text-primary-foreground': versesPerPage >= 4,
+                  }
+                )}
               >
                 {versesPerPage >= 4 ? versesPerPage : 4}
                 <ChevronDown className="h-3 w-3 opacity-60 top-1/2 translate-y-[-50%] right-1 absolute group-data-[popup-open=open]:rotate-180" />
@@ -389,7 +392,7 @@ const ReaderFooter = memo(function ReaderFooter({
                     setLocalVpp(String(v));
                     setVersesPerPage(v);
                   }}
-                  className={cn("py-px h-auto text-[10px] rounded-[6px]", {
+                  className={cn('py-px h-auto text-[10px] rounded-[6px]', {
                     'bg-primary text-primary-foreground': versesPerPage === v,
                   })}
                 >
@@ -431,11 +434,7 @@ const Sidebar = memo(function Sidebar({
   const displayedTabs = useBibleStore((s) => s.displayedTabs);
   const _downloadingVersions = useBibleStore((s) => s.downloadingVersions);
   const setVersion = useBibleStore((s) => s.setVersion);
-  const [localDownloaded, setLocalDownloaded] = useState<string[]>([]);
-
-  useEffect(() => {
-    useBibleStore.getState().downloadedVersions().then(setLocalDownloaded);
-  }, []);
+  const localDownloaded = useBibleStore((s) => s.downloadedVersionList);
 
   return (
     <Card className="flex w-80 gap-0 p-0 shrink-0 flex-col overflow-hidden border-r border-border rounded-none">
@@ -574,16 +573,8 @@ const Header = memo(function Header({
   const displayedTabs = useBibleStore((s) => s.displayedTabs);
   const syncingVersions = useBibleStore((s) => s.syncingVersions);
   const syncVersion = useBibleStore((s) => s.syncVersion);
-  const [downloadedIds, setDownloadedIds] = useState<string[]>([]);
-  const [syncedMap, setSyncedMap] = useState<Record<string, number>>({});
-
-  useEffect(() => {
-    useBibleStore.getState().downloadedVersions().then(setDownloadedIds);
-  }, []);
-
-  useEffect(() => {
-    setSyncedMap(getSyncedVersions());
-  }, []);
+  const downloadedIds = useBibleStore((s) => s.downloadedVersionList);
+  const syncedMap = useBibleStore((s) => s.syncedVersions);
 
   const pendingUpdates = displayedTabs.filter(
     (id) => UPDATED_VERSIONS.includes(id) && downloadedIds.includes(id) && !syncedMap[id]
@@ -795,8 +786,8 @@ export function BibleController({ close, goToBook, goToChapter, goToVerse }: Bib
         <span className="text-sm">
           {downloading
             ? tFn('bible.downloading', {
-              version: dlVersion.split(', ').map(displayVersion).join(', '),
-            })
+                version: dlVersion.split(', ').map(displayVersion).join(', '),
+              })
             : tFn('bible.preparing')}
         </span>
       </div>
