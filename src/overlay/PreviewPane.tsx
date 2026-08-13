@@ -24,7 +24,7 @@ export const PreviewPane = memo(function PreviewPane() {
   const bookLabel = hasData
     ? `${data.bookName} ${data.chapter}`
     : selectedBook
-      ? `${tForVersion(lang, 'book.' + selectedBook.id)} ${chapter}`
+      ? `${tForVersion(lang, `book.${selectedBook.id}`)} ${chapter}`
       : '—';
   const versionLabel = hasData ? displayVersion(data.version) : displayVersion(version);
   const verseNumber: number | null = hasData ? (data.verses?.[0] ?? null) : selectedVerse;

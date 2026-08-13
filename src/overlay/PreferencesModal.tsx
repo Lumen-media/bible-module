@@ -716,7 +716,7 @@ const DownloadsSection = memo(function DownloadsSection() {
     if (!json) return;
     getDownloadedVersions(json).then(setDownloadedIds);
     setSyncedMap(getSyncedVersions());
-  }, [json, downloadingVersions, syncingVersions]);
+  }, [json]);
 
   function formatLastUpdated(ts: number): string {
     const diff = Date.now() - ts;
@@ -881,7 +881,7 @@ const CacheSection = memo(function CacheSection() {
             if (data instanceof Uint8Array) total += data.byteLength;
             else if (Array.isArray(data)) total += (data as number[]).length;
             else if (typeof data === 'string') total += new Blob([data]).size;
-          } catch {}
+          } catch { }
         }
         if (cancelled || requestId !== cacheCheckRef.current) return;
         setCacheBytes(total);
@@ -900,7 +900,7 @@ const CacheSection = memo(function CacheSection() {
     try {
       try {
         await fs.remove('cache');
-      } catch {}
+      } catch { }
       await json.set('bibleFonts', []);
       setDownloadedIds([]);
       setCacheBytes(0);
@@ -976,7 +976,11 @@ const CacheSection = memo(function CacheSection() {
   );
 });
 
-export const PreferencesModal = ({ children }: { children: React.ReactNode }) => {
+export const PreferencesModal = ({
+  children,
+}: {
+  children: React.ReactElement;
+}) => {
   const [section, setSection] = useState<SectionId>('typography');
   const saveSettings = useBibleStore((s) => s.saveSettings);
 
@@ -1001,7 +1005,7 @@ export const PreferencesModal = ({ children }: { children: React.ReactNode }) =>
 
   return (
     <Dialog>
-      <Dialog.DialogTrigger>{children}</Dialog.DialogTrigger>
+      <Dialog.DialogTrigger render={children} />
       <Dialog.DialogContent className="w-full p-0 gap-0 sm:max-w-[60dvw] h-full max-h-[70dvh] flex flex-col">
         <Card className="shrink-0 rounded-b-none border-0 border-none">
           <h3>Preferences</h3>
