@@ -11,6 +11,7 @@ export interface VerseCardItem {
   book: string;
   chapter: number;
   verse: number;
+  verseEnd?: number;
   text?: string;
 }
 
@@ -112,6 +113,7 @@ const VersesListInner = forwardRef<VersesListHandle, VersesListProps>(function V
                   <span className="font-medium">
                     {tForVersion(staticVersionLanguage(r.version), `book.${r.book}`)} {r.chapter}:
                     {r.verse}
+                    {r.verseEnd != null && r.verseEnd !== r.verse ? `-${r.verseEnd}` : ''}
                   </span>
                   <span className="text-xs text-muted-foreground">{displayVersion(r.version)}</span>
                   {suffix && <span className="ml-auto shrink-0">{suffix(virtualItem.index)}</span>}
