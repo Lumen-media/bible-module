@@ -12,11 +12,12 @@ import {
   Check,
   ChevronDown,
   ChevronLeft,
-  Download,
-  Loader2,
+  Download, History, Loader2,
   RefreshCw,
-  Search,
+  Repeat2, Search,
   Star,
+  StarCheck,
+  StarPlus
 } from 'lucide-react';
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useEventListener } from 'usehooks-ts';
@@ -31,6 +32,7 @@ import { ChapterReader } from './ChapterReader.js';
 import { DownloadProgress } from './DownloadProgress.js';
 import { FavoritesPanel } from './FavoritesPanel.js';
 import { BrazilFlag, PortugalFlag, SpainFlag, UKFlag, USFlag } from './flags.js';
+import { HistoryPanel } from './HistoryPanel.js';
 import { PreviewPane } from './PreviewPane.js';
 import { QuickSearch } from './QuickSearch.js';
 import { SearchPanel } from './SearchPanel.js';
@@ -300,7 +302,23 @@ const ReaderFooter = memo(function ReaderFooter({
   const setVersesPerPage = useBibleStore((s) => s.setVersesPerPage);
   const verses = useBibleStore((s) => s.verses);
   const versesLoading = useBibleStore((s) => s.versesLoading);
+  const chapter = useBibleStore((s) => s.chapter);
+  const selectedVerse = useBibleStore((s) => s.selectedVerse);
+  const bookmarks = useBibleStore((s) => s.bookmarks);
+  const toggleBookmark = useBibleStore((s) => s.toggleBookmark);
   const [_localVpp, setLocalVpp] = useState(String(versesPerPage));
+
+  const bookmarkKey =
+    selectedBook && selectedVerse != null
+      ? `${version}/${selectedBook.id}/${chapter}:${selectedVerse}`
+      : null;
+  const isFavorited = bookmarkKey ? bookmarks.has(bookmarkKey) : false;
+
+  function toggleFavorite() {
+    if (!selectedBook || selectedVerse == null) return;
+    const verseText = verses?.find((v) => v.number === selectedVerse)?.text;
+    toggleBookmark(version, selectedBook.id, chapter, selectedVerse, verseText);
+  }
 
   useEffect(() => {
     setLocalVpp(String(versesPerPage));
@@ -347,7 +365,7 @@ const ReaderFooter = memo(function ReaderFooter({
 
   return (
     <>
-      <div className="flex flex-col gap-1">
+      <div className="flex flex-col gap-1.5">
         <div className="flex gap-1">
           {Array.from({ length: 3 }, (_, i) => i + 1).map((v) => (
             <Button
@@ -357,7 +375,7 @@ const ReaderFooter = memo(function ReaderFooter({
                 setLocalVpp(String(v));
                 setVersesPerPage(v);
               }}
-              className={cn('p-0 min-h-auto aspect-square h-auto w-5 text-[10px] rounded-[6px]', {
+              className={cn('p-0 min-h-auto aspect-square h-auto w-6 text-[10px] rounded-[6px]', {
                 'bg-primary hover:bg-primary/70 text-primary-foreground': versesPerPage === v,
               })}
             >
@@ -370,8 +388,9 @@ const ReaderFooter = memo(function ReaderFooter({
             render={
               <Button
                 variant="outline"
+                size='sm'
                 className={cn(
-                  'w-full justify-center gap-1 py-px h-auto text-[10px] rounded-[6px] group relative',
+                  'w-full justify-center gap-1 py-px h-6 text-[10px] rounded-[6px] group relative',
                   {
                     'bg-primary hover:bg-primary/70 text-primary-foreground': versesPerPage >= 4,
                   }
@@ -403,14 +422,35 @@ const ReaderFooter = memo(function ReaderFooter({
           </Popover.PopoverContent>
         </Popover>
       </div>
-      <Button
-        size="sm"
-        onClick={projecting ? onClear : projectAll}
-        disabled={!projecting && (!verses || verses.length === 0 || versesLoading)}
-        variant={projecting ? 'secondary' : 'default'}
-      >
-        {projecting ? t('bible.clear') : t('bible.project')}
-      </Button>
+      <div className='flex flex-col gap-1.5'>
+        <div className="flex gap-1">
+          <SettingsPanel />
+
+          <Button
+            className='p-1'
+            variant='outline'
+            size='icon-xs'
+            title={isFavorited ? t('bible.unbookmark') : t('bible.bookmark')}
+            disabled={!selectedBook || selectedVerse == null}
+            onClick={toggleFavorite}
+          >
+            {isFavorited ? <StarCheck /> : <StarPlus />}
+          </Button>
+
+          <Button className='p-1' disabled variant='outline' size='icon-xs' title='Automatic presentation'>
+            <Repeat2 />
+          </Button>
+        </div>
+        <Button
+          className='h-6'
+          size="sm"
+          onClick={projecting ? onClear : projectAll}
+          disabled={!projecting && (!verses || verses.length === 0 || versesLoading)}
+          variant={projecting ? 'secondary' : 'default'}
+        >
+          {projecting ? t('bible.clear') : t('bible.project')}
+        </Button>
+      </div>
     </>
   );
 });
@@ -477,7 +517,6 @@ const Sidebar = memo(function Sidebar({
       <Card.CardFooter className="flex justify-between shrink-0 items-center gap-2 border-t border-border px-3 py-2">
         <div className="flex items-center gap-2">
           <PreviewPane />
-          <SettingsPanel />
         </div>
         <ReaderFooter
           version={version}
@@ -640,7 +679,7 @@ const Header = memo(function Header({
             <RefreshCw className={cn('h-3.5 w-3.5', isSyncing && 'animate-spin')} />
           </button>
         )}
-        <Tabs value={tab} onValueChange={(v) => setTab(v as 'browse' | 'search' | 'favorites')}>
+        <Tabs value={tab} onValueChange={(v) => setTab(v as 'browse' | 'search' | 'favorites' | 'history')}>
           <Tabs.TabsList className="bg-background/80 gap-1.5">
             <Tabs.TabsTrigger value="browse">
               <BookOpen className="mr-1 h-3.5 w-3.5" />
@@ -654,6 +693,10 @@ const Header = memo(function Header({
               <Star className="mr-1 h-3.5 w-3.5" />
               {t('bible.favorites')}
             </Tabs.TabsTrigger>
+            <Tabs.TabsTrigger value="history">
+              <History className="mr-1 h-3.5 w-3.5" />
+              {t('bible.history')}
+            </Tabs.TabsTrigger>
           </Tabs.TabsList>
         </Tabs>
       </div>
@@ -666,6 +709,10 @@ const ContentArea = memo(function ContentArea({ t }: { t: TFunction }) {
 
   if (tab === 'favorites') {
     return <FavoritesPanel t={t} />;
+  }
+
+  if (tab === 'history') {
+    return <HistoryPanel t={t} />;
   }
 
   return (
@@ -786,8 +833,8 @@ export function BibleController({ close, goToBook, goToChapter, goToVerse }: Bib
         <span className="text-sm">
           {downloading
             ? tFn('bible.downloading', {
-                version: dlVersion.split(', ').map(displayVersion).join(', '),
-              })
+              version: dlVersion.split(', ').map(displayVersion).join(', '),
+            })
             : tFn('bible.preparing')}
         </span>
       </div>

@@ -13,13 +13,16 @@ import type {
 } from '@lumen-media/module-sdk';
 import { create } from 'zustand';
 import {
+  clearHistory,
   getChapterFromDb,
+  getHistory,
   getPopulatedVersions,
   getSetting,
   getVersionLanguage,
   importVersionFromJson,
   initDatabase,
   insertChapterBatch,
+  insertHistory,
   rebuildFts,
   searchVerses,
   setVersionLanguage,
@@ -33,12 +36,12 @@ import {
   getLastPosition,
   getSyncedVersions,
   getVersesPerPage,
+  setVersesPerPage as persistVersesPerPage,
   setDownloadedVersions,
   setLastPosition,
   setSyncedVersion,
-  setVersesPerPage as persistVersesPerPage,
 } from './data/store.js';
-import type { Book } from './data/types.js';
+import type { Book, HistoryEntry } from './data/types.js';
 import type { TFunction } from './i18n.js';
 import { analyzeBackgroundColor } from './lib/color-analysis.js';
 
@@ -128,7 +131,7 @@ export interface BibleState {
 
   version: string;
   testament: 'old' | 'new';
-  tab: 'browse' | 'search' | 'favorites';
+  tab: 'browse' | 'search' | 'favorites' | 'history';
   selectedBook: Book | null;
   versionLanguage: string | null;
   chapter: number;
@@ -161,6 +164,7 @@ export interface BibleState {
 
   bookmarks: Set<string>;
   bookmarkTexts: Map<string, string>;
+  history: HistoryEntry[];
 
   projectedData: {
     version: string;
@@ -197,7 +201,7 @@ export interface BibleActions {
   }) => Promise<void>;
   setVersion: (v: string) => Promise<void>;
   setTestament: (t: 'old' | 'new') => void;
-  setTab: (t: 'browse' | 'search' | 'favorites') => void;
+  setTab: (t: 'browse' | 'search' | 'favorites' | 'history') => void;
   toggleBookmark: (
     version: string,
     book: string,
@@ -205,6 +209,14 @@ export interface BibleActions {
     verse: number,
     text?: string
   ) => void;
+  recordHistory: (
+    version: string,
+    book: string,
+    chapter: number,
+    verses: number[],
+    text: string
+  ) => void;
+  clearHistory: () => void;
   selectBook: (book: Book) => void;
   setChapter: (chapter: number) => void;
   setVersesPerPage: (n: number) => Promise<void>;
@@ -379,6 +391,7 @@ export const useBibleStore = create<BibleStore>((set, get) => ({
   verseNumberStyle: 'superscript' as const,
   bookmarks: new Set<string>(),
   bookmarkTexts: new Map<string, string>(),
+  history: [],
   projectedData: null,
 
   init: async (services) => {
@@ -404,6 +417,8 @@ export const useBibleStore = create<BibleStore>((set, get) => ({
       await initDatabase(db);
     }
     console.log('[bible] init: db ready in', (performance.now() - t0).toFixed(0), 'ms');
+
+    const storedHistory = await getHistory(db);
 
     if (hostWindow === 'main') {
       const t1 = performance.now();
@@ -566,6 +581,10 @@ export const useBibleStore = create<BibleStore>((set, get) => ({
       if (storedBookmarks && Object.keys(storedBookmarks).length > 0) {
         pending.bookmarks = new Set(Object.keys(storedBookmarks));
         pending.bookmarkTexts = new Map(Object.entries(storedBookmarks));
+      }
+
+      if (storedHistory.length > 0) {
+        pending.history = storedHistory;
       }
 
       set(pending);
@@ -739,6 +758,10 @@ export const useBibleStore = create<BibleStore>((set, get) => ({
         pending.bookmarkTexts = new Map(Object.entries(storedBookmarks));
       }
 
+      if (storedHistory.length > 0) {
+        pending.history = storedHistory;
+      }
+
       set(pending);
 
       if (needsChapterLoad) {
@@ -788,6 +811,32 @@ export const useBibleStore = create<BibleStore>((set, get) => ({
     set({ bookmarks: next, bookmarkTexts: nextTexts });
     if (json) {
       json.set('bookmarks', Object.fromEntries(nextTexts)).catch(() => {});
+    }
+  },
+
+  recordHistory: (version, book, chapter, verses, text) => {
+    const { sqlite, history } = get();
+    const entry: HistoryEntry = {
+      id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+      version,
+      book,
+      chapter,
+      verses,
+      text,
+      timestamp: Date.now(),
+    };
+    const next = [entry, ...history].slice(0, 100);
+    set({ history: next });
+    if (sqlite) {
+      insertHistory(sqlite, entry).catch(() => {});
+    }
+  },
+
+  clearHistory: () => {
+    const { sqlite } = get();
+    set({ history: [] });
+    if (sqlite) {
+      clearHistory(sqlite).catch(() => {});
     }
   },
 
@@ -1175,7 +1224,12 @@ export const useBibleStore = create<BibleStore>((set, get) => ({
     }
   },
 
-  setProjectedData: (data) => set({ projectedData: data as BibleState['projectedData'] }),
+  setProjectedData: (data) => {
+    set({ projectedData: data as BibleState['projectedData'] });
+    if (data && data.verses.length > 0) {
+      get().recordHistory(data.version, data.book, data.chapter, data.verses, data.text);
+    }
+  },
 
   clearProjection: () => {
     const { presentation, projectedData } = get();

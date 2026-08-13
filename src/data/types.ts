@@ -27,6 +27,16 @@ export interface SearchResult {
   text: string;
 }
 
+export interface HistoryEntry {
+  id: string;
+  version: string;
+  book: string;
+  chapter: number;
+  verses: number[];
+  text: string;
+  timestamp: number;
+}
+
 export interface MidvashVerse {
   number: number;
   text: string;

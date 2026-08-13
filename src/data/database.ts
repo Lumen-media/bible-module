@@ -1,6 +1,6 @@
-import type { FsAPI, NetAPI, SqliteHandle } from '@lumen-media/module-sdk';
+import type { FsAPI, SqliteHandle } from '@lumen-media/module-sdk';
 import { BOOKS, bookPath } from './store.js';
-import type { MidvashVerse } from './types.js';
+import type { HistoryEntry, MidvashVerse } from './types.js';
 
 const MIGRATIONS = [
   {
@@ -52,6 +52,18 @@ const MIGRATIONS = [
     up: `CREATE TABLE IF NOT EXISTS settings (
       key TEXT PRIMARY KEY,
       value TEXT NOT NULL
+    );`,
+  },
+  {
+    version: 8,
+    up: `CREATE TABLE IF NOT EXISTS history (
+      id TEXT PRIMARY KEY,
+      version TEXT NOT NULL,
+      book TEXT NOT NULL,
+      chapter INTEGER NOT NULL,
+      verses TEXT NOT NULL,
+      text TEXT NOT NULL,
+      timestamp INTEGER NOT NULL
     );`,
   },
 ];
@@ -241,6 +253,67 @@ export async function getSetting(db: SqliteHandle, key: string): Promise<string 
     return rows.length > 0 ? rows[0].value : null;
   } catch {
     return null;
+  }
+}
+
+const HISTORY_LIMIT = 100;
+
+export async function getHistory(db: SqliteHandle): Promise<HistoryEntry[]> {
+  try {
+    const rows = await db.query<{
+      id: string;
+      version: string;
+      book: string;
+      chapter: number;
+      verses: string;
+      text: string;
+      timestamp: number;
+    }>(
+      'SELECT id, version, book, chapter, verses, text, timestamp FROM history ORDER BY timestamp DESC LIMIT ?',
+      [HISTORY_LIMIT]
+    );
+    return rows.map((r) => ({
+      id: r.id,
+      version: r.version,
+      book: r.book,
+      chapter: r.chapter,
+      verses: JSON.parse(r.verses || '[]'),
+      text: r.text,
+      timestamp: r.timestamp,
+    }));
+  } catch {
+    return [];
+  }
+}
+
+export async function insertHistory(db: SqliteHandle, entry: HistoryEntry): Promise<void> {
+  try {
+    await db.exec(
+      'INSERT INTO history (id, version, book, chapter, verses, text, timestamp) VALUES (?, ?, ?, ?, ?, ?, ?)',
+      [
+        entry.id,
+        entry.version,
+        entry.book,
+        entry.chapter,
+        JSON.stringify(entry.verses),
+        entry.text,
+        entry.timestamp,
+      ]
+    );
+    await db.exec(
+      'DELETE FROM history WHERE id NOT IN (SELECT id FROM history ORDER BY timestamp DESC LIMIT ?)',
+      [HISTORY_LIMIT]
+    );
+  } catch (e) {
+    console.warn('[bible] insertHistory failed:', e);
+  }
+}
+
+export async function clearHistory(db: SqliteHandle): Promise<void> {
+  try {
+    await db.exec('DELETE FROM history');
+  } catch {
+    console.warn('[bible] clearHistory failed');
   }
 }
 

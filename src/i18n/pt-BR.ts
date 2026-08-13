@@ -104,6 +104,10 @@ const messages: Record<TranslationKeys, string> = {
   'bible.favorites': 'Favoritos',
   'bible.no-favorites':
     'Nenhum versículo favoritado ainda. Clique com o botão direito em um versículo para favoritá-lo.',
+  'bible.history': 'Histórico',
+  'bible.no-history':
+    'Nenhum versículo apresentado ainda. Projete um versículo para vê-lo aqui.',
+  'bible.clear-history': 'Limpar histórico',
   'book.genesis': 'Gênesis',
   'book.exodus': 'Êxodo',
   'book.leviticus': 'Levítico',
