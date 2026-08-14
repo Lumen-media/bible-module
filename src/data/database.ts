@@ -2,6 +2,8 @@ import type { FsAPI, SqliteHandle } from '@lumen-media/module-sdk';
 import { BOOKS, bookPath } from './store.js';
 import type { HistoryEntry, MidvashVerse } from './types.js';
 
+const yieldToMain = () => new Promise<void>((resolve) => setTimeout(resolve, 8));
+
 const MIGRATIONS = [
   {
     version: 1,
@@ -155,6 +157,7 @@ export async function insertChapterBatch(
       `INSERT OR IGNORE INTO verses (version, book, chapter, verse, text) VALUES\n${placeholders}`,
       params
     );
+    await yieldToMain();
   }
 }
 
@@ -164,10 +167,17 @@ export async function rebuildFts(db: SqliteHandle, version: string): Promise<voi
     await db.exec(`DELETE FROM verses_fts WHERE version = ?`, [version]);
     console.log('[bible] FTS delete for', version, 'in', (performance.now() - d0).toFixed(0), 'ms');
     const i0 = performance.now();
-    await db.exec(
-      'INSERT INTO verses_fts (version, book, chapter, verse, text) SELECT version, book, chapter, verse, text FROM verses WHERE version = ?',
+    const books = await db.query<{ book: string }>(
+      'SELECT DISTINCT book FROM verses WHERE version = ?',
       [version]
     );
+    for (const { book } of books) {
+      await db.exec(
+        'INSERT INTO verses_fts (version, book, chapter, verse, text) SELECT version, book, chapter, verse, text FROM verses WHERE version = ? AND book = ?',
+        [version, book]
+      );
+      await yieldToMain();
+    }
     console.log('[bible] FTS insert for', version, 'in', (performance.now() - i0).toFixed(0), 'ms');
   } catch (e) {
     console.warn('[bible] FTS rebuild failed for', version, e);
@@ -223,6 +233,8 @@ export async function importVersionFromJson(
       if (language) {
         await setVersionLanguage(db, version, language).catch(() => {});
       }
+
+      await yieldToMain();
     } catch {
       // skip corrupt file
     }

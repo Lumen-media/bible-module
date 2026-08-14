@@ -7,7 +7,6 @@ import {
   Separator,
   Tabs,
 } from '@lumen-media/module-sdk/ui';
-import { animate, type JSAnimation } from 'animejs';
 import {
   BookOpen,
   Check,
@@ -626,7 +625,6 @@ const AnimatedTabs = memo(function AnimatedTabs({
 }) {
   const containerRef = useRef<HTMLDivElement>(null);
   const indicatorRef = useRef<HTMLSpanElement>(null);
-  const animRef = useRef<JSAnimation | null>(null);
   const hasMounted = useRef(false);
 
   const positionIndicator = useCallback(
@@ -636,28 +634,25 @@ const AnimatedTabs = memo(function AnimatedTabs({
       if (!container || !indicator) return;
       const trigger = container.querySelector<HTMLButtonElement>(`[data-tab-id="${value}"]`);
       if (!trigger) return;
-      const to = { left: trigger.offsetLeft, width: trigger.offsetWidth };
+      const toLeft = trigger.offsetLeft;
+      const toWidth = trigger.offsetWidth;
+      const fromLeft = parseFloat(indicator.style.left) || toLeft;
+      const fromWidth = parseFloat(indicator.style.width) || toWidth;
       indicator.style.top = `${trigger.offsetTop}px`;
       indicator.style.height = `${trigger.offsetHeight}px`;
+      indicator.style.left = `${toLeft}px`;
+      indicator.style.width = `${toWidth}px`;
       if (!animated) {
-        indicator.style.left = `${to.left}px`;
-        indicator.style.width = `${to.width}px`;
+        indicator.style.transition = 'none';
+        indicator.style.transform = '';
         return;
       }
-      animRef.current?.cancel();
-      const state = {
-        left: parseFloat(indicator.style.left) || to.left,
-        width: parseFloat(indicator.style.width) || to.width,
-      };
-      animRef.current = animate(state, {
-        left: to.left,
-        width: to.width,
-        ease: 'outExpo',
-        duration: 600,
-        onUpdate: () => {
-          indicator.style.left = `${state.left}px`;
-          indicator.style.width = `${state.width}px`;
-        },
+      indicator.style.transition = 'none';
+      indicator.style.transform = `translateX(${fromLeft - toLeft}px) scaleX(${toWidth > 0 ? fromWidth / toWidth : 1})`;
+      void indicator.offsetWidth;
+      indicator.style.transition = 'transform 600ms cubic-bezier(0.16, 1, 0.3, 1)';
+      requestAnimationFrame(() => {
+        indicator.style.transform = 'translateX(0px) scaleX(1)';
       });
     },
     [value]
@@ -678,7 +673,6 @@ const AnimatedTabs = memo(function AnimatedTabs({
     return () => {
       window.removeEventListener('resize', onResize);
       cancelAnimationFrame(raf);
-      animRef.current?.cancel();
     };
   }, []);
 
@@ -689,7 +683,7 @@ const AnimatedTabs = memo(function AnimatedTabs({
           <span
             ref={indicatorRef}
             aria-hidden
-            className="pointer-events-none border border-input absolute rounded-md bg-input/30"
+            className="pointer-events-none border border-input absolute origin-left rounded-md bg-input/30 will-change-transform"
           />
           {TAB_DEFS.map(({ id, icon: Icon, labelKey }) => (
             <Tabs.TabsTrigger
@@ -927,8 +921,8 @@ export function BibleController({ close, goToBook, goToChapter, goToVerse }: Bib
         <span className="text-sm">
           {downloading
             ? tFn('bible.downloading', {
-              version: dlVersion.split(', ').map(displayVersion).join(', '),
-            })
+                version: dlVersion.split(', ').map(displayVersion).join(', '),
+              })
             : tFn('bible.preparing')}
         </span>
       </div>
