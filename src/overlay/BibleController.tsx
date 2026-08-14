@@ -24,6 +24,7 @@ import {
   StarPlus,
 } from 'lucide-react';
 import { memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { flushSync } from 'react-dom';
 import { useEventListener } from 'usehooks-ts';
 import { BOOKS } from '../data/store.js';
 
@@ -614,6 +615,8 @@ const TAB_DEFS: { id: TabId; icon: LucideIcon; labelKey: TranslationKey }[] = [
   { id: 'history', icon: History, labelKey: 'bible.history' },
 ];
 
+const TAB_ORDER: TabId[] = ['browse', 'search', 'favorites', 'history'];
+
 const AnimatedTabs = memo(function AnimatedTabs({
   value,
   onValueChange,
@@ -728,6 +731,37 @@ const Header = memo(function Header({
   const hasUpdate = pendingUpdates.length > 0;
   const isSyncing = hasUpdate && syncingVersions.includes(pendingUpdates[0]);
 
+  const vtActiveRef = useRef(false);
+
+  const switchTab = useCallback(
+    (next: TabId) => {
+      if (next === tab) return;
+      const apply = () => setTab(next);
+      const doc = document as Document & {
+        startViewTransition?: (cb: () => void) => { finished: Promise<void> };
+      };
+      const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+      if (!doc.startViewTransition || reduced || vtActiveRef.current) {
+        apply();
+        return;
+      }
+      const prevIdx = TAB_ORDER.indexOf(tab);
+      const nextIdx = TAB_ORDER.indexOf(next);
+      document.documentElement.dataset.vtDir = nextIdx > prevIdx ? 'forward' : 'backward';
+      vtActiveRef.current = true;
+      const vt = doc.startViewTransition(() => {
+        flushSync(apply);
+      });
+      vt.finished
+        .catch(() => {})
+        .finally(() => {
+          vtActiveRef.current = false;
+          delete document.documentElement.dataset.vtDir;
+        });
+    },
+    [tab, setTab]
+  );
+
   const handleSync = async () => {
     if (pendingUpdates.length === 0) return;
     const versionId = pendingUpdates[0];
@@ -786,7 +820,7 @@ const Header = memo(function Header({
             <RefreshCw className={cn('h-3.5 w-3.5', isSyncing && 'animate-spin')} />
           </button>
         )}
-        <AnimatedTabs value={tab} onValueChange={setTab} t={t} />
+        <AnimatedTabs value={tab} onValueChange={switchTab} t={t} />
       </div>
     </header>
   );
@@ -795,22 +829,23 @@ const Header = memo(function Header({
 const ContentArea = memo(function ContentArea({ t }: { t: TFunction }) {
   const tab = useBibleStore((s) => s.tab);
 
+  let content: React.ReactNode;
   if (tab === 'favorites') {
-    return <FavoritesPanel t={t} />;
+    content = <FavoritesPanel t={t} />;
+  } else if (tab === 'history') {
+    content = <HistoryPanel t={t} />;
+  } else {
+    content = (
+      <>
+        <Separator />
+        <div className="flex min-h-0 flex-1 flex-col p-3">
+          {tab === 'browse' ? <BrowseContent /> : <SearchPanel t={t} />}
+        </div>
+      </>
+    );
   }
 
-  if (tab === 'history') {
-    return <HistoryPanel t={t} />;
-  }
-
-  return (
-    <div className="flex min-h-0 flex-1 flex-col">
-      <Separator />
-      <div className="flex min-h-0 flex-1 flex-col p-3">
-        {tab === 'browse' ? <BrowseContent /> : <SearchPanel t={t} />}
-      </div>
-    </div>
-  );
+  return <div className="bible-vt flex min-h-0 flex-1 flex-col">{content}</div>;
 });
 
 export function BibleController({ close, goToBook, goToChapter, goToVerse }: BibleControllerProps) {

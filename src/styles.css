@@ -58,6 +58,75 @@
   opacity: 1;
 }
 
+.bible-vt {
+  view-transition-name: bible-content;
+}
+
+:root[data-vt-dir]::view-transition-old(root),
+:root[data-vt-dir]::view-transition-new(root) {
+  animation: none;
+}
+
+:root[data-vt-dir="forward"]::view-transition-old(bible-content) {
+  animation: bible-slide-out-left 220ms ease both;
+}
+
+:root[data-vt-dir="forward"]::view-transition-new(bible-content) {
+  animation: bible-slide-in-right 220ms ease both;
+}
+
+:root[data-vt-dir="backward"]::view-transition-old(bible-content) {
+  animation: bible-slide-out-right 220ms ease both;
+}
+
+:root[data-vt-dir="backward"]::view-transition-new(bible-content) {
+  animation: bible-slide-in-left 220ms ease both;
+}
+
+@keyframes bible-slide-in-right {
+  from {
+    opacity: 0;
+    transform: translateX(24px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes bible-slide-in-left {
+  from {
+    opacity: 0;
+    transform: translateX(-24px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes bible-slide-out-left {
+  from {
+    opacity: 1;
+    transform: translateX(0);
+  }
+  to {
+    opacity: 0;
+    transform: translateX(-24px);
+  }
+}
+
+@keyframes bible-slide-out-right {
+  from {
+    opacity: 1;
+    transform: translateX(0);
+  }
+  to {
+    opacity: 0;
+    transform: translateX(24px);
+  }
+}
+
 @keyframes verse-fade-in {
   from {
     opacity: 0;
