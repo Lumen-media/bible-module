@@ -686,7 +686,7 @@ const AnimatedTabs = memo(function AnimatedTabs({
           <span
             ref={indicatorRef}
             aria-hidden
-            className="pointer-events-none border border-input absolute origin-left rounded-md bg-input/30 will-change-transform"
+            className="pointer-events-none border border-input absolute origin-left rounded-md bg-input/30"
           />
           {TAB_DEFS.map(({ id, icon: Icon, labelKey }) => (
             <Tabs.TabsTrigger

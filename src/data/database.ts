@@ -163,10 +163,7 @@ export async function insertChapterBatch(
 
 export async function rebuildFts(db: SqliteHandle, version: string): Promise<void> {
   try {
-    const d0 = performance.now();
     await db.exec(`DELETE FROM verses_fts WHERE version = ?`, [version]);
-    console.log('[bible] FTS delete for', version, 'in', (performance.now() - d0).toFixed(0), 'ms');
-    const i0 = performance.now();
     const books = await db.query<{ book: string }>(
       'SELECT DISTINCT book FROM verses WHERE version = ?',
       [version]
@@ -178,7 +175,6 @@ export async function rebuildFts(db: SqliteHandle, version: string): Promise<voi
       );
       await yieldToMain();
     }
-    console.log('[bible] FTS insert for', version, 'in', (performance.now() - i0).toFixed(0), 'ms');
   } catch (e) {
     console.warn('[bible] FTS rebuild failed for', version, e);
   }
@@ -243,16 +239,7 @@ export async function importVersionFromJson(
     onProgress?.(completed, total);
   }
 
-  console.log('[bible] importVersionFromJson: rebuilding FTS for', version);
-  const fts0 = performance.now();
   await rebuildFts(db, version);
-  console.log(
-    '[bible] importVersionFromJson: FTS rebuild done for',
-    version,
-    'in',
-    (performance.now() - fts0).toFixed(0),
-    'ms'
-  );
 
   return true;
 }

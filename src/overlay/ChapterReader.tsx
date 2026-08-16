@@ -1,5 +1,6 @@
 import type { PresentationHostAPI } from '@lumen-media/module-sdk';
 import { ScrollArea } from '@lumen-media/module-sdk/ui';
+import { useVirtualizer } from '@tanstack/react-virtual';
 import { ListPlus, Loader2, Star } from 'lucide-react';
 import { memo, useCallback, useEffect, useRef, useState } from 'react';
 import type { Book } from '../data/types.js';
@@ -42,23 +43,24 @@ export const ChapterReader = memo(function ChapterReader({
   const setSelectedVerse = useBibleStore((s) => s.setSelectedVerse);
   const projectedData = useBibleStore((s) => s.projectedData);
 
-  const verseRefs = useRef<Map<number, HTMLButtonElement>>(new Map());
   const internalSelectRef = useRef(false);
 
-  const setVerseRef = useCallback((el: HTMLButtonElement | null) => {
-    if (el) {
-      const n = Number(el.dataset.verseNumber);
-      if (Number.isFinite(n)) verseRefs.current.set(n, el);
-    }
-  }, []);
+  const viewportRef = useRef<HTMLDivElement>(null);
 
-  const scrollToVerse = useCallback((verse: number) => {
-    for (const [n, node] of verseRefs.current) {
-      if (!node.isConnected) verseRefs.current.delete(n);
-    }
-    const el = verseRefs.current.get(verse);
-    el?.scrollIntoView({ block: 'center', behavior: 'smooth' });
-  }, []);
+  const virtualizer = useVirtualizer({
+    count: verses?.length ?? 0,
+    getScrollElement: () => viewportRef.current,
+    estimateSize: () => 56,
+    overscan: 10,
+  });
+
+  const scrollToVerse = useCallback(
+    (verse: number) => {
+      const index = verses?.findIndex((v) => v.number === verse) ?? -1;
+      if (index >= 0) virtualizer.scrollToIndex(index, { align: 'center' });
+    },
+    [verses, virtualizer]
+  );
 
   const projectedVerses =
     projecting &&
@@ -217,37 +219,54 @@ export const ChapterReader = memo(function ChapterReader({
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">
-      <ScrollArea className="min-h-0 flex-1 px-4 py-3">
+      <ScrollArea className="min-h-0 flex-1 px-4 py-3" viewportProps={{ ref: viewportRef }}>
         {versesLoading ? (
           <div className="flex items-center justify-center gap-2 py-8 text-muted-foreground">
             <Loader2 className="h-4 w-4 animate-spin" />
             {t('bible.loading-verses')}
           </div>
         ) : verses && verses.length > 0 ? (
-          <div className="space-y-0.5">
-            {verses.map((v) => (
-              <button
-                key={v.number}
-                data-verse-number={v.number}
-                ref={setVerseRef}
-                type="button"
-                onClick={() => handleVerseClick(v)}
-                onDoubleClick={() => handleVerseDoubleClick(v)}
-                onContextMenu={(e) => handleContextMenu(e, v)}
-                className={`w-full rounded-md px-3 py-1.5 text-left text-sm leading-relaxed transition-colors ${
-                  projectedVerses.includes(v.number)
-                    ? 'bg-primary/20 text-foreground'
-                    : selectedVerse !== null &&
-                        v.number >= selectedVerse &&
-                        v.number < selectedVerse + versesPerPage
-                      ? 'bg-accent text-accent-foreground'
-                      : 'text-foreground hover:bg-accent/50'
-                }`}
-              >
-                <span className="mr-1.5 text-xs text-muted-foreground">{v.number}</span>
-                {v.text}
-              </button>
-            ))}
+          <div
+            style={{
+              height: `${virtualizer.getTotalSize()}px`,
+              width: '100%',
+              position: 'relative',
+            }}
+          >
+            {virtualizer.getVirtualItems().map((virtualItem) => {
+              const v = verses[virtualItem.index];
+              return (
+                <div
+                  key={v.number}
+                  data-index={virtualItem.index}
+                  ref={virtualizer.measureElement}
+                  className="absolute left-0 top-0 w-full"
+                  style={{
+                    transform: `translateY(${virtualItem.start}px)`,
+                    paddingBottom: '2px',
+                  }}
+                >
+                  <button
+                    type="button"
+                    onClick={() => handleVerseClick(v)}
+                    onDoubleClick={() => handleVerseDoubleClick(v)}
+                    onContextMenu={(e) => handleContextMenu(e, v)}
+                    className={`w-full rounded-md px-3 py-1.5 text-left text-sm leading-relaxed transition-colors ${
+                      projectedVerses.includes(v.number)
+                        ? 'bg-primary/20 text-foreground'
+                        : selectedVerse !== null &&
+                            v.number >= selectedVerse &&
+                            v.number < selectedVerse + versesPerPage
+                          ? 'bg-accent text-accent-foreground'
+                          : 'text-foreground hover:bg-accent/50'
+                    }`}
+                  >
+                    <span className="mr-1.5 text-xs text-muted-foreground">{v.number}</span>
+                    {v.text}
+                  </button>
+                </div>
+              );
+            })}
           </div>
         ) : (
           <div className="flex items-center justify-center py-8 text-muted-foreground">

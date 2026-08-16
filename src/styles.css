@@ -41,12 +41,12 @@
 }
 
 [data-radix-scroll-area-viewport] {
-  outline: none !important;
+  outline: none;
 }
 
 [data-slot="scroll-area-viewport"] {
-  outline: none !important;
-  box-shadow: none !important;
+  outline: none;
+  box-shadow: none;
 }
 
 .paleta-reveal {
@@ -60,6 +60,10 @@
 
 .bible-vt {
   view-transition-name: bible-content;
+}
+
+::view-transition-group(bible-content) {
+  clip-path: inset(0);
 }
 
 :root[data-vt-dir]::view-transition-old(root),

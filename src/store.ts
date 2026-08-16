@@ -395,7 +395,6 @@ export const useBibleStore = create<BibleStore>((set, get) => ({
   projectedData: null,
 
   init: async (services) => {
-    const t0 = performance.now();
     const { fs, net, json, presentation, themes, ui, fonts, t, events, hostWindow } = services;
     set({
       fs,
@@ -416,13 +415,10 @@ export const useBibleStore = create<BibleStore>((set, get) => ({
     if (hostWindow === 'main') {
       await initDatabase(db);
     }
-    console.log('[bible] init: db ready in', (performance.now() - t0).toFixed(0), 'ms');
 
     const storedHistory = await getHistory(db);
 
     if (hostWindow === 'main') {
-      const t1 = performance.now();
-
       const [downloadedList, lastPos, vpp, cachedFontsResp, storedBookmarks] = await Promise.all([
         getDownloadedVersions(json),
         getLastPosition(json),
@@ -462,8 +458,6 @@ export const useBibleStore = create<BibleStore>((set, get) => ({
       if (!settingsResp) {
         settingsResp = await json.get<typeof settingsResp>('bibleSettings').catch(() => null);
       }
-
-      console.log('[bible] init: settings loaded in', (performance.now() - t1).toFixed(0), 'ms');
 
       const s = settingsResp;
       let restoredBg: SelectedBackground | null = null;
@@ -1258,8 +1252,6 @@ async function _backgroundEnsureVersions() {
     else needsDownload.push(v);
   }
 
-  console.log('[bible] background: needsSqlite=', needsSqlite, 'needsDownload=', needsDownload);
-
   if (needsSqlite.length === 0 && needsDownload.length === 0) return;
 
   const totalChaptersPerVersion = 1189;
@@ -1286,11 +1278,9 @@ async function _backgroundEnsureVersions() {
 
   await Promise.allSettled(
     allVersions.map(async (v) => {
-      const v0 = performance.now();
       const needsDl = needsDownload.includes(v);
 
       if (needsDl) {
-        console.log('[bible] background: downloading', v);
         const ok = await downloadVersion(
           fs,
           net,
@@ -1312,42 +1302,12 @@ async function _backgroundEnsureVersions() {
         );
         if (!ok) {
           globalCurrent += totalChaptersPerVersion;
-          console.log(
-            '[bible] background: download',
-            v,
-            'FAILED after',
-            (performance.now() - v0).toFixed(0),
-            'ms'
-          );
           return;
         }
-        console.log(
-          '[bible] background: download',
-          v,
-          'done in',
-          (performance.now() - v0).toFixed(0),
-          'ms'
-        );
-        const fts0 = performance.now();
         await rebuildFts(sqlite, v).catch(() => {});
-        console.log(
-          '[bible] background: fts rebuild',
-          v,
-          'in',
-          (performance.now() - fts0).toFixed(0),
-          'ms'
-        );
         await setVersionLanguage(sqlite, v, staticVersionLanguage(v)).catch(() => {});
       } else {
-        console.log('[bible] background: importing', v, 'from cache');
         await importVersionFromJson(sqlite, fs, v, staticVersionLanguage(v));
-        console.log(
-          '[bible] background: import',
-          v,
-          'done in',
-          (performance.now() - v0).toFixed(0),
-          'ms'
-        );
       }
 
       if (!newDownloaded.includes(v)) {
