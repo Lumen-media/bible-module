@@ -28,6 +28,7 @@ import { flushSync } from 'react-dom';
 import { useEventListener } from 'usehooks-ts';
 import { BOOKS } from '../data/store.js';
 
+import type { PresentationHostAPI } from '@lumen-media/module-sdk';
 import { type TFunction, type TranslationKey, tForVersion } from '../i18n.js';
 import { cn, displayVersion } from '../lib/utils.js';
 import { ALL_VERSIONS, staticVersionLanguage, UPDATED_VERSIONS, useBibleStore } from '../store.js';
@@ -296,7 +297,7 @@ const ReaderFooter = memo(function ReaderFooter({
   onClear,
 }: {
   version: string;
-  presentation: any;
+  presentation: PresentationHostAPI;
   t: TFunction;
   projecting: boolean;
   onProject: () => void;
@@ -475,7 +476,7 @@ const Sidebar = memo(function Sidebar({
   onClear,
 }: {
   version: string;
-  presentation: any;
+  presentation: PresentationHostAPI;
   t: TFunction;
   projecting: boolean;
   onProject: () => void;
