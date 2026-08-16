@@ -64,10 +64,10 @@ export const ChapterReader = memo(function ChapterReader({
 
   const projectedVerses =
     projecting &&
-    projectedData &&
-    projectedData.version === version &&
-    projectedData.book === book.id &&
-    projectedData.chapter === chapter
+      projectedData &&
+      projectedData.version === version &&
+      projectedData.book === book.id &&
+      projectedData.chapter === chapter
       ? projectedData.verses
       : [];
   const [contextMenu, setContextMenu] = useState<{
@@ -90,7 +90,7 @@ export const ChapterReader = memo(function ChapterReader({
     if (selectedVerse != null) {
       scrollToVerse(selectedVerse);
     }
-  }, [selectedVerse, verses, scrollToVerse]);
+  }, [selectedVerse, scrollToVerse]);
 
   const projectVerse = useCallback(
     (v: { number: number; text: string }) => {
@@ -219,7 +219,7 @@ export const ChapterReader = memo(function ChapterReader({
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">
-      <ScrollArea className="min-h-0 flex-1 px-4 py-3" viewportProps={{ ref: viewportRef }}>
+      <ScrollArea className="min-h-0 flex-1 px-2 py-3" viewportProps={{ ref: viewportRef }}>
         {versesLoading ? (
           <div className="flex items-center justify-center gap-2 py-8 text-muted-foreground">
             <Loader2 className="h-4 w-4 animate-spin" />
@@ -251,15 +251,14 @@ export const ChapterReader = memo(function ChapterReader({
                     onClick={() => handleVerseClick(v)}
                     onDoubleClick={() => handleVerseDoubleClick(v)}
                     onContextMenu={(e) => handleContextMenu(e, v)}
-                    className={`w-full rounded-md px-3 py-1.5 text-left text-sm leading-relaxed transition-colors ${
-                      projectedVerses.includes(v.number)
-                        ? 'bg-primary/20 text-foreground'
-                        : selectedVerse !== null &&
-                            v.number >= selectedVerse &&
-                            v.number < selectedVerse + versesPerPage
-                          ? 'bg-accent text-accent-foreground'
-                          : 'text-foreground hover:bg-accent/50'
-                    }`}
+                    className={`w-full rounded-md px-3 py-1.5 text-left text-sm leading-relaxed transition-colors ${projectedVerses.includes(v.number)
+                      ? 'bg-primary/20 text-foreground'
+                      : selectedVerse !== null &&
+                        v.number >= selectedVerse &&
+                        v.number < selectedVerse + versesPerPage
+                        ? 'bg-accent text-accent-foreground'
+                        : 'text-foreground hover:bg-accent/50'
+                      }`}
                   >
                     <span className="mr-1.5 text-xs text-muted-foreground">{v.number}</span>
                     {v.text}
@@ -288,7 +287,7 @@ export const ChapterReader = memo(function ChapterReader({
             }}
           />
           <div
-            className="fixed z-50 min-w-[160px] overflow-hidden rounded-md border border-border bg-popover p-1 shadow-md"
+            className="fixed z-50 min-w-40 overflow-hidden rounded-md border border-border bg-popover p-1 shadow-md"
             style={{ left: contextMenu.x, top: contextMenu.y }}
           >
             <button
@@ -307,11 +306,10 @@ export const ChapterReader = memo(function ChapterReader({
               }}
             >
               <Star
-                className={`h-4 w-4 ${
-                  bookmarks.has(bookmarkKey(contextMenu.verse.number))
-                    ? 'fill-yellow-400 text-yellow-400'
-                    : ''
-                }`}
+                className={`h-4 w-4 ${bookmarks.has(bookmarkKey(contextMenu.verse.number))
+                  ? 'fill-yellow-400 text-yellow-400'
+                  : ''
+                  }`}
               />
               {bookmarks.has(bookmarkKey(contextMenu.verse.number))
                 ? t('bible.unbookmark')

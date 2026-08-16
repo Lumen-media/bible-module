@@ -1,3 +1,4 @@
+import { Button } from '@lumen-media/module-sdk/ui';
 import { History, Trash2 } from 'lucide-react';
 import { memo, useMemo } from 'react';
 import { BOOKS } from '../data/store.js';
@@ -75,14 +76,16 @@ export const HistoryPanel = memo(function HistoryPanel({ t }: { t: TFunction }) 
         <span className="text-xs text-muted-foreground">
           {history.length} {t('bible.history').toLowerCase()}
         </span>
-        <button
+        <Button
+          size="icon-sm"
+          variant="ghost"
           type="button"
           onClick={clearHistory}
           className="ml-auto rounded p-1 text-muted-foreground/60 transition-colors hover:text-destructive"
           title={t('bible.clear-history')}
         >
           <Trash2 className="h-3.5 w-3.5" />
-        </button>
+        </Button>
       </div>
       <VersesList
         items={items}
