@@ -103,10 +103,11 @@ const VersesListInner = forwardRef<VersesListHandle, VersesListProps>(function V
                   onClick(virtualItem.index);
                 }}
                 onMouseEnter={() => onFocusIndex?.(virtualItem.index)}
-                className={`flex h-full w-full flex-col justify-center overflow-hidden rounded-md border px-3 py-2 text-left text-sm transition-colors outline-none focus:outline-none focus-visible:outline-none ${isFocused
+                className={`flex h-full w-full flex-col justify-center overflow-hidden rounded-md border px-3 py-2 text-left text-sm transition-colors outline-none focus:outline-none focus-visible:outline-none ${
+                  isFocused
                     ? 'border-primary bg-accent text-accent-foreground'
                     : 'border-border bg-card text-card-foreground hover:bg-accent hover:text-accent-foreground'
-                  }`}
+                }`}
               >
                 <div className="flex items-center gap-2">
                   <span className="truncate font-medium">
@@ -114,7 +115,9 @@ const VersesListInner = forwardRef<VersesListHandle, VersesListProps>(function V
                     {r.verse}
                     {r.verseEnd != null && r.verseEnd !== r.verse ? `-${r.verseEnd}` : ''}
                   </span>
-                  <span className="shrink-0 text-xs text-muted-foreground">{displayVersion(r.version)}</span>
+                  <span className="shrink-0 text-xs text-muted-foreground">
+                    {displayVersion(r.version)}
+                  </span>
                   {suffix && <span className="ml-auto shrink-0">{suffix(virtualItem.index)}</span>}
                 </div>
                 {r.text && <p className="mt-0.5 line-clamp-1 text-muted-foreground">{r.text}</p>}

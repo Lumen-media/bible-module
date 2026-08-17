@@ -25,6 +25,7 @@ import {
   insertHistory,
   rebuildFts,
   searchVerses,
+  setSetting,
   setVersionLanguage,
 } from './data/database.js';
 import { downloadVersion, hasAnyCache } from './data/downloader.js';
@@ -88,6 +89,9 @@ export const ALL_VERSIONS = [
 ];
 
 export const UPDATED_VERSIONS: string[] = [];
+
+export const BACKGROUND_IMAGE_URL =
+  'https://images.unsplash.com/photo-1642022143908-fe7e3160a56e?q=80&w=1470&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D';
 
 export function staticVersionLanguage(version: string): string {
   return ALL_VERSIONS.find((v) => v.id === version)?.language ?? 'pt-br';
@@ -493,11 +497,15 @@ export const useBibleStore = create<BibleStore>((set, get) => ({
       }
 
       const pending: Partial<BibleState> = {};
-
-      if (restoredVersion && downloadedList.includes(restoredVersion)) {
-        pending.version = restoredVersion;
-      } else if (downloadedList.length > 0) {
-        pending.version = downloadedList[0];
+      if (downloadedList.length > 0) {
+        if (restoredVersion && downloadedList.includes(restoredVersion)) {
+          pending.version = restoredVersion;
+        } else {
+          pending.version = downloadedList[0];
+        }
+      } else {
+        const defaultVersions = getDefaultVersions(navigator.language);
+        pending.version = defaultVersions[0];
       }
 
       if (pending.version) {
@@ -670,10 +678,15 @@ export const useBibleStore = create<BibleStore>((set, get) => ({
 
       const pending: Partial<BibleState> = {};
 
-      if (restoredVersion && downloadedList.includes(restoredVersion)) {
-        pending.version = restoredVersion;
-      } else if (downloadedList.length > 0) {
-        pending.version = downloadedList[0];
+      if (downloadedList.length > 0) {
+        if (restoredVersion && downloadedList.includes(restoredVersion)) {
+          pending.version = restoredVersion;
+        } else {
+          pending.version = downloadedList[0];
+        }
+      } else {
+        const defaultVersions = getDefaultVersions(navigator.language);
+        pending.version = defaultVersions[0];
       }
 
       if (pending.version) {
@@ -772,6 +785,42 @@ export const useBibleStore = create<BibleStore>((set, get) => ({
       set({ profileBackground: bg });
       if (bg) json.set('profileBackground', bg).catch(() => {});
     });
+
+    const bgImageSaved = await getSetting(db, 'bgImageSaved');
+    if (!bgImageSaved) {
+      try {
+        await themes!.addBackground({
+          source: { type: 'url', url: BACKGROUND_IMAGE_URL },
+          name: 'Imagem de fundo personalizada',
+        });
+        await setSetting(db, 'bgImageSaved', 'true');
+      } catch (e) {
+        console.error('[bible] Failed to save background image:', e);
+      }
+    }
+
+    try {
+      const defaultBg = themes!.defaultBackground();
+      const currentBg = get().profileBackground;
+
+      if (currentBg?.src && defaultBg?.src && currentBg.src !== defaultBg.src) {
+        set({ profileBackground: null });
+        if (json) {
+          json.set('profileBackground', null).catch(() => {});
+        }
+      } else if (currentBg?.src && !defaultBg?.src) {
+        set({ profileBackground: null });
+        if (json) {
+          json.set('profileBackground', null).catch(() => {});
+        }
+      }
+    } catch (e) {
+      console.error('[bible] Background contingency check error:', e);
+      set({ profileBackground: null });
+      if (json) {
+        json.set('profileBackground', null).catch(() => {});
+      }
+    }
   },
 
   setVersion: async (version) => {
