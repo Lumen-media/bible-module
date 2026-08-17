@@ -544,6 +544,13 @@ export const useBibleStore = create<BibleStore>((set, get) => ({
           needsChapterLoad = lastPos;
         }
       }
+      if (!pending.selectedBook) {
+        const firstBook = BOOKS[0];
+        pending.selectedBook = firstBook;
+        pending.chapter = 1;
+        pending.selectedVerse = 1;
+        needsChapterLoad = { bookId: firstBook.id, chapter: 1, verse: 1 };
+      }
 
       pending.versesPerPage = vpp;
       pending.downloadedVersionList = downloadedList;
@@ -724,6 +731,13 @@ export const useBibleStore = create<BibleStore>((set, get) => ({
           pending.selectedVerse = lastPos.verse ?? 1;
           needsChapterLoad = lastPos;
         }
+      }
+      if (!pending.selectedBook) {
+        const firstBook = BOOKS[0];
+        pending.selectedBook = firstBook;
+        pending.chapter = 1;
+        pending.selectedVerse = 1;
+        needsChapterLoad = { bookId: firstBook.id, chapter: 1, verse: 1 };
       }
 
       pending.versesPerPage = vpp;
@@ -1330,7 +1344,7 @@ async function _backgroundEnsureVersions() {
       const needsDl = needsDownload.includes(v);
 
       if (needsDl) {
-        const ok = await downloadVersion(
+        await downloadVersion(
           fs,
           net,
           v,
@@ -1349,10 +1363,6 @@ async function _backgroundEnsureVersions() {
             }
           }
         );
-        if (!ok) {
-          globalCurrent += totalChaptersPerVersion;
-          return;
-        }
         await rebuildFts(sqlite, v).catch(() => {});
         await setVersionLanguage(sqlite, v, staticVersionLanguage(v)).catch(() => {});
       } else {
@@ -1378,4 +1388,9 @@ async function _backgroundEnsureVersions() {
   }
 
   useBibleStore.setState({ downloading: false, dlCurrent: 0, dlTotal: 0, dlVersion: '' });
+
+  const state = useBibleStore.getState();
+  if (state.selectedBook && !state.verses) {
+    state.loadChapter(state.selectedBook.id, state.chapter);
+  }
 }

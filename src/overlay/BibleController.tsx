@@ -753,7 +753,7 @@ const Header = memo(function Header({
         flushSync(apply);
       });
       vt.finished
-        .catch(() => {})
+        .catch(() => { })
         .finally(() => {
           vtActiveRef.current = false;
           delete document.documentElement.dataset.vtDir;
@@ -956,8 +956,8 @@ export function BibleController({ close, goToBook, goToChapter, goToVerse }: Bib
         <span className="text-sm">
           {downloading
             ? tFn('bible.downloading', {
-                version: dlVersion.split(', ').map(displayVersion).join(', '),
-              })
+              version: dlVersion.split(', ').map(displayVersion).join(', '),
+            })
             : tFn('bible.preparing')}
         </span>
       </div>
@@ -966,15 +966,11 @@ export function BibleController({ close, goToBook, goToChapter, goToVerse }: Bib
 
   return (
     <div className="flex h-full flex-col bg-background text-foreground">
+      <Header close={close} t={tFn} searchQuery={searchQuery} setSearchQuery={setSearchQuery} />
+
       <DownloadProgress
-        visible={downloading && dlTotal > 0}
-        current={dlCurrent}
-        total={dlTotal}
-        version={dlVersion}
         t={tFn}
       />
-
-      <Header close={close} t={tFn} searchQuery={searchQuery} setSearchQuery={setSearchQuery} />
 
       <div className="flex flex-1 overflow-hidden">
         <Sidebar

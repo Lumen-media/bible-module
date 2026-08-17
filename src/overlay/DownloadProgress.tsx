@@ -1,41 +1,21 @@
 import { Progress } from '@lumen-media/module-sdk/ui';
-import { Download } from 'lucide-react';
-import { memo } from 'react';
+import { memo, useState } from 'react';
 import type { TFunction } from '../i18n.js';
-import { displayVersion } from '../lib/utils.js';
 
-interface DownloadProgressProps {
-  visible: boolean;
-  current: number;
-  total: number;
-  version: string;
-  t: TFunction;
-}
+export const DownloadProgress = memo(function DownloadProgress({ t }: { t: TFunction }) {
+  const [state, setState] = useState({
+    downloading: false,
+    dlCurrent: 0,
+    dlTotal: 0,
+    dlVersion: '',
+  });
 
-export const DownloadProgress = memo(function DownloadProgress({
-  visible,
-  current,
-  total,
-  version,
-  t,
-}: DownloadProgressProps) {
-  if (!visible) return null;
+  if (!state.downloading || state.dlTotal <= 0) return null;
 
-  const pct = total > 0 ? Math.round((current / total) * 100) : 0;
+  const pct = state.dlTotal > 0 ? Math.round((state.dlCurrent / state.dlTotal) * 100) : 0;
 
   return (
     <div className="absolute inset-x-0 top-0 z-40">
-      <div className="flex items-center gap-2 bg-primary/10 px-4 py-1.5 text-xs text-primary">
-        <Download className="h-3.5 w-3.5 animate-pulse" />
-        <span>
-          {t('bible.download-progress', {
-            version: displayVersion(version),
-            current: String(current),
-            total: String(total),
-          })}
-        </span>
-        <span className="font-mono tabular-nums">{pct}%</span>
-      </div>
       <Progress value={pct} className="h-1 rounded-none" />
     </div>
   );
