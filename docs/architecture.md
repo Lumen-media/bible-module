@@ -52,12 +52,14 @@ src/
 │   ├── es.ts                     # Spanish (Spain / neutral)
 │   └── es-AR.ts                  # Argentine Spanish (voseo)
 ├── hooks/
-│   └── useFitFontSize.ts         # Auto-fit font size for presenter text
+│   ├── useFitFontSize.ts         # Auto-fit font size for presenter text
+│   └── useLocale.ts              # Reactive UI locale (re-renders on profile change)
 ├── lib/
 │   ├── utils.ts                  # cn(), displayVersion(), getReferenceSize()
 │   └── color-analysis.ts         # Dominant color detection for backgrounds
 ├── overlay/
 │   ├── BibleController.tsx       # Root panel: header, tabs, state wiring
+│   ├── BiblePanel.tsx            # Locale-keyed wrapper (remount on language change)
 │   ├── BookGrid.tsx              # Testament-filtered book grid
 │   ├── ChapterReader.tsx         # Chapter reader (virtualized verses)
 │   ├── VersesList.tsx            # Virtualized verse rows
@@ -100,13 +102,49 @@ src/
    can be projected from Lumen's playback queue.
 7. Subscribes to `host.themes.onDefaultBackgroundChange` and pushes the result
    into the store (`setProfileBackground`).
-8. Initializes the store: `useBibleStore.getState().init({ ... })` with all host
+8. Subscribes to `host.themes.onChange` (fires immediately with the current
+   theme) and applies it via `applyTheme` — see [Theme & profile reactivity](#theme--profile-reactivity).
+9. Initializes the store: `useBibleStore.getState().init({ ... })` with all host
    services (fs, net, json, sqlite factory, presentation, themes, ui, fonts,
    events, t, hostWindow, locale).
-9. Clears projection when Lumen emits `module:presenter-clear` or
-   `module:presenter-window-closed`.
+10. Clears projection when Lumen emits `module:presenter-clear` or
+    `module:presenter-window-closed`.
 
-**`onunload()`:** disposes the theme subscription and removes the injected style.
+**`onunload()`:** disposes the theme subscriptions and removes the injected style.
+
+---
+
+## 3.1. Theme & Profile Reactivity
+
+Profile changes (language, accent, color mode, default background) are broadcast
+by Lumen to every window via `host.themes.onChange`. The module reacts in three
+layers:
+
+- **CSS tokens** — `applyTheme` (in `main.ts`) sets `--bible-accent` from
+  `ThemeRef.accentHex`, a `data-bible-color-mode` attribute and `bible-light` /
+  `bible-dark` classes from `colorMode`. Declarative styles can consume
+  `var(--bible-accent)` (fallback defined in `styles.css`). Since the module's
+  Tailwind tokens already map to Lumen's CSS variables, the host re-themes the
+  whole UI on its own.
+- **Language / re-translation** — when `ThemeRef.language` changes, `main.ts`
+  calls `setupI18n(language)` and updates the store (`setAppLocale`). The UI is
+  **reloaded**: the panel is registered through `BiblePanel`, which subscribes
+  via `useLocale()` and keys `BibleController` by the locale, forcing a full
+  remount so every memoized component re-translates. The presenter
+  (`BibleSlide`) subscribes through `useLocale()` as well, re-rendering its
+  localized strings in place.
+- **Default background** — handled separately by
+  `onDefaultBackgroundChange` → `setProfileBackground` (store), which the
+  preview pane and slide consume reactively.
+
+The module only imports the SDK through `@lumen-media/module-sdk` and
+`@lumen-media/module-sdk/ui` — both mapped by the host's import map. The
+`@lumen-media/module-sdk/hooks` subpath is **not** resolved by the runtime, so
+hooks like `useTheme` must not be used; all theme data flows through
+`host.themes.onChange` (root import) into CSS tokens + the store. The `t()`
+resolver in `i18n.ts` prefers the explicitly configured locale (`setupI18n`)
+over `detectLocale()`, and exposes `currentLocale()` / `subscribeLocale()` for
+reactive subscriptions.
 
 ---
 
@@ -287,8 +325,11 @@ Six locales: `en`, `en-GB`, `pt-BR`, `pt-PT`, `es`, `es-AR`.
   `es` → `es`, `es-ar` → `es-AR`.
 - `resolve(locale)` — alias lookup first, then language-prefix fallback, else
   English.
-- `t(key, params?)` — resolves against `detectLocale()` (document `<html lang>`
-  or `navigator.language`) and interpolates `{param}` placeholders.
+- `setupI18n(locale)` — sets the active locale (notifies `subscribeLocale`
+  listeners); `currentLocale()` reads it back.
+- `t(key, params?)` — resolves against the configured locale (`setupI18n`), then
+  falls back to `detectLocale()` (document `<html lang>` or `navigator.language`)
+  and finally English, and interpolates `{param}` placeholders.
 - `tForVersion(versionLang, key)` — used for book names/abbreviations tied to the
   **translation's** language (e.g. an English KJV shows English book names even
   when the UI is Portuguese), falling back to English.
