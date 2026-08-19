@@ -92,12 +92,16 @@ const VersionTab = memo(function VersionTab({
                   type="button"
                   onClick={(e) => {
                     e.stopPropagation();
-                    const prev = useBibleStore.getState().displayedTabs;
+                    const state = useBibleStore.getState();
+                    const prev = state.displayedTabs;
                     const idx = prev.indexOf(id);
                     if (idx >= 0) {
                       const next = [...prev];
                       next[idx] = d;
                       setDisplayedTabs(next);
+                      if (state.version === id) {
+                        onSelect(d);
+                      }
                     }
                   }}
                   className="flex w-full items-center rounded px-2 py-1 text-xs text-muted-foreground hover:bg-accent hover:text-accent-foreground"
