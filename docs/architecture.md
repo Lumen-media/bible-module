@@ -1,19 +1,29 @@
-# Bible Module — Architecture Plan
+# Bible Module — Technical Documentation
+
+Technical reference for the `com.bible-module` Lumen module. This doc describes
+the actual implementation: surfaces, data pipeline, state management,
+internationalization and build tooling. For a non-technical overview, see the
+project `README.md`. For the feature backlog, see `docs/FEATURES.md`.
+
+---
 
 ## 1. Overview
 
-Bible module for Lumen with two surfaces:
+The module is a full offline Bible reader for [Lumen](https://github.com/anomalyco/lumen)
+with two surfaces:
 
-- **Overlay** (`host.overlay`): operator control interface — book grid,
-  navigation, search, verse selection. Detached, standalone window.
-- **Presenter** (`host.presentation`): audience output — displays the selected
-  text in large font, without navigation elements.
+- **Overlay / control** — panel `bible-controller` registered in the
+  `surface.window` slot. This is the operator UI: book grid, chapter reader,
+  full-text search, favorites, history, version manager and preferences.
+  Opened as a detached, undecorated window.
+- **Presenter / audience** — component `bible-slide` registered in the
+  `presenter.content` slot. Renders only the projected text on the public
+  screen, without navigation.
 
-Default versions: **NAA** (Nova Almeida Atualizada), **ARA** (Almeida Revista e
-Atualizada), and **NVI** (Nova Versão Internacional). Additional versions may be
-added in the future. Internationalized UI (PT, EN, ES). Data is downloaded
-from the [midvash API](https://api.midvash.com) and stored locally in SQLite
-via `host.data.sqlite()`, with raw JSON cache via `host.fs`.
+Text is downloaded from an R2 CDN (primary) or the [midvash API](https://api.midvash.com)
+(fallback), cached as JSON files in `host.fs` and imported into a module-scoped
+SQLite database (`host.data.sqlite()`) with an FTS5 index for search. All UI and
+book names are localized in six locales.
 
 ---
 
@@ -21,488 +31,377 @@ via `host.data.sqlite()`, with raw JSON cache via `host.fs`.
 
 ```
 src/
+├── main.ts                       # Plugin entry point (LumenPlugin)
+├── store.ts                      # Zustand store: state, actions, auto-ensure
+├── search.ts                     # In-memory MiniSearch index (search panel)
+├── i18n.ts                       # Locale resolution, t() / tForVersion()
+├── styles.css                    # Global styles injected via ?inline
 ├── data/
-│   ├── downloader.ts          # Parallel download of translations
-│   ├── schema.ts              # SQLite migrations
-│   ├── store.ts               # Queries and local DB operations
-│   └── types.ts               # Bible data types
+│   ├── types.ts                  # Book, Chapter, Verse, HistoryEntry...
+│   ├── store.ts                  # BOOKS catalog, JSON cache + position helpers
+│   ├── database.ts               # SQLite migrations, queries, FTS5, history
+│   ├── downloader.ts             # Network download (R2 + midvash fallback)
+│   ├── ref.ts                    # parseReference("gn 1:2") parser
+│   ├── settings.ts               # BibleSettings types + defaults
+│   └── settings-persist.ts       # Debounced settings persistence
 ├── i18n/
-│   ├── en.ts
-│   ├── pt-BR.ts
-│   └── es.ts                  # Spanish support
+│   ├── en.ts                     # English (canonical, source of truth)
+│   ├── en-GB.ts                  # British English
+│   ├── pt-BR.ts                  # Portuguese (Brazil)
+│   ├── pt-PT.ts                  # European Portuguese
+│   ├── es.ts                     # Spanish (Spain / neutral)
+│   └── es-AR.ts                  # Argentine Spanish (voseo)
+├── hooks/
+│   └── useFitFontSize.ts         # Auto-fit font size for presenter text
+├── lib/
+│   ├── utils.ts                  # cn(), displayVersion(), getReferenceSize()
+│   └── color-analysis.ts         # Dominant color detection for backgrounds
 ├── overlay/
-│   ├── BibleController.tsx     # Main overlay panel (book grid + reading)
-│   ├── BookGrid.tsx            # Periodic-table-style book grid
-│   ├── ChapterReader.tsx       # Chapter reader (overlay sidebar)
-│   ├── VersionSelector.tsx     # Version selector
-│   ├── QuickSearch.tsx         # Quick search by book initial / "gn 1"
-│   ├── DownloadProgress.tsx    # Discreet progress bar at the top
-│   └── SearchPanel.tsx         # Full-text search panel
-├── presenter/
-│   └── BibleSlide.tsx          # Presenter slide (large text for the audience)
-├── commands.ts                 # Palette command registration
-├── i18n.ts
-├── main.ts                     # Plugin entry point
-└── styles.css
+│   ├── BibleController.tsx       # Root panel: header, tabs, state wiring
+│   ├── BookGrid.tsx              # Testament-filtered book grid
+│   ├── ChapterReader.tsx         # Chapter reader (virtualized verses)
+│   ├── VersesList.tsx            # Virtualized verse rows
+│   ├── ChapterPreview.tsx        # Chapter selector / preview
+│   ├── QuickSearch.tsx           # Reference quick-search ("gn 1:2")
+│   ├── SearchPanel.tsx           # Full-text search results
+│   ├── FavoritesPanel.tsx        # Bookmark list
+│   ├── HistoryPanel.tsx          # Reading history
+│   ├── SettingsPanel.tsx         # UI preferences section
+│   ├── PreferencesModal.tsx      # Preferences + version manager modal
+│   ├── PreviewPane.tsx           # Slide preview pane
+│   ├── SlidePreview.tsx          # Rendered slide mock
+│   ├── DownloadingState.tsx      # Full-screen loading state (GIF + messages)
+│   ├── DownloadProgress.tsx      # Top progress bar during downloads
+│   └── flags.tsx                 # Locale flag SVGs (BR, PT, UK, US, ES, AR)
+└── presenter/
+    └── BibleSlide.tsx            # Audience slide
 ```
 
 ---
 
-## 3. SQLite Schema
+## 3. Plugin Lifecycle (`main.ts`)
 
-```sql
--- Migration 1: verses
-CREATE TABLE verses (
-  id        INTEGER PRIMARY KEY AUTOINCREMENT,
-  version   TEXT NOT NULL,            -- 'naa', 'arc', 'ara', 'acf', 'as21', 'aa', 'jfaa'
-  book      TEXT NOT NULL,            -- book slug: 'genesis', 'exodus', etc.
-  chapter   INTEGER NOT NULL,
-  verse     INTEGER NOT NULL,
-  text      TEXT NOT NULL,
-  UNIQUE(version, book, chapter, verse)
-);
+`BibleModulePlugin extends LumenPlugin`.
 
-CREATE INDEX idx_verses_version_book_chapter
-  ON verses(version, book, chapter);
+**`onload(host)`:**
 
--- Migration 2: metadata
-CREATE TABLE metadata (
-  key   TEXT PRIMARY KEY,
-  value TEXT NOT NULL
-);
--- Stores: last_download, versions_downloaded (JSON array), etc.
+1. Injects `styles.css` into the document (via `css?inline` import).
+2. Calls `setupI18n(host.app.locale)`.
+3. In the main window, caches the host font list into `json` key `bibleFonts`.
+4. Registers the control panel `bible-controller` on `surface.window` and, in
+   the presenter window, the `bible-slide` component on `presenter.content`.
+5. Registers commands:
+   - `bible.open` / `bible.search` — open the surface window.
+   - `bible.clear` — `host.presentation.clear()`.
+   - Prefix commands `bbl` (+ `biblia` for pt/es locales, `bible` otherwise).
+     Each prefix parses the query with `parseReference()` and either opens the
+     surface window at a book/chapter/verse or offers a search fallback.
+6. Registers the queue action `bible.verse-queue` (main window only) so verses
+   can be projected from Lumen's playback queue.
+7. Subscribes to `host.themes.onDefaultBackgroundChange` and pushes the result
+   into the store (`setProfileBackground`).
+8. Initializes the store: `useBibleStore.getState().init({ ... })` with all host
+   services (fs, net, json, sqlite factory, presentation, themes, ui, fonts,
+   events, t, hostWindow, locale).
+9. Clears projection when Lumen emits `module:presenter-clear` or
+   `module:presenter-window-closed`.
 
--- Migration 3: search_index (FTS5)
-CREATE VIRTUAL TABLE verses_fts USING fts5(
-  text,
-  version UNINDEXED,
-  book    UNINDEXED,
-  chapter UNINDEXED,
-  verse   UNINDEXED,
-  content=verses,
-  content_rowid=id
-);
-
--- Triggers to keep FTS in sync
-CREATE TRIGGER verses_ai AFTER INSERT ON verses BEGIN
-  INSERT INTO verses_fts(rowid, text, version, book, chapter, verses)
-  VALUES (new.id, new.text, new.version, new.book, new.chapter, new.verse);
-END;
-```
+**`onunload()`:** disposes the theme subscription and removes the injected style.
 
 ---
 
-## 4. Data Layer
+## 4. Store (`src/store.ts`)
 
-### 4.1. Types (`types.ts`)
+The store is a Zustand store (`useBibleStore`). State and actions are typed by
+`BibleState` / `BibleActions`.
 
-```typescript
-interface Book {
-  id: string;          // slug: 'genesis'
-  name: string;        // translated name: 'Genesis'
-  chapters: number;    // total chapters
-  testament: 'old' | 'new';
-}
+### 4.1. Version catalog
 
-interface Version {
-  id: string;          // 'naa', 'arc', ...
-  name: string;        // 'Nova Almeida Atualizada'
-  language: string;    // 'pt'
-}
+- `ALL_VERSIONS` — 39 version descriptors `{ id, name, language }`, where
+  `language` is one of `pt-br`, `pt-pt`, `en-gb`, `en-us`, `es`.
+- `staticVersionLanguage(id)` — maps a version id to its language without DB
+  access (falls back to `pt-br`).
+- `DEFAULT_VERSIONS_BY_LOCALE` — default 3-version set per locale:
+  - `pt-BR` → `naa`, `ara`, `nvi`
+  - `pt-pt` → `bpt`, `naa`, `nvi`
+  - `en-us` / `en` → `en_kjv`, `niv`, `nlt`
+  - `en-gb` → `en_kjv`, `web`, `ylt`
+  - `es` → `es_rvr`, `rvr1960`, `ntv`
+- `getDefaultVersions(locale)` — exact match, case-insensitive match, then
+  prefix fallback (`pt-*` → pt-BR, `en-gb` → en-gb, `en` → en, `es` → es),
+  defaulting to pt-BR.
+- `UPDATED_VERSIONS` — currently empty; reserved for versions with pending
+  content updates (used to show an "update available" badge).
+- `chapterCache` — in-memory `Map` of `"version/book/chapter"` → verses. Cleared
+  whenever data changes (`setVersion`, after downloads, versions-ready).
 
-interface Chapter {
-  version: string;
-  book: string;
-  number: number;
-  verses: (Verse | null)[];  // 1-based index, null = nonexistent
-}
+### 4.2. Host services
 
-interface Verse {
-  number: number;
-  text: string;
-}
+Set by `init()`: `fs`, `net`, `json`, `sqlite`, `presentation`, `themes`, `ui`,
+`fonts`, `events`, plus `hostWindow` (`main` | `surface` | `presenter`) and
+`appLocale`. Persistence logic branches on `hostWindow === 'main'`.
 
-interface SearchResult {
-  version: string;
-  book: string;
-  chapter: number;
-  verse: number;
-  text: string;
-  snippet: string;
-}
-```
+### 4.3. Key actions
 
-### 4.2. Downloader (`downloader.ts`)
+- `init(services)` — stores services, opens SQLite, runs `initDatabase()`,
+  loads history, then (main window only) restores downloaded versions, last
+  position, verses-per-page, fonts, bookmarks and the full settings blob from
+  SQLite `settings` (preferred) or `json`. Picks the active version: restored
+  one if downloaded, first downloaded otherwise, or the locale default.
+  Finally triggers `_backgroundEnsureVersions()` and `_subscribeVersionsReady()`.
+- `setVersion(v)` — switches active version, resets `verses` to null, resolves
+  `versionLanguage` (DB → static), persists, clears chapter cache and reloads
+  the current chapter.
+- `loadChapter(book, chapter)` — serves from `chapterCache`, else SQLite
+  (`getChapterFromDb`), else the JSON cache (`getChapter`).
+- `setTestament`, `setTab`, `selectBook`, `setChapter`, `goTo`, `setSelectedVerse`
+  — navigation state.
+- `toggleBookmark` / `setBookmarks` — bookmarks kept in `json` key `bookmarks`
+  (a `Record<string, string>` keyed `version:book:chapter:verse`).
+- `recordHistory` / `clearHistory` — SQLite `history` table (limit 100 entries).
+- `downloadAndSetVersion(v)` / `downloadVersionOnly(v)` — manual download from
+  the version manager, inserting chapters into SQLite as they arrive.
+- `search(query)` — FTS5 search across all downloaded versions.
+- `setProjectedData` / `clearProjection` — holds the currently projected slide
+  payload.
 
-- Uses `host.net` to fetch translations from midvash.
-- Endpoints:
-  - `GET /v1/versions` → list of available versions
-  - `GET /v1/books` → list of books (use `?version=naa` — or the endpoint accepts `?language=pt`)
-  - `GET /v1/{version}/{book}/{chapter}` → individual chapter
-- Strategy:
-  1. Fetch book list (1 request).
-  2. For each version, fire parallel requests for all chapters.
-  3. Use `Promise.allSettled` with concurrency limit (e.g., 20 simultaneous).
-  4. Save raw JSON of each chapter in `host.fs` as backup (`{version}/{book}/{chapter}.json`).
-  5. Extract verses from JSON and insert in batches into SQLite via `INSERT OR IGNORE`.
-  6. Responsiveness: discreet progress bar at the top of the overlay, emitting
-     `host.events.emit('download:progress', { version, current, total })`.
-- Retry and resilience:
-  - Each chapter: 3 attempts with progressive backoff (1s, 3s, 5s).
-  - If it fails after 3 attempts, mark as failed and notify the user.
-  - **Resumable download**: the JSON saved in `host.fs` serves as a checkpoint.
-    On the next run, chapters with existing JSON are skipped (rehydrated
-    into the DB locally).
-  - If midvash is down, display "Service unavailable" notification and
-    offer retry.
-- "Redownload" button to force update (clears JSON + DB and downloads fresh).
+### 4.4. Settings
 
-### 4.3. Store (`store.ts`)
-
-```typescript
-// Initialization — checks if DB needs to be rehydrated from JSONs
-async function initDB(db: SqliteHandle, fs: FsAPI): Promise<void>
-
-// Download — fetches from midvash, inserts into DB and saves JSON
-async function downloadVersion(db: SqliteHandle, net: NetAPI, fs: FsAPI, versionId: string, books: Book[]): Promise<void>
-async function downloadAll(db: SqliteHandle, net: NetAPI, fs: FsAPI, versions: string[]): Promise<void>
-
-// Rehydration — if DB is empty but JSON exists, rebuild without downloading
-async function rehydrateFromCache(db: SqliteHandle, fs: FsAPI, versionId: string, books: Book[]): Promise<boolean>
-
-// Reading
-async function getChapter(db: SqliteHandle, version: string, book: string, chapter: number): Promise<Chapter>
-async function getBookList(db: SqliteHandle): Promise<Book[]>
-
-// Search
-async function search(db: SqliteHandle, query: string, version?: string): Promise<SearchResult[]>
-```
+Settings are typed in `data/settings.ts` (background, fontSize, fontFamily) and
+extended by `PersistedSettings` in `data/settings-persist.ts` (font weight/style,
+displayed tabs, version, uppercase, reference flags, font color, alignment,
+spacing, reference position, verse number style, ...). `persistSettings()` is
+debounced 500 ms and writes to **both** `json` (`bibleSettings`) and the SQLite
+`settings` table. Load order prefers SQLite over `json`.
 
 ---
 
-## 5. UI / Panels
+## 5. Download & Auto-Ensure Pipeline
 
-### 5.1. BibleController (Overlay `presenter.content`)
+### 5.1. Background auto-ensure (`store.ts`)
 
-Slot: `'presenter.content'` — projected via `host.overlay.project("bible-controller", { windowConfig, ... })`
+On startup (main window) the module ensures the locale's default versions are
+available:
 
-The overlay opens maximized, undecorated, like a standalone app. Layout
-split into two columns:
+1. Computes `needsDownload` (no JSON cache) and `needsSqlite` (JSON cache
+   present, not yet in SQLite) from `getPopulatedVersions()`.
+2. Acquires a cross-window lock in `localStorage` key `bibleAutoEnsureLock`
+   (2-minute expiry). If another window holds it, it skips.
+3. Downloads/imports versions with a worker pool (`CONCURRENT_VERSIONS = 3`).
+   A download streams chapters straight into SQLite via `insertChapterBatch`.
+4. Reports progress via `dlCurrent`/`dlTotal`/`dlVersion` state, throttled to
+   ~500 ms, and emits `bible:download-progress` on the host event bus.
+5. Marks completion by appending to the `downloadedVersions` JSON array and
+   emitting/announcing "versions ready":
+   - bus event `bible:versions-ready`
+   - `localStorage` key `bibleVersionsReady` (survives reloads; `storage`
+     events wake other windows).
 
-```
-┌──────────────────────────────────────────────────────────┐
-│  ████████████████░░░░░░░  Downloading NVI... (45%)       │ ← DownloadProgress (only shows during download)
-├──────────────────────────────────────────────────────────┤
-│  Bible  [NAA ▾]  [🔍 Search...]                          │ ← Top bar
-├────────────────────────────┬─────────────────────────────┤
-│                            │                             │
-│  ┌────┐ ┌────┐ ┌────┐     │  Genesis 1                  │
-│  │ Gn │ │ Ex │ │ Lv │     │                             │
-│  └────┘ └────┘ └────┘     │  1 In the beginning, God     │
-│  ┌────┐ ┌────┐ ┌────┐     │  created the heavens and     │
-│  │ Nm │ │ Dt │ │ Js │     │  the earth.                  │
-│  └────┘ └────┘ └────┘     │                             │
-│  ┌────┐ ┌────┐ ┌────┐     │  2 The earth was formless    │
-│  │ Jz │ │ Rt │ │ 1Sm │    │  and empty...                 │
-│  └────┘ └────┘ └────┘     │                             │
-│  ...               [OT ▼] │  [◀ 1] [2] [3] ... ▶]       │
-│                            │                             │
-│  Periodic-table-style     │  Selected chapter reader     │
-│  book grid                │                              │
-│                            │                             │
-├────────────────────────────┴─────────────────────────────┤
-│   [⏎ Project Genesis 1]  [📋 Copy selection]             │ ← Action bar
-└──────────────────────────────────────────────────────────┘
-```
+`_applyVersionsReady()` (triggered by the bus event or the storage event) syncs
+`downloadedVersionList`, rebuilds `displayedTabs`, picks a valid active version,
+clears the chapter cache and reloads the chapter — this is what keeps every open
+window consistent after a download finishes elsewhere.
 
-**QuickSearch (type-to-filter):**
-- Typing any alphanumeric key opens a selector at the top of the overlay.
-- Filters books by initial or partial name.
-- Accepts commands like `"gn"` → Genesis, `"gn 1"` → Genesis 1.
-- If a single character, shows a simplified grid with books starting with that letter.
-- Closes when clicking a book or pressing Escape.
+### 5.2. `downloadVersion()` (`data/downloader.ts`)
 
-**Overlay components:**
+Per version:
 
-| Component | Description |
-|------------|-----------|
-| `BookGrid` | Grid of buttons with book abbreviations (Gn, Ex, Lv...), filtered by testament (OT/NT) |
-| `ChapterReader` | Right sidebar with the selected chapter text, inter-chapter navigation |
-| `VersionSelector` | Top dropdown to change active version |
-| `QuickSearch` | Quick search by book initial / reference like "gn 1:2" |
-| `DownloadProgress` | Discreet top bar during download, visible but not intrusive |
-| `SearchPanel` | Full-text search with grouped results |
+- **Primary:** fetch each book from R2 (`R2_BASE`, `cache/{version}/{book}.json`
+  layout). A successful book fetch is written to `host.fs` and piped into SQLite
+  immediately.
+- **Fallback:** books that fail on R2 are fetched chapter-by-chapter from
+  midvash (`/v1/{version}/{book}/{chapter}`), buffered per book and flushed to
+  `host.fs` when complete.
+- Concurrency: 5 workers; 3 attempts per request with backoff
+  `[1000, 3000, 5000] ms`; 5 re-queues per failing chapter.
+- Progress reported every 15 completed items and always on completion.
+- Skipped books already cached in `host.fs` (`fs.exists`).
 
-**Usage flow:**
-1. Operator clicks a book in the grid → `ChapterReader` loads chapter 1
-2. Or types the book's initial → `QuickSearch` opens suggestions
-3. Navigates between chapters in the reader
-4. Clicks "Project" → sends text to the presenter
+### 5.3. `importVersionFromJson()` (`data/database.ts`)
 
-### 5.2. BibleSlide (Presenter `presenter.content`)
-
-Slot: `'presenter.content'` — projected via `host.presentation.project("bible-slide", { version, book, chapter, verses })`
-
-```
-┌─────────────────────────────────────┐
-│                                     │
-│                                     │
-│      Genesis 1 — NAA               │ ← Reference (small)
-│                                     │
-│   1 In the beginning, God created  │
-│     the heavens and the earth.     │
-│   2 The earth was formless and     │ ← Large, centered text
-│     empty; darkness covered        │
-│     the deep.                      │
-│   3 And God said, "Let there be    │
-│     light," and there was light.   │
-│                                     │
-│                                     │
-│                                     │
-└─────────────────────────────────────┘
-```
-
-- Large font, high contrast, no distractions
-- Reference at the top (Genesis 1 — NAA)
-- Numbered verses
-- Projected on the presenter (audience/projector screen)
+Rehydrates SQLite from an existing JSON cache (no network). Iterates the 66
+books, reads each `cache/{version}/{book}.json`, flattens chapters/verses into
+batches of 500 (`INSERT OR IGNORE`), stores the version language, yields to the
+main thread every 8 ms, and rebuilds the FTS index at the end.
 
 ---
 
-## 6. Lumen Integration
+## 6. Data Layer
 
-### 6.1. Overlay (Control)
+### 6.1. Canonical book catalog (`data/store.ts`)
 
-```typescript
-// Open the Bible control interface
-host.overlay.project("bible-controller", {
-  windowConfig: {
-    maximized: true,
-    resizable: false,
-    decorations: false,
-    title: "Bible",
-  },
-});
-```
+`BOOKS` — the 66 books with `{ id, name, chapters, testament, slug? }`. `name`
+is the Portuguese display name; per-locale names come from i18n keys
+`book.<id>`. The `slug` (e.g. `1-samuel`, `song-of-solomon`) is used for midvash
+URLs via `apiSlug()`. The JSON cache path helper is `bookPath(version, book)`
+→ `cache/{version}/{book}.json`.
 
-All operator interaction happens here: browse books, read chapters, search.
+### 6.2. SQLite (`data/database.ts`)
 
-### 6.2. Presenter (Public Output)
+Migrations (versions 1–8):
 
-```typescript
-// Project a chapter/verse on the presenter
-host.presentation.project("bible-slide", {
-  version: "naa",
-  book: "genesis",
-  bookName: "Genesis",
-  chapter: 1,
-  verses: [1, 2, 3],   // specific verses or null = entire chapter
-  range: "1-3",         // optional label: "vv. 1-3"
-});
+| v | Table | Purpose |
+|---|-------|---------|
+| 1 | `verses` | `(version, book, chapter, verse, text)` PK `(version, book, chapter, verse)` |
+| 2 | `download_state` | Legacy per-version chapter counters |
+| 4 | `chapter_downloads` | Per-(version, book, chapter) downloaded flag |
+| 5/6 | `versions` | `(version, language)` registry (book_names dropped in v6) |
+| 7 | `settings` | `(key, value)` KV store |
+| 8 | `history` | Reading history, capped at 100 rows |
 
-// Clear the presenter
-host.presentation.clear();
-```
+Plus a separate `verses_fts` virtual table created with FTS5
+(`tokenize='porter unicode61'`). If FTS5 is unavailable, search falls back to a
+`LIKE` scan.
 
-The presenter shows only clean text, with no navigation UI.
+Key functions: `getChapterFromDb`, `isVersionPopulated`, `getPopulatedVersions`,
+`getVersionLanguage`/`setVersionLanguage`, `insertChapterBatch`, `rebuildFts`,
+`getSetting`/`setSetting`, `getHistory`/`insertHistory`/`clearHistory`,
+`searchVerses`.
 
-### 6.3. Commands (Command Palette)
+### 6.3. Reference parser (`data/ref.ts`)
 
-| Command | Action |
-|---------|------|
-| `bible: open` | Open Bible overlay |
-| `bible: search [query]` | Open search in the overlay (with prefix) |
-| `bible: go-to [book] [chapter]` | Navigate directly to book/chapter in the overlay |
-| `bible: project [ref]` | Project reference directly on the presenter |
-| `bible: clear` | Clear presenter |
+`parseReference(query, books)` parses inputs like `gn 1:2`, `Genesis 1`, `1 João
+3` (accent-insensitive) by longest-match against book names, ids and localized
+`book.<id>` translations, then a chapter/verse regex. Used by prefix commands and
+QuickSearch.
 
-### 6.4. Events (Bus)
+### 6.4. JSON cache & positions (`data/store.ts`)
 
-- `bible:verse-selected` → `{ version, book, chapter, verse, text }`
-  - Allows other modules (e.g., lyric module) to insert verses into projects.
-- `bible:projected` → `{ version, book, chapter, verses }`
-  - Notifies that something has been projected.
-
-### 6.5. Queue Integration (Verse Actions)
-
-The module registers a queue action via `host.queue.registerAction` that allows
-verses to be added to Lumen's playback queue. When the queue reaches the action,
-the presenter opens automatically with the pre-configured verse.
-
-```typescript
-// Registered once in onload (main window only):
-host.queue.registerAction({
-  id: 'bible.verse-queue',
-  onFire(config) {
-    host.presentation.project('bible-slide', { data: config });
-  },
-});
-```
-
-The operator adds verses via a context menu in the `ChapterReader`:
-
-```typescript
-// From the context menu callback:
-host.queue.addTrigger?.('bible.verse-queue', {
-  version: 'nvi',
-  book: 'psalms',
-  bookName: 'Salmos',
-  chapter: 119,
-  verse: 3,
-  verseText: '...',
-  versionDisplayName: 'NVI',
-});
-```
-
-**Flow:**
-```
-Surface window                Main window                   Presenter
-─────────────                 ───────────                   ─────────
-Right-click verse →
-"Add to queue" clicked →
-queue.addTrigger() ──IPC──→  event listener fires
-                              inserts into queue table
-                              adds to entries store
-                                                           queue advances →
-                                                           action.onFire()
-                                                           presenter opens ←
-```
-
-**Key design decisions:**
-- Uses `registerAction`, not `registerTrigger` — the action is entirely
-  module-controlled. It does not appear in the queue panel UI.
-- The action's `onFire` reads the current presentation settings (font, background,
-  color) from the module store at the time of projection.
-- The verse entry persists in Lumen's `queue` table alongside regular media
-  items, surviving app reloads. On reload, it is restored via the
-  `queue-entries-store.loadFromDb()` method.
-- The `queue` host object is stored as a plain module-level variable
-  (`setModuleQueue` / `getModuleQueue`), not inside Zustand state, to avoid
-  performance overhead from reactive subscriptions.
+`getChapter(fs, ...)` reads a book file from `host.fs` and builds a sparse
+1-based verse array. `downloadedVersions`, `lastPosition`, `versesPerPage` live
+in `json`. `getSyncedVersions`/`setSyncedVersion` track per-version sync timestamps
+in `localStorage` (`bibleSyncedVersions`).
 
 ---
 
-## 7. Download and Cache
+## 7. Internationalization (`i18n.ts`)
 
-### 7.1. Download Flow
+Six locales: `en`, `en-GB`, `pt-BR`, `pt-PT`, `es`, `es-AR`.
 
-```mermaid
-flowchart TD
-    A[Module loaded] --> B{DB intact?}
-    B -->|No| C{JSON cache exists?}
-    B -->|Yes| G[Render UI]
-    C -->|Yes| D[Rehydrate DB from JSONs]
-    C -->|No| E[Start download]
-    D --> G
-    E --> F[Fetch /v1/books]
-    F --> H[For each version:]
-    H --> I[Fetch chapters in parallel]
-    I --> J[Save raw JSON to host.fs]
-    J --> K[Extract verses → INSERT into SQLite]
-    K --> L[Update metadata]
-    L --> G
-```
+- `en.ts` is the canonical source; `TranslationKey = keyof typeof en` gives full
+  type safety — every other locale file is a `Record<TranslationKey, string>`,
+  so missing keys fail at compile time.
+- `_translations` maps canonical locale ids to message maps.
+- `_alias` normalizes common forms: `pt` → `pt-BR`, `pt-br` → `pt-BR`,
+  `pt-pt` → `pt-PT`, `en` → `en`, `en-us` → `en`, `en-gb` → `en-GB`,
+  `es` → `es`, `es-ar` → `es-AR`.
+- `resolve(locale)` — alias lookup first, then language-prefix fallback, else
+  English.
+- `t(key, params?)` — resolves against `detectLocale()` (document `<html lang>`
+  or `navigator.language`) and interpolates `{param}` placeholders.
+- `tForVersion(versionLang, key)` — used for book names/abbreviations tied to the
+  **translation's** language (e.g. an English KJV shows English book names even
+  when the UI is Portuguese), falling back to English.
 
-### 7.2. Performance
-
-- ~1,036 chapters per version (NAA/NVI have fewer chapters than ARC/ARA).
-- 20 concurrent requests → ~50 seconds per version.
-- Each chapter ~2-5 KB → ~3-6 MB per version (~12 MB for NAA + ARA + NVI).
-- Raw JSON saved in `host.fs`: same size.
-- 3 attempts per chapter with backoff (1s, 3s, 5s).
-- Resumable download: JSON in `host.fs` serves as checkpoint.
-- Batch inserts of 100 verses → commit per batch.
-- Background download, responsive UI with progress bar at the top.
-- DB rehydration from JSONs is instantaneous. 
-- If midvash fails permanently: "Service unavailable" notification and retry button.
-
-### 7.3. Midvash API Details
-
-- Base URL: `https://api.midvash.com/v1`
-- Examples:
-  - `GET /v1/versions` → `["naa","arc","ara","acf",...]`
-  - `GET /v1/books?version=naa` → book list
-  - `GET /v1/{version}/{book}/{chapter}` → chapter
-- Cache: Cloudflare immutable for 1 year (`max-age=31536000`), no rate limit, no key.
-
-### 7.4. WindowConfig (Overlay Props)
-
-The Lumen module (`module-overlay-window.tsx`) was modified to support
-window configuration via props. Whenever `host.overlay.project()` is called,
-the overlay extracts `props.windowConfig` and applies:
-
-```typescript
-interface WindowConfig {
-  maximized?: boolean;
-  resizable?: boolean;
-  decorations?: boolean;
-  title?: string;
-  fullscreen?: boolean;
-  width?: number;
-  height?: number;
-  minWidth?: number;
-  minHeight?: number;
-}
-```
-
-These configs are reapplied on each `project()`.
+Version display names use `displayVersion(id)` (`lib/utils.ts`), which strips the
+locale prefix (`en_kjv` → `KJV`, `es_rvr` → `RVR`) based on
+`ALL_VERSIONS`.
 
 ---
 
-## 8. Internationalization
+## 8. Search
 
-### 8.1. Languages
+Two complementary search paths:
 
-| Key | Language |
-|-------|--------|
-| `en`  | English |
-| `pt-BR` | Portuguese (Brazil) |
-| `es`  | Spanish |
-
-### 8.2. Strings
-
-```typescript
-// en.ts
-{
-  "bible.title": "Bible",
-  "bible.search": "Search",
-  "bible.go-to": "Go to...",
-  "bible.select-version": "Select Version",
-  "bible.downloading": "Downloading {version}...",
-  "bible.download-complete": "Download complete",
-  "bible.no-results": "No results found",
-  // ... book names
-  "book.genesis": "Genesis",
-  "book.exodus": "Exodus",
-  // ...
-}
-```
+- **DB FTS5** (`searchVerses`, used by `store.search`) — builds an AND query of
+  quoted terms against `verses_fts`, ranked by relevance, restricted to the
+  downloaded versions. Falls back to `LIKE` if FTS5 is missing.
+- **In-memory MiniSearch** (`search.ts`) — `ensureIndex(fs, version)` lazily
+  builds a full-text index from the JSON cache of the active version (fuzzy
+  0.15, prefix matching); `searchIndex(query, version?)` returns up to 50
+  results. Used by the search panel for instant, incremental results.
 
 ---
 
-## 9. Implementation Plan
+## 9. Overlay Components
 
-| Phase | Task | Estimate |
-|------|--------|------------|
-| 1 | SQLite schema + migrations + store.ts (CRUD + rehydration) | 1 day |
-| 2 | Downloader with parallelism, retry, resumable, JSON cache | 1 day |
-| 3 | BibleController + BookGrid + QuickSearch + ChapterReader | 1 day |
-| 4 | DownloadProgress (top bar) + VersionSelector | 0.5 day |
-| 5 | BibleSlide (presenter) + overlay → presenter flow | 0.5 day |
-| 6 | SearchPanel with FTS5 | 0.5 day |
-| 7 | i18n (es + book names in PT/EN/ES) | 0.5 day |
-| 8 | Commands + Bus events + error handling + notifications | 0.5 day |
-| **Total** | | **~5.5 days** |
+| Component | Role |
+|-----------|------|
+| `BibleController` | Root panel: header with version tabs, tab navigation (Browse / Search / Favorites / History), wires store actions to children; opens Preferences modal |
+| `BookGrid` | Grid of book tiles (abbreviated or full names), filtered by testament, locale-aware |
+| `ChapterReader` | Main reading area: header with reference, previous/next chapter, per-verse interaction (select, project, favorite, add to queue) |
+| `VersesList` | `@tanstack/react-virtual` list of verse rows for a chapter |
+| `ChapterPreview` | Chapter selector / preview dialog |
+| `QuickSearch` | Type-to-navigate: resolves references via `parseReference` |
+| `SearchPanel` | MiniSearch results across the active version, clickable to open a chapter/verse |
+| `FavoritesPanel` | Bookmarks read from the `bookmarks` JSON record |
+| `HistoryPanel` | Reading history from the SQLite `history` table |
+| `SettingsPanel` | Typography/reading preferences section |
+| `PreferencesModal` | Combined modal: appearance settings + version manager (language filter with flags, install/update, storage sizes) |
+| `PreviewPane` / `SlidePreview` | Live preview of how the current selection would render on the presenter |
+| `DownloadingState` | Full-screen overlay while versions download (animated GIF + rotating messages, animejs) |
+| `DownloadProgress` | Top progress bar bound to `dlCurrent`/`dlTotal` |
+| `flags.tsx` | Inline SVG flags for BR, PT, UK, US, ES, AR |
+
+The header's version tabs (see `displayedTabs`) let the operator switch between
+up to three active translations instantly.
 
 ---
 
-## 10. Technical Notes
+## 10. Presenter (`presenter/BibleSlide.tsx`)
 
-- The SDK is NOT an external npm package — it is embedded in the Lumen source code.
-- `host.data.sqlite()` returns a lazy `SqliteHandle` (opens on first call). Only call after `onload`.
-- `host.settings` is **in-memory only** (does not persist). Use `host.data.json` for persistent settings if needed.
-- Each module has an isolated data scope. SQLite is module-specific.
-- Network URLs must be allowed in `manifest.json` → `permissions.network`.
-- The Lumen file `module-overlay-window.tsx` was modified to support
-  `windowConfig` via overlay props. This modification is required for
-  the Bible module to function.
+Registered on `presenter.content` as `bible-slide`. Receives a `data` payload
+via `presentation.project('bible-slide', { data })` (see the queue action in
+`main.ts`). Features:
+
+- Auto-fit font size via `useFitFontSize` so long passages never overflow.
+- Optional background image + black overlay with `backgroundOpacity`; falls back
+  to the store's `background`/`profileBackground`.
+- Typography driven by the projected payload (font family/weight, color, text
+  align, line spacing, uppercase).
+- Reference modes: `inline` reference header or `showReferenceOnly` (big
+  book/chapter/verse label), with `verseNumberStyle` superscript/inline/hidden.
+- Animated enter/exit (CSS `verse-enter`/`verse-exit`) between passages.
+- Empty state prompts the operator to select verses.
+
+`showVersion`, `abbreviatedBooks` and reference label use `tForVersion` so the
+label language follows the **translation**, not the UI locale.
+
+---
+
+## 11. Projection & Queue Flow
+
+1. Operator selects verses in `ChapterReader` and triggers "Project" (or adds
+   them to Lumen's queue).
+2. Projection payload (`version`, `book`, `bookName`, `chapter`, `verses`,
+   `text`, plus all typography settings) is stored via `setProjectedData`.
+3. The main window calls `host.presentation.project('bible-slide', { data })`;
+   the presenter window renders `BibleSlide` with it.
+4. `bible.verse-queue` queue action (registered in `main.ts`) builds the same
+   payload from the queue config, so queued verses auto-open on the presenter
+   when the queue reaches them.
+5. `module:presenter-clear` / `module:presenter-window-closed` reset the
+   projection.
+
+---
+
+## 12. Tooling
+
+| Command | Purpose |
+|---------|---------|
+| `pnpm dev` | `lumen-module dev` — watch/dev server |
+| `pnpm build` | `lumen-module build` — bundle to `dist/` |
+| `pnpm pack` | build + `lumen-module pack` — distributable module file |
+| `pnpm validate` | `lumen-module validate` — manifest checks |
+| `pnpm lint` / `pnpm format` | `biome check --write src/` / `biome format --write src/` |
+
+Type checking: `npx tsc --noEmit`. Manifest (`manifest.json`) declares the
+`^0.15.0` API, MIT license, entry `main.js`, and network permissions for
+`api.midvash.com`, the R2 bucket, and `images.unsplash.com`.
+
+## 13. Conventions & Notes
+
+- **Version ids** use the midvash slug convention; locale is inferred by
+  `staticVersionLanguage` and persisted in the `versions` table.
+- **JSON cache layout** is `cache/{version}/{book}.json` with
+  `{ book, bookName, chapters: [{ number, verses: [{ number, text }] }] }`.
+- **Data scope** is module-isolated: SQLite is per-module, so no cross-module
+  table conflicts.
+- **Cross-window sync** relies on the host event bus plus `localStorage`
+  (lock + ready marker); keep both channels when adding new sync behavior.
+- **Settings** are dual-persisted (SQLite `settings` + `json`) — SQLite is
+  authoritative on load.
+- The module registers exactly one panel per slot (`surface.window`,
+  `presenter.content`); the surface window is opened via `host.surface.openWindow`.
+- `docs/FEATURES.md` lists upcoming ideas; `README.md` is the public-facing,
+  non-technical overview.

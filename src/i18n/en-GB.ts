@@ -1,4 +1,6 @@
-const messages = {
+import type { TranslationKeys } from './en.js';
+
+const messages: Record<TranslationKeys, string> = {
   'bible.name': 'Bible',
   'bible.description':
     'A complete Bible reader with multiple translations, offline search, and presenter projection.',
@@ -34,11 +36,11 @@ const messages = {
   'bible.search-book': 'Search book...',
   'bible.go-back': 'Go back',
   'bible.network-error': 'Network error, check your connection',
-  'bible.initializing': 'Initializing...',
+  'bible.initializing': 'Initialising...',
   'bible.preparing': 'Preparing...',
   'bible.dl-msg-1': 'Downloading the default versions...',
   'bible.dl-msg-2': 'Fetching the biblical texts...',
-  'bible.dl-msg-3': 'Organizing your library...',
+  'bible.dl-msg-3': 'Organising your library...',
   'bible.dl-msg-4': 'Almost there, getting your Bible ready...',
   'bible.search-placeholder': 'Search...',
   'bible.loading-verses': 'Loading verses...',
@@ -51,7 +53,7 @@ const messages = {
   'bible.font-family': 'Font',
   'bible.typography': 'Typography',
   'bible.typography-desc':
-    'Control font family, size, weight, color and spacing for Bible text on slides',
+    'Control font family, size, weight, colour and spacing for Bible text on slides',
   'bible.preview': 'Preview',
   'bible.live-preview': 'Live Preview',
   'bible.font': 'Font',
@@ -91,8 +93,8 @@ const messages = {
   'bible.show-version-desc': 'Display the Bible translation name on slides',
   'bible.abbreviated-books': 'Abbreviated books',
   'bible.abbreviated-books-desc': 'Use abbreviated book names on slides',
-  'bible.font-color': 'Font color',
-  'bible.font-color-desc': 'Set the text color for projected slides',
+  'bible.font-color': 'Font colour',
+  'bible.font-color-desc': 'Set the text colour for projected slides',
   'bible.text-align': 'Text alignment',
   'bible.text-align-desc': 'Horizontal alignment of the verse text on slides',
   'bible.line-spacing': 'Line spacing',
@@ -246,4 +248,3 @@ const messages = {
 };
 
 export default messages;
-export type TranslationKeys = keyof typeof messages;

@@ -44,6 +44,7 @@ const _LangLabels: Record<string, string> = {
   'en-us': 'EN-US',
   'en-gb': 'EN-GB',
   es: 'ES',
+  'es-ar': 'ES-AR',
 };
 
 const SectionNav = memo(function SectionNav({

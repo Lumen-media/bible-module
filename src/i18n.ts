@@ -1,6 +1,9 @@
 import en from './i18n/en.js';
+import enGB from './i18n/en-GB.js';
 import es from './i18n/es.js';
+import esAR from './i18n/es-AR.js';
 import ptBR from './i18n/pt-BR.js';
+import ptPT from './i18n/pt-PT.js';
 
 type Messages = Record<string, string>;
 type Translations = Record<string, Messages>;
@@ -12,18 +15,22 @@ let _locale = 'en';
 
 const _translations: Translations = {
   en,
+  'en-GB': enGB,
   'pt-BR': ptBR,
+  'pt-PT': ptPT,
   es,
+  'es-AR': esAR,
 };
 
 const _alias: Record<string, string> = {
   'pt-br': 'pt-BR',
-  'pt-pt': 'pt-BR',
+  'pt-pt': 'pt-PT',
   pt: 'pt-BR',
   'en-us': 'en',
-  'en-gb': 'en',
+  'en-gb': 'en-GB',
   en: 'en',
   es: 'es',
+  'es-ar': 'es-AR',
 };
 
 function resolve(locale: string): Messages {

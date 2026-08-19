@@ -1,70 +1,79 @@
 # Bible Module
 
-Módulo de Bíblia para [Lumen](https://github.com/Lumen-media/lumen) com suporte a
-múltiplas versões, busca textual, e projeção no presenter.
+> Read, search, and project the Bible from inside [Lumen](https://github.com/Lumen-media/lumen).
 
-## Funcionalidades
+The **Bible Module** is your everyday scripture companion for broadcast. Open a
+clean book grid, pick a chapter, and send any verse to the presenter with a
+single click — or let the operator search the whole text offline while the
+service is on air.
 
-- **Overlay dedicado** — Interface de controle em janela separada com grid de livros,
-  leitor de capítulos e busca
-- **3 versões padrão**: NAA (Nova Almeida Atualizada), ARA (Almeida Revista e
-  Atualizada), NVI (Nova Versão Internacional)
-- **Busca textual** via FTS5 no SQLite local
-- **Presenter** — Projeção do texto selecionado com fonte grande
-- **i18n** — Português (Brasil), Inglês, Espanhol
-- **Download inteligente** — Paralelo com retry, resumível via cache JSON,
-  barra de progresso
-- **Tema** — Herda automaticamente o tema ativo do Lumen
+## What it does
 
-## Arquitetura
+- **Read** — Browse the Bible through a simple book grid and a comfortable
+  chapter reader with previous/next navigation.
+- **Search** — Jump straight to any book, chapter, or verse, or search across the
+  full text of a translation — fully offline.
+- **Project** — Send selected verses to the presenter with large, readable text
+  and full control over typography and background.
+- **Multiple translations** — Choose from dozens of versions: NAA, ARA, NVI, ARC,
+  ACF, KJV, NIV, NLT, RVR1960 and many more.
+- **Works offline** — Versions are downloaded and stored locally, so once
+  installed the Bible is always ready, even without a connection.
+- **Auto-sync** — Your current version, position, and history stay in sync
+  across every Lumen window automatically.
+- **Fits Lumen** — Follows Lumen's look and feel, including its light and dark
+  themes.
 
-```
-src/
-├── data/
-│   ├── types.ts          # Tipos (Book, Chapter, Verse, etc.)
-│   ├── schema.ts         # Migrations SQLite (verses + FTS5)
-│   ├── store.ts          # Queries e operações no banco
-│   └── downloader.ts     # Download paralelo da midvash com retry e cache
-├── i18n/
-│   ├── en.ts             # Inglês
-│   ├── pt-BR.ts          # Português
-│   └── es.ts             # Espanhol
-├── overlay/
-│   ├── BibleController   # Painel principal (grid + leitor)
-│   ├── BookGrid          # Grid de livros estilo tabela periódica
-│   ├── ChapterReader     # Leitor de capítulo com navegação
-│   ├── VersionSelector   # Seletor de versão
-│   ├── QuickSearch       # Busca rápida por inicial do livro
-│   ├── DownloadProgress  # Barra de progresso do download
-│   └── SearchPanel       # Busca textual completa
-├── presenter/
-│   └── BibleSlide        # Slide do presenter (texto grande)
-├── store.ts              # Zustand store global
-├── main.ts               # Entry point do plugin
-├── i18n.ts               # Sistema de tradução
-└── styles.css            # Tailwind + CSS variables do tema
-```
+## Default versions
 
-## API (midvash)
+On the first run, the module downloads three default translations based on
+Lumen's language:
 
-Os dados são baixados de [api.midvash.com](https://api.midvash.com/v1) — sem
-autenticação, sem rate limit, cache imutável de 1 ano no Cloudflare.
+| Language | Default versions |
+| -------- | ---------------- |
+| Portuguese (BR/PT) | NAA, ARA, NVI |
+| English (US) | KJV, NIV, NLT |
+| English (GB) | KJV, WEB, YLT |
+| Spanish | RVR1960, NTV |
 
-- `GET /v1/versions` — lista de versões
-- `GET /v1/books?version=naa` — lista de livros
-- `GET /v1/{version}/{book}/{chapter}` — capítulo individual
+Any other version can be added later from the version manager.
 
-## Desenvolvimento
+## Screenshots
+
+> Drop your images inside `screenshots/` and reference them here.
+
+### Book grid
+
+![Book grid](screenshots/book-grid.png)
+
+### Chapter reader
+
+![Chapter reader](screenshots/chapter-reader.png)
+
+### Search
+
+![Search](screenshots/search.png)
+
+### Presenter
+
+![Presenter](screenshots/presenter.png)
+
+## Languages
+
+The module ships with translations for **English**, **Portuguese (Brazil)** and
+**Spanish**.
+
+## Development
 
 ```bash
 pnpm install
-pnpm dev        # hot reload com Lumen em debug mode
-pnpm build      # bundle para dist/
-pnpm pack       # empacota como .lumenpack
-pnpm validate   # valida manifest.json
-pnpm lint       # biome check
+pnpm dev        # develop with hot reload
+pnpm build      # bundle to dist/
+pnpm pack       # create the .lumenpack file
+pnpm validate   # validate the manifest
+pnpm lint       # lint and auto-fix
 ```
 
-## Licença
+## License
 
 MIT

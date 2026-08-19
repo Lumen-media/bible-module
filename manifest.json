@@ -4,7 +4,7 @@
   "version": "1.0.0",
   "api": "^0.15.0",
   "minLumenVersion": "0.0.0",
-  "description": "Bíblia com múltiplas versões (NAA, ARC, ARA, ACF, AS21, AA, JFAA)",
+  "description": "A complete Bible reader with multiple translations, offline search, and presenter projection for Lumen.",
   "author": {
     "name": ""
   },

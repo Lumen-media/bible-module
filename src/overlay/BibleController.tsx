@@ -36,7 +36,7 @@ import { ChapterPreview } from './ChapterPreview.js';
 import { ChapterReader } from './ChapterReader.js';
 import { DownloadProgress } from './DownloadProgress.js';
 import { FavoritesPanel } from './FavoritesPanel.js';
-import { BrazilFlag, PortugalFlag, SpainFlag, UKFlag, USFlag } from './flags.js';
+import { ArgentinaFlag, BrazilFlag, PortugalFlag, SpainFlag, UKFlag, USFlag } from './flags.js';
 import { HistoryPanel } from './HistoryPanel.js';
 import { PreviewPane } from './PreviewPane.js';
 import { QuickSearch } from './QuickSearch.js';
@@ -123,9 +123,10 @@ const _LANG_LABELS: Record<string, string> = {
   'en-us': 'EN-US',
   'en-gb': 'EN-GB',
   es: 'ES',
+  'es-ar': 'ES-AR',
 };
 
-const _LANG_ORDER = ['pt-br', 'pt-pt', 'en-us', 'en-gb', 'es'];
+const _LANG_ORDER = ['pt-br', 'pt-pt', 'en-us', 'en-gb', 'es', 'es-ar'];
 
 const _VERSES_PER_PAGE_OPTIONS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
 
@@ -141,6 +142,8 @@ function showFlag(lang: string) {
       return <USFlag className="h-3.5 w-3.5" />;
     case 'es':
       return <SpainFlag className="h-3.5 w-3.5" />;
+    case 'es-ar':
+      return <ArgentinaFlag className="h-3.5 w-3.5" />;
     default:
       return null;
   }
@@ -149,7 +152,11 @@ function showFlag(lang: string) {
 function resolveUserLang(): string {
   if (navigator.language.startsWith('pt-PT') || navigator.language === 'pt') return 'pt-pt';
   if (navigator.language.startsWith('pt')) return 'pt-br';
-  if (navigator.language.startsWith('es')) return 'es';
+  if (navigator.language.startsWith('es')) {
+    const lower = navigator.language.toLowerCase();
+    if (lower.startsWith('es-ar')) return 'es-ar';
+    return 'es';
+  }
   if (navigator.language === 'en-GB' || navigator.language === 'en-gb') return 'en-gb';
   return 'en-us';
 }
@@ -191,7 +198,8 @@ const VersionManagerPopover = memo(function VersionManagerPopover({
   );
 
   const filteredVersions = useMemo(() => {
-    let list = ALL_VERSIONS.filter((v) => v.language === filterLang);
+    const lang = filterLang === 'es-ar' ? 'es' : filterLang;
+    let list = ALL_VERSIONS.filter((v) => v.language === lang);
     if (vmSearch) {
       const q = vmSearch.toLowerCase();
       list = list.filter((v) => v.name.toLowerCase().includes(q) || v.id.includes(q));
