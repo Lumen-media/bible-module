@@ -44,19 +44,19 @@ Any other version can be added later from the version manager.
 
 ### Book grid
 
-![Book grid](screenshots/book-grid.png)
+<img width="1602" height="890" alt="image" src="https://github.com/user-attachments/assets/2daf14e5-5d36-48a3-bda8-19e925357cc9" />
 
 ### Chapter reader
 
-![Chapter reader](screenshots/chapter-reader.png)
+<img width="319" height="982" alt="image" src="https://github.com/user-attachments/assets/34ecae7b-c36b-40a7-83d4-230c3da485cb" />
 
 ### Search
 
-![Search](screenshots/search.png)
+<img width="1589" height="979" alt="image" src="https://github.com/user-attachments/assets/b058088d-5773-4652-8751-0a7b1050695e" />
 
 ### Presenter
 
-![Presenter](screenshots/presenter.png)
+<img width="1919" height="1079" alt="image" src="https://github.com/user-attachments/assets/9dd8b967-d9ad-4c5d-b043-338732bfcd30" />
 
 ## Languages
 
