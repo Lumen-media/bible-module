@@ -1,18 +1,15 @@
 import { Progress } from '@lumen-media/module-sdk/ui';
-import { memo, useState } from 'react';
-import type { TFunction } from '../i18n.js';
+import { memo } from 'react';
+import { useBibleStore } from '../store.js';
 
-export const DownloadProgress = memo(function DownloadProgress({ t }: { t: TFunction }) {
-  const [state, setState] = useState({
-    downloading: false,
-    dlCurrent: 0,
-    dlTotal: 0,
-    dlVersion: '',
-  });
+export const DownloadProgress = memo(function DownloadProgress() {
+  const downloading = useBibleStore((s) => s.downloading);
+  const dlCurrent = useBibleStore((s) => s.dlCurrent);
+  const dlTotal = useBibleStore((s) => s.dlTotal);
 
-  if (!state.downloading || state.dlTotal <= 0) return null;
+  if (!downloading || dlTotal <= 0) return null;
 
-  const pct = state.dlTotal > 0 ? Math.round((state.dlCurrent / state.dlTotal) * 100) : 0;
+  const pct = dlTotal > 0 ? Math.round((dlCurrent / dlTotal) * 100) : 0;
 
   return (
     <div className="absolute inset-x-0 top-0 z-40">

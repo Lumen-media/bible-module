@@ -6,6 +6,7 @@ import { memo, useCallback, useEffect, useRef, useState } from 'react';
 import type { Book } from '../data/types.js';
 import { type TFunction, tForVersion } from '../i18n.js';
 import { getModuleQueue, staticVersionLanguage, useBibleStore } from '../store.js';
+import { DownloadingState } from './DownloadingState.js';
 
 interface BibleVerseQueueConfig {
   version: string;
@@ -42,6 +43,12 @@ export const ChapterReader = memo(function ChapterReader({
   const selectedVerse = useBibleStore((s) => s.selectedVerse);
   const setSelectedVerse = useBibleStore((s) => s.setSelectedVerse);
   const projectedData = useBibleStore((s) => s.projectedData);
+  const downloading = useBibleStore((s) => s.downloading);
+  const downloadingVersions = useBibleStore((s) => s.downloadingVersions);
+  const dlCurrent = useBibleStore((s) => s.dlCurrent);
+  const dlTotal = useBibleStore((s) => s.dlTotal);
+  const dlVersion = useBibleStore((s) => s.dlVersion);
+  const downloadedVersionList = useBibleStore((s) => s.downloadedVersionList);
 
   const internalSelectRef = useRef(false);
 
@@ -217,10 +224,20 @@ export const ChapterReader = memo(function ChapterReader({
     [version, book.id, chapter]
   );
 
+  const isDownloading = downloading || downloadingVersions.length > 0;
+
   return (
     <div className="flex min-h-0 flex-1 flex-col">
       <ScrollArea className="min-h-0 flex-1 px-2 py-3" viewportProps={{ ref: viewportRef }}>
-        {versesLoading ? (
+        {downloading || downloadedVersionList.length === 0 ? (
+          <DownloadingState
+            t={t}
+            isDownloading={isDownloading}
+            dlVersion={dlVersion}
+            dlCurrent={dlCurrent}
+            dlTotal={dlTotal}
+          />
+        ) : versesLoading ? (
           <div className="flex items-center justify-center gap-2 py-8 text-muted-foreground">
             <Loader2 className="h-4 w-4 animate-spin" />
             {t('bible.loading-verses')}

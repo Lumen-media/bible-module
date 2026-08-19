@@ -150,6 +150,7 @@ export default class BibleModulePlugin extends LumenPlugin {
       events: host.events,
       t,
       hostWindow: host.window as 'main' | 'presenter' | 'surface',
+      locale: host.app.locale,
     });
 
     host.events.on('module:presenter-clear', () => {
