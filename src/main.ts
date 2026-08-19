@@ -1,4 +1,5 @@
 import {
+  type Disposable,
   type LumenHost,
   LumenPlugin,
   type PrefixSpec,
@@ -21,6 +22,7 @@ const SURFACE_OPTIONS = {
 
 export default class BibleModulePlugin extends LumenPlugin {
   private styleEl: HTMLStyleElement | null = null;
+  private themesSub: Disposable | null = null;
 
   async onload(host: LumenHost): Promise<void> {
     this.styleEl = document.createElement('style');
@@ -132,6 +134,10 @@ export default class BibleModulePlugin extends LumenPlugin {
 
     setModuleQueue(host.queue);
 
+    this.themesSub = host.themes.onDefaultBackgroundChange((bg) => {
+      useBibleStore.getState().setProfileBackground(bg);
+    });
+
     useBibleStore.getState().init({
       fs: host.fs,
       net: host.net,
@@ -197,6 +203,8 @@ export default class BibleModulePlugin extends LumenPlugin {
   }
 
   async onunload(): Promise<void> {
+    this.themesSub?.dispose();
+    this.themesSub = null;
     this.styleEl?.remove();
     this.styleEl = null;
   }

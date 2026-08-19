@@ -851,8 +851,6 @@ const ContentArea = memo(function ContentArea({ t }: { t: TFunction }) {
 export function BibleController({ close, goToBook, goToChapter, goToVerse }: BibleControllerProps) {
   const ready = useBibleStore((s) => s.ready);
   const downloading = useBibleStore((s) => s.downloading);
-  const dlCurrent = useBibleStore((s) => s.dlCurrent);
-  const dlTotal = useBibleStore((s) => s.dlTotal);
   const dlVersion = useBibleStore((s) => s.dlVersion);
   const version = useBibleStore((s) => s.version);
   const presentation = useBibleStore((s) => s.presentation);

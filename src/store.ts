@@ -146,7 +146,7 @@ export interface BibleState {
   selectedVerse: number | null;
 
   background: SelectedBackground | null;
-  profileBackground: { type: string; src: string; name: string } | null;
+  profileBackground: { type: string; src: string; name: string; thumb?: string } | null;
   fontList: string[];
   fontSize: number;
   fontFamily: string;
@@ -237,6 +237,7 @@ export interface BibleActions {
   downloadedVersions: () => Promise<string[]>;
   getSyncedVersionsState: () => Promise<Record<string, number>>;
   setBackground: (bg: SelectedBackground | null) => void;
+  setProfileBackground: (bg: { src: string; type: string; name: string; thumb?: string } | null) => void;
   pickBackground: () => void;
   setFontSize: (n: number) => void;
   setFontFamily: (f: string) => void;
@@ -484,18 +485,6 @@ export const useBibleStore = create<BibleStore>((set, get) => ({
       const restoredVerseNumberStyle = s?.verseNumberStyle ?? 'superscript';
       if (s?.background) restoredBg = s.background;
 
-      let profileBg: SelectedBackground | { src: string; type: string; name: string } | null =
-        themes.defaultBackground();
-      if (!profileBg) {
-        try {
-          profileBg = await json.get<{ src: string; type: string; name: string } | null>(
-            'profileBackground'
-          );
-        } catch {}
-      } else {
-        json.set('profileBackground', profileBg).catch(() => {});
-      }
-
       const pending: Partial<BibleState> = {};
       if (downloadedList.length > 0) {
         if (restoredVersion && downloadedList.includes(restoredVersion)) {
@@ -571,7 +560,6 @@ export const useBibleStore = create<BibleStore>((set, get) => ({
       pending.lineSpacing = restoredLineSpacing;
       pending.referencePosition = restoredReferencePosition;
       pending.verseNumberStyle = restoredVerseNumberStyle;
-      if (profileBg) pending.profileBackground = profileBg as SelectedBackground;
 
       const cachedFonts = cachedFontsResp ?? [];
       if (cachedFonts.length > 0) {
@@ -665,18 +653,6 @@ export const useBibleStore = create<BibleStore>((set, get) => ({
       const restoredVerseNumberStyle = s?.verseNumberStyle ?? 'superscript';
       if (s?.background) restoredBg = s.background;
 
-      let profileBg: SelectedBackground | { src: string; type: string; name: string } | null =
-        themes.defaultBackground();
-      if (!profileBg) {
-        try {
-          profileBg = await json.get<{ src: string; type: string; name: string } | null>(
-            'profileBackground'
-          );
-        } catch {}
-      } else {
-        json.set('profileBackground', profileBg).catch(() => {});
-      }
-
       let cachedFonts: string[] = [];
       try {
         const f = await json.get<string[]>('bibleFonts');
@@ -759,7 +735,6 @@ export const useBibleStore = create<BibleStore>((set, get) => ({
       pending.lineSpacing = restoredLineSpacing;
       pending.referencePosition = restoredReferencePosition;
       pending.verseNumberStyle = restoredVerseNumberStyle;
-      if (profileBg) pending.profileBackground = profileBg as SelectedBackground;
 
       if (cachedFonts.length > 0) {
         pending.fontList = [
@@ -790,49 +765,16 @@ export const useBibleStore = create<BibleStore>((set, get) => ({
       }
     }
 
-    const themesExt = themes as ThemesHostAPI & {
-      onDefaultBackgroundChange?: (
-        handler: (bg: { src: string; type: string; name: string } | null) => void
-      ) => { dispose(): void };
-    };
-    themesExt.onDefaultBackgroundChange?.((bg) => {
-      set({ profileBackground: bg });
-      if (bg) json.set('profileBackground', bg).catch(() => {});
-    });
-
     const bgImageSaved = await getSetting(db, 'bgImageSaved');
     if (!bgImageSaved) {
       try {
-        await themes!.addBackground({
+        const added = await themes!.addBackground({
           source: { type: 'url', url: BACKGROUND_IMAGE_URL },
           name: 'Imagem de fundo personalizada',
         });
         await setSetting(db, 'bgImageSaved', 'true');
       } catch (e) {
         console.error('[bible] Failed to save background image:', e);
-      }
-    }
-
-    try {
-      const defaultBg = themes!.defaultBackground();
-      const currentBg = get().profileBackground;
-
-      if (currentBg?.src && defaultBg?.src && currentBg.src !== defaultBg.src) {
-        set({ profileBackground: null });
-        if (json) {
-          json.set('profileBackground', null).catch(() => {});
-        }
-      } else if (currentBg?.src && !defaultBg?.src) {
-        set({ profileBackground: null });
-        if (json) {
-          json.set('profileBackground', null).catch(() => {});
-        }
-      }
-    } catch (e) {
-      console.error('[bible] Background contingency check error:', e);
-      set({ profileBackground: null });
-      if (json) {
-        json.set('profileBackground', null).catch(() => {});
       }
     }
   },
@@ -1149,6 +1091,10 @@ export const useBibleStore = create<BibleStore>((set, get) => ({
     }
 
     persistSettingsFromState(get());
+  },
+
+  setProfileBackground: (bg) => {
+    set({ profileBackground: bg });
   },
 
   pickBackground: () => {
