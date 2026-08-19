@@ -208,6 +208,7 @@ export interface BibleActions {
   setVersion: (v: string) => Promise<void>;
   setTestament: (t: 'old' | 'new') => void;
   setTab: (t: 'browse' | 'search' | 'favorites' | 'history') => void;
+  setAppLocale: (locale: string) => void;
   toggleBookmark: (
     version: string,
     book: string,
@@ -810,6 +811,7 @@ export const useBibleStore = create<BibleStore>((set, get) => ({
 
   setTestament: (testament) => set({ testament }),
   setTab: (tab) => set({ tab }),
+  setAppLocale: (locale) => set({ appLocale: locale }),
 
   toggleBookmark: (version, book, chapter, verse, text) => {
     const { json, bookmarks, bookmarkTexts } = get();

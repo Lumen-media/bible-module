@@ -1,6 +1,7 @@
 import { BookOpen } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useFitFontSize } from '../hooks/useFitFontSize.js';
+import { useLocale } from '../hooks/useLocale.js';
 import { t, tForVersion } from '../i18n.js';
 import { cn, displayVersion } from '../lib/utils.js';
 import { staticVersionLanguage, useBibleStore } from '../store.js';
@@ -33,6 +34,7 @@ interface BibleSlideProps {
 }
 
 export function BibleSlide({ data }: BibleSlideProps) {
+  useLocale();
   const storeBg = useBibleStore((s) => s.background);
   const storeProfileBg = useBibleStore((s) => s.profileBackground);
   const storeFontSize = useBibleStore((s) => s.fontSize);

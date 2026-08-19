@@ -2,6 +2,10 @@
 @import "tailwindcss/utilities";
 @source "./**/*.tsx";
 
+:root {
+  --bible-accent: var(--accent, #22d3ee);
+}
+
 @theme inline {
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);

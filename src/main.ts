@@ -4,11 +4,12 @@ import {
   LumenPlugin,
   type PrefixSpec,
   type QueueActionSpec,
+  type ThemeRef,
 } from '@lumen-media/module-sdk';
 import { parseReference } from './data/ref.js';
 import { BOOKS } from './data/store.js';
-import { setupI18n, type TranslationKey, t } from './i18n.js';
-import { BibleController } from './overlay/BibleController.js';
+import { currentLocale, setupI18n, type TranslationKey, t } from './i18n.js';
+import { BiblePanel } from './overlay/BiblePanel.js';
 import { BibleSlide } from './presenter/BibleSlide.js';
 import { setModuleQueue, useBibleStore } from './store.js';
 import css from './styles.css?inline';
@@ -23,6 +24,7 @@ const SURFACE_OPTIONS = {
 export default class BibleModulePlugin extends LumenPlugin {
   private styleEl: HTMLStyleElement | null = null;
   private themesSub: Disposable | null = null;
+  private themeChangeSub: Disposable | null = null;
 
   async onload(host: LumenHost): Promise<void> {
     this.styleEl = document.createElement('style');
@@ -47,7 +49,7 @@ export default class BibleModulePlugin extends LumenPlugin {
       id: SURFACE_PANEL_ID,
       slot: 'surface.window',
       title: 'Bíblia',
-      component: (props: unknown) => BibleController(props as Record<string, unknown>),
+      component: (props: unknown) => BiblePanel(props as Record<string, unknown>),
     });
 
     if (host.window === 'presenter') {
@@ -138,6 +140,10 @@ export default class BibleModulePlugin extends LumenPlugin {
       useBibleStore.getState().setProfileBackground(bg);
     });
 
+    this.themeChangeSub = host.themes.onChange((theme) => {
+      this.applyTheme(theme);
+    });
+
     useBibleStore.getState().init({
       fs: host.fs,
       net: host.net,
@@ -204,9 +210,27 @@ export default class BibleModulePlugin extends LumenPlugin {
   }
 
   async onunload(): Promise<void> {
+    this.themeChangeSub?.dispose();
+    this.themeChangeSub = null;
     this.themesSub?.dispose();
     this.themesSub = null;
     this.styleEl?.remove();
     this.styleEl = null;
+  }
+
+  private applyTheme(theme: ThemeRef): void {
+    const root = document.documentElement;
+    if (theme.accentHex) {
+      root.style.setProperty('--bible-accent', theme.accentHex);
+    }
+    root.dataset.bibleColorMode = theme.colorMode;
+    root.classList.toggle('bible-light', theme.colorMode === 'light');
+    root.classList.toggle('bible-dark', theme.colorMode === 'dark');
+
+    const language = theme.language;
+    if (language && language !== currentLocale()) {
+      setupI18n(language);
+      useBibleStore.getState().setAppLocale(language);
+    }
   }
 }

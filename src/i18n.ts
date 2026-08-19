@@ -13,6 +13,8 @@ export type TFunction = (key: TranslationKey, params?: Record<string, string>) =
 
 let _locale = 'en';
 
+const _localeListeners = new Set<() => void>();
+
 const _translations: Translations = {
   en,
   'en-GB': enGB,
@@ -55,10 +57,22 @@ function detectLocale(): string {
 
 export function setupI18n(locale: string) {
   _locale = locale || detectLocale();
+  for (const listener of _localeListeners) listener();
+}
+
+export function currentLocale(): string {
+  return _locale || detectLocale();
+}
+
+export function subscribeLocale(listener: () => void): () => void {
+  _localeListeners.add(listener);
+  return () => {
+    _localeListeners.delete(listener);
+  };
 }
 
 export function t(key: TranslationKey, params?: Record<string, string>): string {
-  const lang = resolve(detectLocale() || _locale || 'en');
+  const lang = resolve(_locale || detectLocale() || 'en');
 
   let message: string = lang[key] ?? key;
 
