@@ -144,8 +144,7 @@ export async function getChapter(
       }
     }
     return { version, book, number: chapter, verses: result };
-  } catch (e) {
-    console.error('[bible] error parsing book file:', path, e);
+  } catch {
     return null;
   }
 }

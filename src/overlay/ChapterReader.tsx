@@ -167,9 +167,7 @@ export const ChapterReader = memo(function ChapterReader({
         presentation.project('bible-slide', { data });
         useBibleStore.getState().setProjectedData(data);
         onProject();
-      } catch (e) {
-        console.error('[bible] project error:', e);
-      }
+      } catch {}
       setSelectedVerse(v.number);
     },
     [presentation, version, book.id, chapter, setSelectedVerse, onProject]

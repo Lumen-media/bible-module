@@ -38,7 +38,11 @@ export const PreviewPane = memo(function PreviewPane() {
     >
       {resolvedBg ? (
         <img
-          src={'thumb' in resolvedBg ? (resolvedBg as { thumb?: string }).thumb ?? resolvedBg.src : resolvedBg.src}
+          src={
+            'thumb' in resolvedBg
+              ? ((resolvedBg as { thumb?: string }).thumb ?? resolvedBg.src)
+              : resolvedBg.src
+          }
           alt=""
           className="absolute inset-0 h-full w-full object-cover"
           style={{ opacity: 0.5 }}

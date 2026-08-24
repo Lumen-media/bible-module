@@ -45,29 +45,17 @@ async function fetchChapter(
       if (response.ok) {
         const raw = response.data.data?.verses;
         if (!Array.isArray(raw)) {
-          console.error(
-            '[bible] fetch unexpected format:',
-            url,
-            JSON.stringify(response.data).slice(0, 500)
-          );
           return null;
         }
         return raw.map((text: string, i: number) => ({ number: i + 1, text }));
-      } else {
-        console.error('[bible] fetch response not ok:', url, response.status, response.statusText);
       }
-    } catch (e) {
-      console.error('[bible] fetch error:', url, e);
-    }
+    } catch {}
 
     if (attempt < MAX_RETRIES - 1) {
       await delay(RETRY_DELAYS[attempt]);
     }
   }
 
-  console.error(
-    `[bible] midvash FAILED after ${MAX_RETRIES} attempts: ${version}/${book}/${chapter}`
-  );
   return null;
 }
 
@@ -78,7 +66,6 @@ async function fetchBookFromR2(
 ): Promise<BookData | null> {
   const url = `${R2_BASE}/${version}/${bookId}.json`;
   for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
-    const started = Date.now();
     try {
       const res = await net.request<BookData>({
         url,
@@ -86,23 +73,12 @@ async function fetchBookFromR2(
         responseType: 'json',
         timeoutMs: 15000,
       });
-      const ms = Date.now() - started;
       if (res.ok && res.data?.chapters) {
-        console.log(
-          `[bible] r2 ok ${version}/${bookId} attempt=${attempt + 1} ${ms}ms chapters=${res.data.chapters.length}`
-        );
         return res.data;
       }
-      console.error(
-        `[bible] r2 not ok ${version}/${bookId} attempt=${attempt + 1} ${ms}ms status=${res.status} ${res.statusText}`
-      );
-    } catch (e) {
-      const ms = Date.now() - started;
-      console.error(`[bible] r2 error ${version}/${bookId} attempt=${attempt + 1} ${ms}ms`, e);
-    }
+    } catch {}
     if (attempt < MAX_RETRIES - 1) await delay(RETRY_DELAYS[attempt]);
   }
-  console.error(`[bible] r2 FAILED after ${MAX_RETRIES} attempts: ${version}/${bookId}`);
   return null;
 }
 
@@ -128,7 +104,6 @@ export async function downloadVersion(
   for (const book of BOOKS) {
     const exists = await fs.exists(bookPath(versionId, book.id)).catch(() => false);
     if (exists) {
-      console.log(`[bible] dl skip (cached): ${versionId}/${book.id}`);
       continue;
     }
     const slug = apiSlug(book.id);
@@ -137,18 +112,13 @@ export async function downloadVersion(
     if (r2Book?.chapters) {
       const jsonStr = JSON.stringify(r2Book, null, 2);
       const bytes = new TextEncoder().encode(jsonStr);
-      await fs
-        .write(bookPath(versionId, book.id), bytes)
-        .catch((e) =>
-          console.error('[bible] write book file error:', bookPath(versionId, book.id), e)
-        );
+      await fs.write(bookPath(versionId, book.id), bytes).catch(() => {});
       const allVerses: { number: number; text: string; chapter: number }[] = [];
       for (const ch of r2Book.chapters) {
         for (const v of ch.verses) {
           allVerses.push({ number: v.number, text: v.text, chapter: ch.number });
         }
       }
-      console.log(`[bible] dl book ok ${versionId}/${book.id} verses=${allVerses.length}`);
       if (allVerses.length > 0 && onChapter) {
         await onChapter(book.id, 0, allVerses as MidvashVerse[]).catch(() => {});
       }
@@ -157,7 +127,6 @@ export async function downloadVersion(
       continue;
     }
 
-    console.error(`[bible] dl book FALLBACK to midvash: ${versionId}/${book.id}`);
     for (let c = 1; c <= book.chapters; c++) {
       chapters.push({ book: book.id, slug, chapter: c, bookName: book.name });
     }
@@ -194,11 +163,7 @@ export async function downloadVersion(
 
     const jsonStr = JSON.stringify(data, null, 2);
     const bytes = new TextEncoder().encode(jsonStr);
-    await fs
-      .write(bookPath(version, buf.bookId), bytes)
-      .catch((e) =>
-        console.error('[bible] write book file error:', bookPath(version, buf.bookId), e)
-      );
+    await fs.write(bookPath(version, buf.bookId), bytes).catch(() => {});
   }
 
   const attemptCount = new Map<string, number>();
@@ -219,7 +184,6 @@ export async function downloadVersion(
         await delay(2000);
         queue.push(item);
       } else {
-        console.error('[bible] download failed after retries:', versionId, item.book, item.chapter);
         anyFailed = true;
         completed++;
         reportProgress();
@@ -276,9 +240,6 @@ export async function downloadVersion(
     await flushBook(versionId, buf);
   }
 
-  console.log(
-    `[bible] dl ${versionId} summary: queuedChapters=${total} completed=${completed} anyFailed=${anyFailed}`
-  );
   onProgress?.(completed, total);
   return !anyFailed;
 }

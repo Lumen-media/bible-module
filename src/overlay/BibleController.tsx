@@ -375,9 +375,7 @@ const ReaderFooter = memo(function ReaderFooter({
       presentation.project('bible-slide', { data });
       useBibleStore.getState().setProjectedData(data);
       onProject();
-    } catch (e) {
-      console.error('[bible] projectAll error:', e);
-    }
+    } catch {}
   }
 
   return (

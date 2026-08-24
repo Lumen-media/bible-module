@@ -77,9 +77,7 @@ export async function initDatabase(db: SqliteHandle): Promise<void> {
       version, book, chapter, verse, text,
       tokenize='porter unicode61'
     )`);
-  } catch {
-    console.warn('[bible] FTS5 not available, search will be slow');
-  }
+  } catch {}
 }
 
 export async function isVersionPopulated(db: SqliteHandle, version: string): Promise<boolean> {
@@ -175,9 +173,7 @@ export async function rebuildFts(db: SqliteHandle, version: string): Promise<voi
       );
       await yieldToMain();
     }
-  } catch (e) {
-    console.warn('[bible] FTS rebuild failed for', version, e);
-  }
+  } catch {}
 }
 
 function decodeBytes(bytes: Uint8Array | number[]): string {
@@ -303,17 +299,13 @@ export async function insertHistory(db: SqliteHandle, entry: HistoryEntry): Prom
       'DELETE FROM history WHERE id NOT IN (SELECT id FROM history ORDER BY timestamp DESC LIMIT ?)',
       [HISTORY_LIMIT]
     );
-  } catch (e) {
-    console.warn('[bible] insertHistory failed:', e);
-  }
+  } catch {}
 }
 
 export async function clearHistory(db: SqliteHandle): Promise<void> {
   try {
     await db.exec('DELETE FROM history');
-  } catch {
-    console.warn('[bible] clearHistory failed');
-  }
+  } catch {}
 }
 
 export async function setSetting(db: SqliteHandle, key: string, value: string): Promise<void> {
