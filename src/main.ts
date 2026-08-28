@@ -34,6 +34,8 @@ export default class BibleModulePlugin extends LumenPlugin {
 
     setupI18n(host.app.locale);
 
+    host.presentation.requestPresenterControls();
+
     if (host.window === 'main') {
       host.fonts
         .list()
