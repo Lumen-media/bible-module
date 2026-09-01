@@ -235,6 +235,7 @@ export interface BibleActions {
   ) => Promise<{ version: string; book: string; chapter: number; verse: number; text: string }[]>;
   downloadAndSetVersion: (versionId: string) => Promise<void>;
   downloadVersionOnly: (versionId: string) => Promise<void>;
+  ensureDefaultVersions: () => Promise<void>;
   syncVersion: (versionId: string) => Promise<void>;
   removeVersion: (versionId: string) => Promise<void>;
   downloadedVersions: () => Promise<string[]>;
@@ -953,6 +954,10 @@ export const useBibleStore = create<BibleStore>((set, get) => ({
     get().downloadVersionOnly(versionId);
   },
 
+  ensureDefaultVersions: async () => {
+    await _backgroundEnsureVersions();
+  },
+
   downloadVersionOnly: async (versionId) => {
     const { fs, net, json, sqlite } = get();
     if (!fs || !net || !json || !sqlite) return;
@@ -963,12 +968,12 @@ export const useBibleStore = create<BibleStore>((set, get) => ({
 
     try {
       const db = sqlite;
-      await downloadVersion(
+      const ok = await downloadVersion(
         fs,
         net,
         versionId,
-        (current) => {
-          set({ dlCurrent: current, dlTotal: 66 });
+        (current, total) => {
+          set({ dlCurrent: current, dlTotal: total });
         },
         async (bookId, chapter, verses) => {
           await insertChapterBatch(
@@ -981,14 +986,26 @@ export const useBibleStore = create<BibleStore>((set, get) => ({
         }
       );
 
-      await setVersionLanguage(db, versionId, staticVersionLanguage(versionId)).catch(() => {});
-      await rebuildFts(db, versionId).catch(() => {});
+      if (ok) {
+        await setVersionLanguage(db, versionId, staticVersionLanguage(versionId)).catch(() => {});
+        await rebuildFts(db, versionId).catch(() => {});
 
-      const downloaded = await getDownloadedVersions(json);
-      if (!downloaded.includes(versionId)) {
-        const next = [...downloaded, versionId];
-        await setDownloadedVersions(json, next);
-        set({ downloadedVersionList: next });
+        const downloaded = await getDownloadedVersions(json);
+        if (!downloaded.includes(versionId)) {
+          const next = [...downloaded, versionId];
+          await setDownloadedVersions(json, next);
+          const state = get();
+          let tabs = state.displayedTabs;
+          if (!tabs.includes(versionId)) {
+            const idx = tabs.indexOf(state.version);
+            if (idx >= 0) {
+              tabs = tabs.map((t) => (t === state.version ? versionId : t));
+            } else {
+              tabs = [...tabs, versionId].slice(0, 3);
+            }
+          }
+          set({ downloadedVersionList: next, displayedTabs: tabs });
+        }
       }
     } catch {}
 
@@ -1020,8 +1037,8 @@ export const useBibleStore = create<BibleStore>((set, get) => ({
         fs,
         net,
         versionId,
-        (current) => {
-          set({ dlCurrent: current, dlTotal: 66 });
+        (current, total) => {
+          set({ dlCurrent: current, dlTotal: total });
         },
         async (bookId, chapter, verses) => {
           await insertChapterBatch(
@@ -1287,9 +1304,11 @@ const VERSIONS_READY_STORAGE_KEY = 'bibleVersionsReady';
 
 async function _applyVersionsReady(): Promise<void> {
   const state = useBibleStore.getState();
-  const { json } = state;
+  const { json, sqlite } = state;
   if (!json) return;
-  const downloaded = await getDownloadedVersions(json);
+  const downloadedFromJson = await getDownloadedVersions(json);
+  const populated = sqlite ? await getPopulatedVersions(sqlite).catch(() => []) : [];
+  const downloaded = [...new Set([...downloadedFromJson, ...populated])];
   const patch: Partial<BibleState> = {
     downloadedVersionList: downloaded,
     downloading: false,
@@ -1347,7 +1366,7 @@ function _subscribeVersionsReady(): void {
   } catch {}
 }
 
-async function _backgroundEnsureVersions() {
+async function _backgroundEnsureVersions(attempt = 0) {
   if (_autoEnsureStarted) {
     return;
   }
@@ -1358,6 +1377,9 @@ async function _backgroundEnsureVersions() {
   }
 
   if (!_tryAcquireAutoEnsureLock()) {
+    if (attempt < 30) {
+      setTimeout(() => _backgroundEnsureVersions(attempt + 1), 5000);
+    }
     return;
   }
 
@@ -1379,6 +1401,7 @@ async function _backgroundEnsureVersions() {
     }
 
     if (needsSqlite.length === 0 && needsDownload.length === 0) {
+      await _applyVersionsReady();
       return;
     }
 
@@ -1411,9 +1434,10 @@ async function _backgroundEnsureVersions() {
 
     const ensureVersion = async (v: string): Promise<void> => {
       const needsDl = needsDownload.includes(v);
+      let ok = false;
       try {
         if (needsDl) {
-          await downloadVersion(
+          ok = await downloadVersion(
             fs,
             net,
             v,
@@ -1431,13 +1455,15 @@ async function _backgroundEnsureVersions() {
               } catch {}
             }
           );
-          await rebuildFts(sqlite, v).catch(() => {});
-          await setVersionLanguage(sqlite, v, staticVersionLanguage(v)).catch(() => {});
+          if (ok) {
+            await rebuildFts(sqlite, v).catch(() => {});
+            await setVersionLanguage(sqlite, v, staticVersionLanguage(v)).catch(() => {});
+          }
         } else {
-          await importVersionFromJson(sqlite, fs, v, staticVersionLanguage(v));
+          ok = await importVersionFromJson(sqlite, fs, v, staticVersionLanguage(v));
         }
 
-        if (!newDownloaded.includes(v)) {
+        if (ok && !newDownloaded.includes(v)) {
           newDownloaded.push(v);
         }
       } catch {}

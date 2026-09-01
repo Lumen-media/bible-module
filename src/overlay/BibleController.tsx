@@ -948,6 +948,11 @@ export function BibleController({ close, goToBook, goToChapter, goToVerse }: Bib
     if (book) goTo(book, goToChapter, goToVerse);
   }, [goToBook, goToChapter, goToVerse, goTo]);
 
+  useEffect(() => {
+    if (!ready) return;
+    useBibleStore.getState().ensureDefaultVersions();
+  }, [ready]);
+
   if (!tFn || !presentation) {
     return (
       <div className="flex h-full items-center justify-center gap-2 text-muted-foreground">

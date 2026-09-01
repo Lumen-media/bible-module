@@ -1,7 +1,8 @@
 import { memo, useRef } from 'react';
+import { useContainerSize } from '../hooks/useContainerSize.js';
 import { useFitFontSize } from '../hooks/useFitFontSize.js';
 import { tForVersion } from '../i18n.js';
-import { cn, displayVersion } from '../lib/utils.js';
+import { cn, displayVersion, optimizeImageUrl } from '../lib/utils.js';
 import { staticVersionLanguage, useBibleStore } from '../store.js';
 
 const SAMPLE_VERSE =
@@ -45,6 +46,8 @@ export const SlidePreview = memo(function SlidePreview() {
   const previewText = verseText ? `${verseNum} ${verseText}` : `${verseNum} ${SAMPLE_VERSE}`;
 
   const containerRef = useRef<HTMLDivElement>(null);
+  const { width: bgWidth, height: bgHeight } = useContainerSize(containerRef);
+  const bgSrc = resolvedBg ? optimizeImageUrl(resolvedBg.src, bgWidth, bgHeight, 70) : null;
   const { effectiveFontSize, effectiveRefSize } = useFitFontSize(
     containerRef,
     previewText,
@@ -58,7 +61,7 @@ export const SlidePreview = memo(function SlidePreview() {
       className="relative aspect-video overflow-hidden rounded-md border border-border bg-black"
     >
       {resolvedBg ? (
-        <img src={resolvedBg.src} alt="" className="absolute inset-0 h-full w-full object-cover" />
+        <img src={bgSrc ?? undefined} alt="" className="absolute inset-0 h-full w-full object-cover" />
       ) : (
         <div className="absolute inset-0 bg-linear-to-br from-card to-background" />
       )}

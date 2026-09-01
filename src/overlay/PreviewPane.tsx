@@ -1,7 +1,8 @@
 import { Palette } from 'lucide-react';
-import { memo } from 'react';
+import { memo, useRef } from 'react';
+import { useContainerSize } from '../hooks/useContainerSize.js';
 import { tForVersion } from '../i18n.js';
-import { displayVersion } from '../lib/utils.js';
+import { displayVersion, optimizeImageUrl } from '../lib/utils.js';
 import { staticVersionLanguage, useBibleStore } from '../store.js';
 
 export const PreviewPane = memo(function PreviewPane() {
@@ -15,7 +16,15 @@ export const PreviewPane = memo(function PreviewPane() {
   const selectedVerse = useBibleStore((s) => s.selectedVerse);
   const pickBackground = useBibleStore((s) => s.pickBackground);
 
+  const containerRef = useRef<HTMLButtonElement>(null);
+  const { width: bgWidth, height: bgHeight } = useContainerSize(containerRef);
+
   const resolvedBg = background ?? profileBg;
+  const bgThumb =
+    resolvedBg && 'thumb' in resolvedBg
+      ? ((resolvedBg as { thumb?: string }).thumb ?? resolvedBg.src)
+      : resolvedBg?.src;
+  const bgSrc = resolvedBg ? optimizeImageUrl(bgThumb ?? resolvedBg.src, bgWidth, bgHeight, 60) : null;
   const data = projectedData;
   const hasData = !!data;
 
@@ -34,15 +43,12 @@ export const PreviewPane = memo(function PreviewPane() {
       type="button"
       onClick={pickBackground}
       title="Background"
+      ref={containerRef}
       className="group relative flex aspect-video w-28 shrink-0 items-center overflow-hidden rounded-md border border-border bg-black text-left transition-colors hover:border-primary/50"
     >
       {resolvedBg ? (
         <img
-          src={
-            'thumb' in resolvedBg
-              ? ((resolvedBg as { thumb?: string }).thumb ?? resolvedBg.src)
-              : resolvedBg.src
-          }
+          src={bgSrc ?? undefined}
           alt=""
           className="absolute inset-0 h-full w-full object-cover"
           style={{ opacity: 0.5 }}

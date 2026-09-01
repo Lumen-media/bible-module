@@ -1,9 +1,10 @@
 import { BookOpen } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { useContainerSize } from '../hooks/useContainerSize.js';
 import { useFitFontSize } from '../hooks/useFitFontSize.js';
 import { useLocale } from '../hooks/useLocale.js';
 import { t, tForVersion } from '../i18n.js';
-import { cn, displayVersion } from '../lib/utils.js';
+import { cn, displayVersion, optimizeImageUrl } from '../lib/utils.js';
 import { staticVersionLanguage, useBibleStore } from '../store.js';
 
 interface BibleSlideProps {
@@ -50,6 +51,10 @@ export function BibleSlide({ data }: BibleSlideProps) {
   const resolvedBg = background ?? profileBg;
 
   const containerRef = useRef<HTMLDivElement>(null);
+  const { width: bgWidth, height: bgHeight } = useContainerSize(containerRef);
+  const bgSrc = resolvedBg
+    ? optimizeImageUrl(resolvedBg.src, bgWidth, bgHeight, 80)
+    : null;
   const { effectiveFontSize, effectiveRefSize } = useFitFontSize(
     containerRef,
     data?.text ?? '',
@@ -83,7 +88,7 @@ export function BibleSlide({ data }: BibleSlideProps) {
       <div className="flex h-full w-full flex-col items-center justify-center bg-black text-white/30">
         {resolvedBg && (
           <img
-            src={resolvedBg.src}
+            src={bgSrc ?? undefined}
             alt=""
             className="absolute inset-0 h-full w-full object-cover"
           />
@@ -131,7 +136,7 @@ export function BibleSlide({ data }: BibleSlideProps) {
       )}
     >
       {resolvedBg && (
-        <img src={resolvedBg.src} alt="" className="absolute inset-0 h-full w-full object-cover" />
+        <img src={bgSrc ?? undefined} alt="" className="absolute inset-0 h-full w-full object-cover" />
       )}
       <div className="absolute inset-0 bg-black" style={{ opacity: backgroundOpacity / 100 }} />
       <div

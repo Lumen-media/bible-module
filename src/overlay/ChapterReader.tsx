@@ -64,7 +64,12 @@ export const ChapterReader = memo(function ChapterReader({
   const scrollToVerse = useCallback(
     (verse: number) => {
       const index = verses?.findIndex((v) => v.number === verse) ?? -1;
-      if (index >= 0) virtualizer.scrollToIndex(index, { align: 'center' });
+      if (index < 0) return;
+      const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+      virtualizer.scrollToIndex(index, {
+        align: 'center',
+        behavior: reduceMotion ? 'auto' : 'smooth',
+      });
     },
     [verses, virtualizer]
   );
