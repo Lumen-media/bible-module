@@ -13,10 +13,11 @@ import {
   ToggleGroup,
 } from '@lumen-media/module-sdk/ui';
 import { Database, Download, HardDrive, Loader2, Palette, RefreshCw, Type } from 'lucide-react';
-import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { memo, useCallback, useEffect, useMemo, useState } from 'react';
 import { HexColorPicker } from 'react-colorful';
 import { useDebounceCallback } from 'usehooks-ts';
-import { getDownloadedVersions, getSyncedVersions } from '../data/store.js';
+import { getDatabaseSize, getVerseCount } from '../data/database.js';
+import { BOOKS, getDownloadedVersions, getSyncedVersions } from '../data/store.js';
 import { type TranslationKey, t } from '../i18n.js';
 import { cn } from '../lib/utils.js';
 import { ALL_VERSIONS, UPDATED_VERSIONS, useBibleStore } from '../store.js';
@@ -850,65 +851,95 @@ const DownloadsSection = memo(function DownloadsSection() {
 const CacheSection = memo(function CacheSection() {
   const json = useBibleStore((s) => s.json);
   const fs = useBibleStore((s) => s.fs);
+  const sqlite = useBibleStore((s) => s.sqlite);
+  const removeVersion = useBibleStore((s) => s.removeVersion);
 
   const [downloadedIds, setDownloadedIds] = useState<string[]>([]);
   const [cacheBytes, setCacheBytes] = useState<number | null>(null);
+  const [dbBytes, setDbBytes] = useState<number | null>(null);
+  const [perVersion, setPerVersion] = useState<Record<string, { bytes: number; verses: number }>>(
+    {}
+  );
   const [clearing, setClearing] = useState(false);
+  const [removing, setRemoving] = useState<string | null>(null);
 
-  useEffect(() => {
-    if (!json) return;
-    getDownloadedVersions(json).then(setDownloadedIds);
-  }, [json]);
+  const refresh = useCallback(async () => {
+    if (!fs || !json) return;
+    setCacheBytes(null);
+    setDbBytes(null);
+    const ids = await getDownloadedVersions(json);
+    setDownloadedIds(ids);
 
-  const cacheCheckRef = useRef(0);
-  useEffect(() => {
-    if (!fs) return;
-    let cancelled = false;
-    const requestId = ++cacheCheckRef.current;
-    (async () => {
-      try {
-        const exists = await fs.exists('cache').catch(() => false);
-        if (cancelled || requestId !== cacheCheckRef.current) return;
-        if (!exists) {
-          setCacheBytes(0);
-          return;
-        }
-        const list = await fs.list('cache').catch(() => []);
-        if (cancelled || requestId !== cacheCheckRef.current) return;
-        let total = 0;
-        for (const entry of list as string[]) {
-          try {
-            const data = await fs.read(`cache/${entry}`);
-            if (data instanceof Uint8Array) total += data.byteLength;
-            else if (Array.isArray(data)) total += (data as number[]).length;
-            else if (typeof data === 'string') total += new Blob([data]).size;
-          } catch {}
-        }
-        if (cancelled || requestId !== cacheCheckRef.current) return;
-        setCacheBytes(total);
-      } catch {
-        if (!cancelled && requestId === cacheCheckRef.current) setCacheBytes(0);
+    let total = 0;
+    const sizes: Record<string, number> = {};
+    for (const id of ids) {
+      let sum = 0;
+      for (const book of BOOKS) {
+        try {
+          const data = await fs.read(`cache/${id}/${book.id}.json`);
+          if (data instanceof Uint8Array) sum += data.byteLength;
+          else if (Array.isArray(data)) sum += (data as number[]).length;
+          else if (typeof data === 'string') sum += new Blob([data]).size;
+        } catch {}
       }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [fs]);
+      sizes[id] = sum;
+      total += sum;
+    }
+    setCacheBytes(total);
+
+    if (sqlite) {
+      const size = await getDatabaseSize(sqlite).catch(() => null);
+      setDbBytes(size);
+      const verses: Record<string, number> = {};
+      for (const id of ids) {
+        verses[id] = await getVerseCount(sqlite, id).catch(() => 0);
+      }
+      setPerVersion(
+        Object.fromEntries(
+          ids.map((id) => [id, { bytes: sizes[id] ?? 0, verses: verses[id] ?? 0 }])
+        )
+      );
+    }
+  }, [fs, json, sqlite]);
+
+  useEffect(() => {
+    refresh();
+  }, [refresh]);
 
   const handleClearCache = useCallback(async () => {
     if (!fs || !json || clearing) return;
     setClearing(true);
     try {
+      for (const id of downloadedIds) {
+        for (const book of BOOKS) {
+          try {
+            await fs.remove(`cache/${id}/${book.id}.json`);
+          } catch {}
+        }
+      }
       try {
         await fs.remove('cache');
       } catch {}
-      await json.set('bibleFonts', []);
-      setDownloadedIds([]);
       setCacheBytes(0);
+      setPerVersion({});
     } finally {
       setClearing(false);
     }
-  }, [fs, json, clearing]);
+  }, [fs, json, clearing, downloadedIds]);
+
+  const handleRemoveVersion = useCallback(
+    async (id: string) => {
+      if (removing) return;
+      setRemoving(id);
+      try {
+        await removeVersion(id);
+        await refresh();
+      } finally {
+        setRemoving(null);
+      }
+    },
+    [removing, removeVersion, refresh]
+  );
 
   return (
     <div className="flex-1 min-h-0 flex flex-col gap-4">
@@ -921,44 +952,36 @@ const CacheSection = memo(function CacheSection() {
         </p>
       </div>
 
-      <Card className="flex-1">
-        <Card.CardContent className="space-y-3 p-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-foreground">
+      <Card className="flex-1 min-h-0 flex flex-col">
+        <Card.CardContent className="space-y-3 p-4 shrink-0">
+          <div className="grid grid-cols-3 gap-3">
+            <div className="rounded-md border border-border bg-background p-3">
+              <p className="text-[11px] font-medium text-muted-foreground">
                 {t('bible.cache-size' as TranslationKey)}
               </p>
-              <p className="text-xs text-muted-foreground">
-                {t('bible.cache-size-desc' as TranslationKey)}
+              <p className="mt-1 text-lg font-semibold text-foreground">
+                {cacheBytes === null ? '—' : formatBytes(cacheBytes)}
               </p>
             </div>
-            <span className="text-sm font-mono tabular-nums text-foreground">
-              {cacheBytes === null ? '—' : formatBytes(cacheBytes)}
-            </span>
-          </div>
-          <Separator />
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-foreground">
+            <div className="rounded-md border border-border bg-background p-3">
+              <p className="text-[11px] font-medium text-muted-foreground">
+                {t('bible.storage-db' as TranslationKey)}
+              </p>
+              <p className="mt-1 text-lg font-semibold text-foreground">
+                {dbBytes === null ? '—' : formatBytes(dbBytes)}
+              </p>
+            </div>
+            <div className="rounded-md border border-border bg-background p-3">
+              <p className="text-[11px] font-medium text-muted-foreground">
                 {t('bible.downloaded-versions' as TranslationKey)}
               </p>
-              <p className="text-xs text-muted-foreground">
-                {t('bible.downloaded-versions-desc' as TranslationKey)}
-              </p>
+              <p className="mt-1 text-lg font-semibold text-foreground">{downloadedIds.length}</p>
             </div>
-            <span className="text-sm font-mono tabular-nums text-foreground">
-              {downloadedIds.length}
-            </span>
           </div>
           <Separator />
-          <div className="flex items-center justify-end gap-2 pt-1">
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={() => {
-                if (fs && json) json.get('bibleFonts').then(() => setCacheBytes(null));
-              }}
-            >
+          <div className="flex items-center justify-end gap-2">
+            <Button size="sm" variant="outline" onClick={refresh} disabled={clearing || !!removing}>
+              <RefreshCw className="mr-1 h-3.5 w-3.5" />
               {t('bible.refresh' as TranslationKey)}
             </Button>
             <Button
@@ -972,6 +995,54 @@ const CacheSection = memo(function CacheSection() {
             </Button>
           </div>
         </Card.CardContent>
+
+        <Separator />
+
+        <div className="min-h-0 flex-1 overflow-hidden">
+          <ScrollArea className="size-full">
+            {downloadedIds.length === 0 ? (
+              <p className="px-4 py-6 text-center text-sm text-muted-foreground">
+                {t('bible.no-downloaded-versions' as TranslationKey)}
+              </p>
+            ) : (
+              <ul className="divide-y divide-border">
+                {downloadedIds.map((id) => {
+                  const v = ALL_VERSIONS.find((x) => x.id === id);
+                  const stats = perVersion[id] ?? { bytes: 0, verses: 0 };
+                  const active = useBibleStore.getState().version === id;
+                  return (
+                    <li key={id} className="flex items-center justify-between gap-3 px-4 py-2.5">
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate text-sm font-medium text-foreground">
+                          {v?.name ?? id}
+                        </p>
+                        <p className="text-[11px] uppercase tracking-wide text-muted-foreground">
+                          {v?.language ?? ''} · {id}
+                        </p>
+                        <span className="text-[10px] text-muted-foreground">
+                          {formatBytes(stats.bytes)} · {stats.verses.toLocaleString()}{' '}
+                          {t('bible.verses' as TranslationKey)}
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        {active && <Badge variant="secondary">{t('bible.active' as TranslationKey)}</Badge>}
+                        <Button
+                          size="xs"
+                          variant="ghost"
+                          disabled={active || removing === id}
+                          onClick={() => handleRemoveVersion(id)}
+                        >
+                          <Loader2 className={`mr-1 h-3 w-3 ${removing === id ? 'animate-spin' : ''}`} />
+                          {t('bible.remove' as TranslationKey)}
+                        </Button>
+                      </div>
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
+          </ScrollArea>
+        </div>
       </Card>
     </div>
   );

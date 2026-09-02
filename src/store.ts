@@ -14,6 +14,7 @@ import type {
 import { create } from 'zustand';
 import {
   clearHistory,
+  deleteVersionData,
   getChapterFromDb,
   getHistory,
   getPopulatedVersions,
@@ -773,14 +774,19 @@ export const useBibleStore = create<BibleStore>((set, get) => ({
 
     _backgroundEnsureVersions();
     _subscribeVersionsReady();
+    _subscribeDownloadProgress();
     try {
-      useBibleStore.getState().events?.on(DOWNLOAD_PROGRESS_EVENT, (p) => {
-        useBibleStore.setState({
-          ...(p as { dlCurrent: number; dlTotal: number; dlVersion: string }),
-          downloading: true,
-        });
-      });
+      const raw = localStorage.getItem(DOWNLOAD_PROGRESS_STORAGE_KEY);
+      if (raw) {
+        const p = JSON.parse(raw) as { dlCurrent: number; dlTotal: number; dlVersion: string };
+        if (p.dlTotal > 0) {
+          useBibleStore.setState({ ...p, downloading: true });
+        }
+      }
     } catch {}
+    if (!useBibleStore.getState().downloading) {
+      _applyVersionsReady().catch(() => {});
+    }
 
     const bgImageSaved = await getSetting(db, 'bgImageSaved');
     if (!bgImageSaved) {
@@ -964,7 +970,7 @@ export const useBibleStore = create<BibleStore>((set, get) => ({
 
     const already = get().downloadingVersions;
     if (already.includes(versionId)) return;
-    set({ downloadingVersions: [...already, versionId], dlVersion: versionId });
+    set({ downloadingVersions: [...already, versionId], downloading: true, dlVersion: versionId });
 
     try {
       const db = sqlite;
@@ -973,7 +979,7 @@ export const useBibleStore = create<BibleStore>((set, get) => ({
         net,
         versionId,
         (current, total) => {
-          set({ dlCurrent: current, dlTotal: total });
+          _publishDownloadProgress({ dlCurrent: current, dlTotal: total, dlVersion: versionId });
         },
         async (bookId, chapter, verses) => {
           await insertChapterBatch(
@@ -1009,10 +1015,9 @@ export const useBibleStore = create<BibleStore>((set, get) => ({
       }
     } catch {}
 
+    _clearDownloadProgress();
     set((s) => ({
       downloadingVersions: s.downloadingVersions.filter((v) => v !== versionId),
-      dlCurrent: 0,
-      dlTotal: 0,
     }));
   },
 
@@ -1022,7 +1027,7 @@ export const useBibleStore = create<BibleStore>((set, get) => ({
 
     const already = get().syncingVersions;
     if (already.includes(versionId)) return;
-    set({ syncingVersions: [...already, versionId], dlVersion: versionId });
+    set({ syncingVersions: [...already, versionId], downloading: true, dlVersion: versionId });
 
     try {
       for (const book of BOOKS) {
@@ -1038,7 +1043,7 @@ export const useBibleStore = create<BibleStore>((set, get) => ({
         net,
         versionId,
         (current, total) => {
-          set({ dlCurrent: current, dlTotal: total });
+          _publishDownloadProgress({ dlCurrent: current, dlTotal: total, dlVersion: versionId });
         },
         async (bookId, chapter, verses) => {
           await insertChapterBatch(
@@ -1064,15 +1069,14 @@ export const useBibleStore = create<BibleStore>((set, get) => ({
       setSyncedVersion(versionId);
     } catch {}
 
+    _clearDownloadProgress();
     set((s) => ({
       syncingVersions: s.syncingVersions.filter((v) => v !== versionId),
-      dlCurrent: 0,
-      dlTotal: 0,
     }));
   },
 
   removeVersion: async (versionId) => {
-    const { fs, json } = get();
+    const { fs, json, sqlite } = get();
     if (!fs || !json) return;
 
     for (const book of BOOKS) {
@@ -1080,6 +1084,10 @@ export const useBibleStore = create<BibleStore>((set, get) => ({
       try {
         await fs.remove(p);
       } catch {}
+    }
+
+    if (sqlite) {
+      await deleteVersionData(sqlite, versionId).catch(() => {});
     }
 
     const downloaded = await getDownloadedVersions(json);
@@ -1301,6 +1309,58 @@ function _releaseAutoEnsureLock(): void {
 const VERSIONS_READY_EVENT = 'bible:versions-ready';
 const DOWNLOAD_PROGRESS_EVENT = 'bible:download-progress';
 const VERSIONS_READY_STORAGE_KEY = 'bibleVersionsReady';
+const DOWNLOAD_PROGRESS_STORAGE_KEY = 'bibleDownloadProgress';
+
+function _publishDownloadProgress(progress: {
+  dlCurrent: number;
+  dlTotal: number;
+  dlVersion: string;
+}): void {
+  useBibleStore.setState(progress);
+  try {
+    useBibleStore.getState().events?.emit(DOWNLOAD_PROGRESS_EVENT, progress);
+  } catch {}
+  try {
+    localStorage.setItem(DOWNLOAD_PROGRESS_STORAGE_KEY, JSON.stringify(progress));
+  } catch {}
+}
+
+function _subscribeDownloadProgress(): void {
+  const events = useBibleStore.getState().events;
+  try {
+    events?.on(DOWNLOAD_PROGRESS_EVENT, (p) => {
+      useBibleStore.setState({
+        ...(p as { dlCurrent: number; dlTotal: number; dlVersion: string }),
+        downloading: true,
+      });
+    });
+  } catch {}
+  try {
+    window.addEventListener('storage', (e) => {
+      if (e.key !== DOWNLOAD_PROGRESS_STORAGE_KEY) return;
+      if (e.newValue) {
+        try {
+          const p = JSON.parse(e.newValue) as {
+            dlCurrent: number;
+            dlTotal: number;
+            dlVersion: string;
+          };
+          useBibleStore.setState({ ...p, downloading: true });
+        } catch {}
+      } else {
+        useBibleStore.setState({ downloading: false, dlCurrent: 0, dlTotal: 0, dlVersion: '' });
+        _applyVersionsReady().catch(() => {});
+      }
+    });
+  } catch {}
+}
+
+function _clearDownloadProgress(): void {
+  useBibleStore.setState({ downloading: false, dlCurrent: 0, dlTotal: 0, dlVersion: '' });
+  try {
+    localStorage.removeItem(DOWNLOAD_PROGRESS_STORAGE_KEY);
+  } catch {}
+}
 
 async function _applyVersionsReady(): Promise<void> {
   const state = useBibleStore.getState();
@@ -1406,12 +1466,11 @@ async function _backgroundEnsureVersions(attempt = 0) {
     }
 
     const totalChaptersPerVersion = 1189;
-    const totalAll = (needsSqlite.length + needsDownload.length) * totalChaptersPerVersion;
-    let globalCurrent = 0;
-
     const allVersions = [...new Set([...needsSqlite, ...needsDownload])];
-    useBibleStore.setState({
-      downloading: true,
+    const totalAll = allVersions.length * totalChaptersPerVersion;
+    const currentPerVersion: Record<string, number> = {};
+
+    _publishDownloadProgress({
       dlCurrent: 0,
       dlTotal: totalAll,
       dlVersion: allVersions.join(', '),
@@ -1420,14 +1479,16 @@ async function _backgroundEnsureVersions(attempt = 0) {
     const newDownloaded = [...downloadedFromJson];
 
     let lastUpdate = 0;
-    const throttledSet = (progress: { dlCurrent: number; dlTotal: number; dlVersion: string }) => {
+    const throttledSet = () => {
+      const dlCurrent = Object.values(currentPerVersion).reduce((a, b) => a + b, 0);
       const now = Date.now();
-      if (now - lastUpdate < 500 && progress.dlCurrent < progress.dlTotal) return;
+      if (now - lastUpdate < 500 && dlCurrent < totalAll) return;
       lastUpdate = now;
-      useBibleStore.setState(progress);
-      try {
-        useBibleStore.getState().events?.emit(DOWNLOAD_PROGRESS_EVENT, progress);
-      } catch {}
+      _publishDownloadProgress({
+        dlCurrent,
+        dlTotal: totalAll,
+        dlVersion: allVersions.join(', '),
+      });
     };
 
     const CONCURRENT_VERSIONS = 3;
@@ -1441,13 +1502,10 @@ async function _backgroundEnsureVersions(attempt = 0) {
             fs,
             net,
             v,
-            (current, _total) => {
-              if (current === 0 && _total === 0) return;
-              throttledSet({
-                dlCurrent: globalCurrent + current,
-                dlTotal: totalAll,
-                dlVersion: v,
-              });
+            (current) => {
+              if (current === 0) return;
+              currentPerVersion[v] = current;
+              throttledSet();
             },
             async (book, chapter, verses) => {
               try {
@@ -1467,7 +1525,8 @@ async function _backgroundEnsureVersions(attempt = 0) {
           newDownloaded.push(v);
         }
       } catch {}
-      globalCurrent += totalChaptersPerVersion;
+      currentPerVersion[v] = totalChaptersPerVersion;
+      throttledSet();
     };
 
     let idx = 0;
@@ -1486,13 +1545,11 @@ async function _backgroundEnsureVersions(attempt = 0) {
 
     await setDownloadedVersions(json, newDownloaded);
 
+    _clearDownloadProgress();
+
     const state = useBibleStore.getState();
     const patch: Partial<BibleState> = {
       downloadedVersionList: newDownloaded,
-      downloading: false,
-      dlCurrent: 0,
-      dlTotal: 0,
-      dlVersion: '',
     };
 
     if (state.displayedTabs.length === 0) {
@@ -1515,7 +1572,7 @@ async function _backgroundEnsureVersions(attempt = 0) {
 
     _notifyVersionsReady();
   } catch {
-    useBibleStore.setState({ downloading: false, dlCurrent: 0, dlTotal: 0, dlVersion: '' });
+    _clearDownloadProgress();
     _notifyVersionsReady();
   } finally {
     _releaseAutoEnsureLock();

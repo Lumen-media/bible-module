@@ -312,6 +312,53 @@ export async function setSetting(db: SqliteHandle, key: string, value: string): 
   await db.exec('INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)', [key, value]);
 }
 
+export async function getVerseCountByVersion(
+  db: SqliteHandle
+): Promise<{ version: string; count: number }[]> {
+  try {
+    const rows = await db.query<{ version: string; count: number }>(
+      'SELECT version, COUNT(*) as count FROM verses GROUP BY version'
+    );
+    return rows;
+  } catch {
+    return [];
+  }
+}
+
+export async function getVerseCount(db: SqliteHandle, version: string): Promise<number> {
+  try {
+    const rows = await db.query<{ count: number }>(
+      'SELECT COUNT(*) as count FROM verses WHERE version = ?',
+      [version]
+    );
+    return rows.length > 0 ? rows[0].count : 0;
+  } catch {
+    return 0;
+  }
+}
+
+export async function deleteVersionData(
+  db: SqliteHandle,
+  version: string
+): Promise<void> {
+  try {
+    await db.exec('DELETE FROM verses WHERE version = ?', [version]);
+    await db.exec('DELETE FROM verses_fts WHERE version = ?', [version]);
+    await db.exec('DELETE FROM versions WHERE version = ?', [version]);
+  } catch {}
+}
+
+export async function getDatabaseSize(db: SqliteHandle): Promise<number | null> {
+  try {
+    const pages = await db.query<{ page_count: number }>('PRAGMA page_count');
+    const sizes = await db.query<{ page_size: number }>('PRAGMA page_size');
+    if (pages.length === 0 || sizes.length === 0) return null;
+    return pages[0].page_count * sizes[0].page_size;
+  } catch {
+    return null;
+  }
+}
+
 export async function searchVerses(
   db: SqliteHandle,
   query: string,
