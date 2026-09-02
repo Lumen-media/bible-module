@@ -788,17 +788,7 @@ export const useBibleStore = create<BibleStore>((set, get) => ({
       _applyVersionsReady().catch(() => {});
     }
 
-    const bgImageSaved = await getSetting(db, 'bgImageSaved');
-    if (!bgImageSaved) {
-      try {
-        const added = await themes!.addBackground({
-          source: { type: 'url', url: BACKGROUND_IMAGE_URL },
-          name: 'Imagem de fundo personalizada',
-        });
-        if (!added) return;
-        await setSetting(db, 'bgImageSaved', 'true');
-      } catch {}
-    }
+    await _ensureDefaultBackground();
   },
 
   setVersion: async (version) => {
@@ -1284,6 +1274,77 @@ export const useBibleStore = create<BibleStore>((set, get) => ({
 }));
 
 let _autoEnsureStarted = false;
+let _bgImageStarted = false;
+
+const BG_IMAGE_INSTALLED_KEY = 'bibleBgImageInstalled';
+const BG_IMAGE_INSTALL_LOCK_KEY = 'bibleBgImageInstallLock';
+
+function _tryAcquireBgImageLock(): boolean {
+  try {
+    const now = Date.now();
+    const raw = localStorage.getItem(BG_IMAGE_INSTALL_LOCK_KEY);
+    if (raw) {
+      const parsed = JSON.parse(raw) as { ts: number };
+      if (now - parsed.ts < 60000) return false;
+    }
+    localStorage.setItem(BG_IMAGE_INSTALL_LOCK_KEY, JSON.stringify({ ts: now }));
+    return true;
+  } catch {
+    return true;
+  }
+}
+
+function _releaseBgImageLock(): void {
+  try {
+    localStorage.removeItem(BG_IMAGE_INSTALL_LOCK_KEY);
+  } catch {}
+}
+
+async function _ensureDefaultBackground(): Promise<void> {
+  if (_bgImageStarted) {
+    return;
+  }
+  const { sqlite, themes } = useBibleStore.getState();
+  if (!themes) return;
+
+  try {
+    if (localStorage.getItem(BG_IMAGE_INSTALLED_KEY) === 'true') {
+      return;
+    }
+  } catch {}
+
+  if (!_tryAcquireBgImageLock()) {
+    return;
+  }
+
+  try {
+    try {
+      const bgImageSaved = sqlite ? await getSetting(sqlite, 'bgImageSaved') : null;
+      if (bgImageSaved === 'true') {
+        try {
+          localStorage.setItem(BG_IMAGE_INSTALLED_KEY, 'true');
+        } catch {}
+        return;
+      }
+    } catch {}
+
+    _bgImageStarted = true;
+    try {
+      const added = await themes.addBackground({
+        source: { type: 'url', url: BACKGROUND_IMAGE_URL },
+        name: 'an-open-book-sitting-on-top-of-a-table',
+      });
+      if (added) {
+        if (sqlite) await setSetting(sqlite, 'bgImageSaved', 'true');
+        try {
+          localStorage.setItem(BG_IMAGE_INSTALLED_KEY, 'true');
+        } catch {}
+      }
+    } catch {}
+  } finally {
+    _releaseBgImageLock();
+  }
+}
 
 function _tryAcquireAutoEnsureLock(): boolean {
   try {
