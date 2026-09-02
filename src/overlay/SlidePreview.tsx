@@ -3,6 +3,7 @@ import { useContainerSize } from '../hooks/useContainerSize.js';
 import { useFitFontSize } from '../hooks/useFitFontSize.js';
 import { tForVersion } from '../i18n.js';
 import { cn, displayVersion, optimizeImageUrl } from '../lib/utils.js';
+import { VerseText } from './VerseText.js';
 import { staticVersionLanguage, useBibleStore } from '../store.js';
 
 const SAMPLE_VERSE =
@@ -139,7 +140,14 @@ export const SlidePreview = memo(function SlidePreview() {
                       <>{match[1]} </>
                     )
                   ) : null}
-                  {match ? previewText.slice(match[0].length) : previewText}
+                  {match ? (
+                    <VerseText
+                      text={previewText.slice(match[0].length)}
+                      noteClassName="italic opacity-60"
+                    />
+                  ) : (
+                    <VerseText text={previewText} noteClassName="italic opacity-60" />
+                  )}
                 </>
               );
             })()}

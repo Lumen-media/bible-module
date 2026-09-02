@@ -7,6 +7,7 @@ import type { Book } from '../data/types.js';
 import { type TFunction, tForVersion } from '../i18n.js';
 import { getModuleQueue, staticVersionLanguage, useBibleStore } from '../store.js';
 import { DownloadingState } from './DownloadingState.js';
+import { VerseText } from './VerseText.js';
 
 interface BibleVerseQueueConfig {
   version: string;
@@ -282,7 +283,7 @@ export const ChapterReader = memo(function ChapterReader({
                     }`}
                   >
                     <span className="mr-1.5 text-xs text-muted-foreground">{v.number}</span>
-                    {v.text}
+                    <VerseText text={v.text} />
                   </button>
                 </div>
               );

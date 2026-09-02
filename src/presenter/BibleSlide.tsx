@@ -5,6 +5,7 @@ import { useFitFontSize } from '../hooks/useFitFontSize.js';
 import { useLocale } from '../hooks/useLocale.js';
 import { t, tForVersion } from '../i18n.js';
 import { cn, displayVersion, optimizeImageUrl } from '../lib/utils.js';
+import { VerseText } from '../overlay/VerseText.js';
 import { staticVersionLanguage, useBibleStore } from '../store.js';
 
 interface BibleSlideProps {
@@ -216,7 +217,14 @@ export function BibleSlide({ data }: BibleSlideProps) {
                           <>{match[1]} </>
                         )
                       ) : null}
-                      {match ? line.slice(match[0].length) : line}
+                      {match ? (
+                        <VerseText
+                          text={line.slice(match[0].length)}
+                          noteClassName="italic opacity-60"
+                        />
+                      ) : (
+                        <VerseText text={line} noteClassName="italic opacity-60" />
+                      )}
                     </p>
                   );
                 })}
