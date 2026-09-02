@@ -1,7 +1,7 @@
 {
   "id": "com.bible-module",
   "name": "Bíblia",
-  "version": "1.1.1",
+  "version": "1.1.2",
   "api": "^0.15.0",
   "minLumenVersion": "0.0.0",
   "description": "A complete Bible reader with multiple translations, offline search, and presenter projection for Lumen.",
