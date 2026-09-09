@@ -1,7 +1,7 @@
 {
   "id": "com.lumenmedia.bible",
   "name": "Bíblia",
-  "version": "1.1.2",
+  "version": "1.1.3",
   "api": "^0.15.0",
   "minLumenVersion": "0.0.0",
   "description": "A complete Bible reader with multiple translations, offline search, and presenter projection for Lumen.",
