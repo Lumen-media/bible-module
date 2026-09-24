@@ -3,13 +3,24 @@ import { resolve } from "node:path";
 import tailwindcss from "@tailwindcss/postcss";
 import { defineConfig } from "vite";
 
-const HOST_EXTERNALS = ["react", "@lumen-media/ui", "@lumen-media/module-sdk"];
+const HOST_EXTERNALS = [
+  "react",
+  "react-dom",
+  "react-dom/client",
+  "react/jsx-runtime",
+  "react/jsx-dev-runtime",
+  "@lumen-media/ui",
+  "@lumen-media/module-sdk",
+];
 
 export default defineConfig({
   css: {
     postcss: {
       plugins: [tailwindcss()],
     },
+  },
+  define: {
+    "process.env.NODE_ENV": JSON.stringify("production"),
   },
   plugins: [
     {
