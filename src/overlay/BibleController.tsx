@@ -344,6 +344,12 @@ const ReaderFooter = memo(function ReaderFooter({
   function projectAll() {
     if (!verses || verses.length === 0 || !selectedBook) return;
     const state = useBibleStore.getState();
+    const startIdx = Math.max(
+      0,
+      state.selectedVerse != null ? verses.findIndex((v) => v.number === state.selectedVerse) : 0
+    );
+    const count = Math.max(1, Math.min(state.versesPerPage, verses.length - startIdx));
+    const group = verses.slice(startIdx, startIdx + count);
     const data = {
       version,
       book: selectedBook.id,
@@ -352,8 +358,8 @@ const ReaderFooter = memo(function ReaderFooter({
         `book.${selectedBook.id}`
       ),
       chapter: state.chapter,
-      verses: verses.map((v) => v.number),
-      text: verses.map((v) => `${v.number} ${v.text}`).join('\n'),
+      verses: group.map((v) => v.number),
+      text: group.map((v) => `${v.number} ${v.text}`).join('\n'),
       uppercase: state.uppercase,
       showReferenceOnly: state.showReferenceOnly,
       showVersion: state.showVersion,
