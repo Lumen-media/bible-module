@@ -22,8 +22,9 @@ export const PreviewPane = memo(function PreviewPane() {
   const { width: bgWidth, height: bgHeight } = useContainerSize(containerRef);
 
   const resolvedBg = background ?? profileBg;
-  const isUnsplash = resolvedBg && UNSPLASH_HOSTS.has(new URL(resolvedBg.src).hostname);
-  const bgSrc = isUnsplash ? optimizeImageUrl(resolvedBg.src, bgWidth, bgHeight, 60) : null;
+  const src = resolvedBg?.src;
+  const isUnsplash = src && UNSPLASH_HOSTS.has(new URL(src).hostname);
+  const bgSrc = isUnsplash ? optimizeImageUrl(src, bgWidth, bgHeight, 60) : null;
   const data = projectedData;
   const hasData = !!data;
 

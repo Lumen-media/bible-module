@@ -33,11 +33,8 @@ export const SlidePreview = memo(function SlidePreview() {
   const profileBackground = useBibleStore((s) => s.profileBackground);
   const version = useBibleStore((s) => s.version);
 
-  const previewSize = Math.max(14, Math.min(48, Math.round(fontSize * 0.6)));
-  const resolvedBg = background ?? profileBackground;
-
+  const previewSize = Math.max(14, Math.min(48, Math.round(fontSize * 0.6)));const resolvedBg = background ?? profileBackground;
   const versionLang = useBibleStore.getState().versionLanguage ?? staticVersionLanguage(version);
-
   const bookName = selectedBook
     ? abbreviatedBooks
       ? tForVersion(versionLang, `bookAbbr.${selectedBook.id}`)
@@ -49,8 +46,9 @@ export const SlidePreview = memo(function SlidePreview() {
 
   const containerRef = useRef<HTMLDivElement>(null);
   const { width: bgWidth, height: bgHeight } = useContainerSize(containerRef);
-  const isUnsplash = resolvedBg && UNSPLASH_HOSTS.has(new URL(resolvedBg.src).hostname);
-  const bgSrc = isUnsplash ? optimizeImageUrl(resolvedBg.src, bgWidth, bgHeight, 70) : null;
+  const src = resolvedBg?.src;
+  const isUnsplash = src && UNSPLASH_HOSTS.has(new URL(src).hostname);
+  const bgSrc = isUnsplash ? optimizeImageUrl(src, bgWidth, bgHeight, 70) : null;
   const { effectiveFontSize, effectiveRefSize } = useFitFontSize(
     containerRef,
     previewText,

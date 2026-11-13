@@ -55,8 +55,9 @@ export function BibleSlide({ data }: BibleSlideProps) {
 
   const containerRef = useRef<HTMLDivElement>(null);
   const { width: bgWidth, height: bgHeight } = useContainerSize(containerRef);
-  const isUnsplash = resolvedBg && UNSPLASH_HOSTS.has(new URL(resolvedBg.src).hostname);
-  const bgSrc = isUnsplash ? optimizeImageUrl(resolvedBg.src, bgWidth, bgHeight, 80) : null;
+  const src = resolvedBg?.src;
+  const isUnsplash = src && UNSPLASH_HOSTS.has(new URL(src).hostname);
+  const bgSrc = isUnsplash ? optimizeImageUrl(src, bgWidth, bgHeight, 80) : null;
   const { effectiveFontSize, effectiveRefSize } = useFitFontSize(
     containerRef,
     data?.text ?? '',
