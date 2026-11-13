@@ -8,6 +8,8 @@ import { cn, displayVersion, optimizeImageUrl } from '../lib/utils.js';
 import { VerseText } from '../overlay/VerseText.js';
 import { staticVersionLanguage, useBibleStore } from '../store.js';
 
+const UNSPLASH_HOSTS = new Set(['images.unsplash.com', 'source.unsplash.com']);
+
 interface BibleSlideProps {
   data?: {
     version: string;
@@ -53,9 +55,8 @@ export function BibleSlide({ data }: BibleSlideProps) {
 
   const containerRef = useRef<HTMLDivElement>(null);
   const { width: bgWidth, height: bgHeight } = useContainerSize(containerRef);
-  const bgSrc = resolvedBg
-    ? optimizeImageUrl(resolvedBg.src, bgWidth, bgHeight, 80)
-    : null;
+  const isUnsplash = resolvedBg && UNSPLASH_HOSTS.has(new URL(resolvedBg.src).hostname);
+  const bgSrc = isUnsplash ? optimizeImageUrl(resolvedBg.src, bgWidth, bgHeight, 80) : null;
   const { effectiveFontSize, effectiveRefSize } = useFitFontSize(
     containerRef,
     data?.text ?? '',
@@ -88,11 +89,16 @@ export function BibleSlide({ data }: BibleSlideProps) {
     return (
       <div className="flex h-full w-full flex-col items-center justify-center bg-black text-white/30">
         {resolvedBg && (
-          <img
-            src={bgSrc ?? undefined}
-            alt=""
-            className="absolute inset-0 h-full w-full object-cover"
-          />
+          isUnsplash ? (
+            <img
+              src={bgSrc ?? undefined}
+              alt=""
+              className="absolute inset-0 h-full w-full object-cover"
+            />
+          ) : (
+            // Non-Unsplash background (e.g. generated): show solid color
+            <div className="absolute inset-0 bg-black" />
+          )
         )}
         <div className="absolute inset-0 bg-black" style={{ opacity: backgroundOpacity / 100 }} />
         <BookOpen className="relative z-10 mb-4 h-12 w-12" />
@@ -137,7 +143,12 @@ export function BibleSlide({ data }: BibleSlideProps) {
       )}
     >
       {resolvedBg && (
-        <img src={bgSrc ?? undefined} alt="" className="absolute inset-0 h-full w-full object-cover" />
+        isUnsplash ? (
+          <img src={bgSrc ?? undefined} alt="" className="absolute inset-0 h-full w-full object-cover" />
+        ) : (
+          // Non-Unsplash background (e.g. generated): show solid color
+          <div className="absolute inset-0 bg-black" />
+        )
       )}
       <div className="absolute inset-0 bg-black" style={{ opacity: backgroundOpacity / 100 }} />
       <div

@@ -6,6 +6,7 @@ import { cn, displayVersion, optimizeImageUrl } from '../lib/utils.js';
 import { VerseText } from './VerseText.js';
 import { staticVersionLanguage, useBibleStore } from '../store.js';
 
+const UNSPLASH_HOSTS = new Set(['images.unsplash.com', 'source.unsplash.com']);
 const SAMPLE_VERSE =
   'For God so loved the world, that he gave his only Son, that whoever believes in him should not perish but have eternal life.';
 
@@ -48,7 +49,8 @@ export const SlidePreview = memo(function SlidePreview() {
 
   const containerRef = useRef<HTMLDivElement>(null);
   const { width: bgWidth, height: bgHeight } = useContainerSize(containerRef);
-  const bgSrc = resolvedBg ? optimizeImageUrl(resolvedBg.src, bgWidth, bgHeight, 70) : null;
+  const isUnsplash = resolvedBg && UNSPLASH_HOSTS.has(new URL(resolvedBg.src).hostname);
+  const bgSrc = isUnsplash ? optimizeImageUrl(resolvedBg.src, bgWidth, bgHeight, 70) : null;
   const { effectiveFontSize, effectiveRefSize } = useFitFontSize(
     containerRef,
     previewText,
@@ -62,7 +64,12 @@ export const SlidePreview = memo(function SlidePreview() {
       className="relative aspect-video overflow-hidden rounded-md border border-border bg-black"
     >
       {resolvedBg ? (
-        <img src={bgSrc ?? undefined} alt="" className="absolute inset-0 h-full w-full object-cover" />
+        isUnsplash ? (
+          <img src={bgSrc ?? undefined} alt="" className="absolute inset-0 h-full w-full object-cover" />
+        ) : (
+          // Non-Unsplash background (e.g. generated): show solid color instead of img
+          <div className="absolute inset-0 bg-card" />
+        )
       ) : (
         <div className="absolute inset-0 bg-linear-to-br from-card to-background" />
       )}

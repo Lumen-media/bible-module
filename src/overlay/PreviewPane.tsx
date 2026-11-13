@@ -5,6 +5,8 @@ import { tForVersion } from '../i18n.js';
 import { displayVersion, optimizeImageUrl } from '../lib/utils.js';
 import { staticVersionLanguage, useBibleStore } from '../store.js';
 
+const UNSPLASH_HOSTS = new Set(['images.unsplash.com', 'source.unsplash.com']);
+
 export const PreviewPane = memo(function PreviewPane() {
   const projectedData = useBibleStore((s) => s.projectedData);
   const version = useBibleStore((s) => s.version);
@@ -20,11 +22,8 @@ export const PreviewPane = memo(function PreviewPane() {
   const { width: bgWidth, height: bgHeight } = useContainerSize(containerRef);
 
   const resolvedBg = background ?? profileBg;
-  const bgThumb =
-    resolvedBg && 'thumb' in resolvedBg
-      ? ((resolvedBg as { thumb?: string }).thumb ?? resolvedBg.src)
-      : resolvedBg?.src;
-  const bgSrc = resolvedBg ? optimizeImageUrl(bgThumb ?? resolvedBg.src, bgWidth, bgHeight, 60) : null;
+  const isUnsplash = resolvedBg && UNSPLASH_HOSTS.has(new URL(resolvedBg.src).hostname);
+  const bgSrc = isUnsplash ? optimizeImageUrl(resolvedBg.src, bgWidth, bgHeight, 60) : null;
   const data = projectedData;
   const hasData = !!data;
 
@@ -47,12 +46,20 @@ export const PreviewPane = memo(function PreviewPane() {
       className="group relative flex aspect-video w-28 shrink-0 items-center overflow-hidden rounded-md border border-border bg-black text-left transition-colors hover:border-primary/50"
     >
       {resolvedBg ? (
-        <img
-          src={bgSrc ?? undefined}
-          alt=""
-          className="absolute inset-0 h-full w-full object-cover"
-          style={{ opacity: 0.5 }}
-        />
+        isUnsplash ? (
+          <img
+            src={bgSrc ?? undefined}
+            alt=""
+            className="absolute inset-0 h-full w-full object-cover"
+            style={{ opacity: 0.5 }}
+          />
+        ) : (
+          // Non-Unsplash background (e.g. generated): show solid color instead of img
+          <div
+            className="absolute inset-0 bg-card"
+            style={{ opacity: 0.5 }}
+          />
+        )
       ) : (
         <div className="absolute inset-0 bg-linear-to-br from-card to-background" />
       )}
