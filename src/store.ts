@@ -45,7 +45,7 @@ import {
 } from './data/store.js';
 import type { Book, HistoryEntry } from './data/types.js';
 import type { TFunction } from './i18n.js';
-import { analyzeBackgroundColor } from './lib/color-analysis.js';
+import { backgroundTextColor } from './lib/background.js';
 
 export const ALL_VERSIONS = [
   { id: 'naa', name: 'Nova Almeida Atualizada', language: 'pt-br' },
@@ -148,7 +148,7 @@ export interface BibleState {
   selectedVerse: number | null;
 
   background: SelectedBackground | null;
-  profileBackground: { type: string; src: string; name: string; thumb?: string } | null;
+  profileBackground: SelectedBackground | null;
   fontList: string[];
   fontSize: number;
   fontFamily: string;
@@ -242,9 +242,7 @@ export interface BibleActions {
   downloadedVersions: () => Promise<string[]>;
   getSyncedVersionsState: () => Promise<Record<string, number>>;
   setBackground: (bg: SelectedBackground | null) => void;
-  setProfileBackground: (
-    bg: { src: string; type: string; name: string; thumb?: string } | null
-  ) => void;
+  setProfileBackground: (bg: SelectedBackground | null) => void;
   pickBackground: () => void;
   setFontSize: (n: number) => void;
   setFontFamily: (f: string) => void;
@@ -285,7 +283,7 @@ export interface BibleActions {
       lineSpacing?: number;
       referencePosition?: 'inline' | 'top';
       background?: SelectedBackground | null;
-      profileBackground?: { type: string; src: string; name: string } | null;
+      profileBackground?: SelectedBackground | null;
       backgroundOpacity?: number;
     } | null
   ) => void;
@@ -327,6 +325,8 @@ function getDefaultVersions(locale?: string): string[] {
 function persistSettingsFromState(state: BibleState) {
   if (!state.json) return;
   persistSettings(state.json, state.sqlite, {
+    // The generator poster is kept on purpose: it is the only frame the module
+    // can draw for that URI, and it stays valid while the URI is unchanged.
     background: state.background,
     backgroundOpacity: state.backgroundOpacity,
     fontSize: state.fontSize,
@@ -1116,7 +1116,7 @@ export const useBibleStore = create<BibleStore>((set, get) => ({
     set({ background: bg });
 
     if (autoFontColor && bg?.src && bg.type !== 'video') {
-      const textColor = await analyzeBackgroundColor(bg.src);
+      const textColor = await backgroundTextColor(bg);
       set({ fontColor: textColor });
     }
 
@@ -1190,7 +1190,7 @@ export const useBibleStore = create<BibleStore>((set, get) => ({
     if (v) {
       const bg = get().background ?? get().profileBackground;
       if (bg?.src && bg.type !== 'video') {
-        const textColor = await analyzeBackgroundColor(bg.src);
+        const textColor = await backgroundTextColor(bg);
         set({ fontColor: textColor });
       }
     }
