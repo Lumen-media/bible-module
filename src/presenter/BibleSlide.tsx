@@ -1,14 +1,14 @@
+import type { SelectedBackground } from '@lumen-media/module-sdk';
+import { BackgroundSurface } from '@lumen-media/module-sdk/ui';
 import { BookOpen } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { useContainerSize } from '../hooks/useContainerSize.js';
 import { useFitFontSize } from '../hooks/useFitFontSize.js';
 import { useLocale } from '../hooks/useLocale.js';
 import { t, tForVersion } from '../i18n.js';
-import { cn, displayVersion, optimizeImageUrl } from '../lib/utils.js';
+import { isGeneratorBackground } from '../lib/background.js';
+import { cn, displayVersion } from '../lib/utils.js';
 import { VerseText } from '../overlay/VerseText.js';
 import { staticVersionLanguage, useBibleStore } from '../store.js';
-
-const UNSPLASH_HOSTS = new Set(['images.unsplash.com', 'source.unsplash.com']);
 
 interface BibleSlideProps {
   data?: {
@@ -31,13 +31,19 @@ interface BibleSlideProps {
     lineSpacing: number;
     referencePosition: 'inline' | 'top';
     verseNumberStyle: 'superscript' | 'inline' | 'hidden';
-    background: { type: string; src: string; name: string } | null;
-    profileBackground: { type: string; src: string; name: string } | null;
+    background: SelectedBackground | null;
+    profileBackground: SelectedBackground | null;
     backgroundOpacity: number;
   } | null;
+  /**
+   * Presenter backdrop filled by the host on projection. Generators arrive as
+   * `backgroundMedia` and are animated by the host behind this view, the same
+   * way lyric backgrounds are, so the module must not draw them again.
+   */
+  backgroundMedia?: { type: string; src: string; name?: string };
 }
 
-export function BibleSlide({ data }: BibleSlideProps) {
+export function BibleSlide({ data, backgroundMedia }: BibleSlideProps) {
   useLocale();
   const storeBg = useBibleStore((s) => s.background);
   const storeProfileBg = useBibleStore((s) => s.profileBackground);
@@ -52,12 +58,9 @@ export function BibleSlide({ data }: BibleSlideProps) {
   const backgroundOpacity = data?.backgroundOpacity ?? storeBgOpacity;
 
   const resolvedBg = background ?? profileBg;
+  const ownBg = isGeneratorBackground(backgroundMedia) ? null : resolvedBg;
 
   const containerRef = useRef<HTMLDivElement>(null);
-  const { width: bgWidth, height: bgHeight } = useContainerSize(containerRef);
-  const src = resolvedBg?.src;
-  const isUnsplash = src && UNSPLASH_HOSTS.has(new URL(src).hostname);
-  const bgSrc = isUnsplash ? optimizeImageUrl(src, bgWidth, bgHeight, 80) : null;
   const { effectiveFontSize, effectiveRefSize } = useFitFontSize(
     containerRef,
     data?.text ?? '',
@@ -88,19 +91,8 @@ export function BibleSlide({ data }: BibleSlideProps) {
 
   if (!renderData) {
     return (
-      <div className="flex h-full w-full flex-col items-center justify-center bg-black text-white/30">
-        {resolvedBg && (
-          isUnsplash ? (
-            <img
-              src={bgSrc ?? undefined}
-              alt=""
-              className="absolute inset-0 h-full w-full object-cover"
-            />
-          ) : (
-            // Non-Unsplash background (e.g. generated): show solid color
-            <div className="absolute inset-0 bg-black" />
-          )
-        )}
+      <div className="relative flex h-full w-full flex-col items-center justify-center text-white/30">
+        {ownBg ? <BackgroundSurface background={ownBg} /> : null}
         <div className="absolute inset-0 bg-black" style={{ opacity: backgroundOpacity / 100 }} />
         <BookOpen className="relative z-10 mb-4 h-12 w-12" />
         <p className="relative z-10 text-lg">{t('bible.select-verse-to-project')}</p>
@@ -127,9 +119,9 @@ export function BibleSlide({ data }: BibleSlideProps) {
   } = renderData;
   const label = abbreviatedBooks
     ? tForVersion(
-        useBibleStore.getState().versionLanguage ?? staticVersionLanguage(version),
-        `bookAbbr.${book}`
-      )
+      useBibleStore.getState().versionLanguage ?? staticVersionLanguage(version),
+      `bookAbbr.${book}`
+    )
     : bookName;
   const showVersionLabel = showVersion && !showReferenceOnly;
   const verseStr =
@@ -139,18 +131,11 @@ export function BibleSlide({ data }: BibleSlideProps) {
     <div
       ref={containerRef}
       className={cn(
-        'relative flex h-full w-full flex-col items-center bg-black px-16',
+        'relative flex h-full w-full flex-col items-center px-16',
         referencePosition === 'top' && !showReferenceOnly ? 'justify-start' : 'justify-center'
       )}
     >
-      {resolvedBg && (
-        isUnsplash ? (
-          <img src={bgSrc ?? undefined} alt="" className="absolute inset-0 h-full w-full object-cover" />
-        ) : (
-          // Non-Unsplash background (e.g. generated): show solid color
-          <div className="absolute inset-0 bg-black" />
-        )
-      )}
+      {ownBg ? <BackgroundSurface background={ownBg} /> : null}
       <div className="absolute inset-0 bg-black" style={{ opacity: backgroundOpacity / 100 }} />
       <div
         key={verseKey}

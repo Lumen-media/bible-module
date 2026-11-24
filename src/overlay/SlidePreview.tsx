@@ -1,12 +1,11 @@
+import { BackgroundSurface } from '@lumen-media/module-sdk/ui';
 import { memo, useRef } from 'react';
-import { useContainerSize } from '../hooks/useContainerSize.js';
 import { useFitFontSize } from '../hooks/useFitFontSize.js';
 import { tForVersion } from '../i18n.js';
-import { cn, displayVersion, optimizeImageUrl } from '../lib/utils.js';
-import { VerseText } from './VerseText.js';
+import { cn, displayVersion } from '../lib/utils.js';
 import { staticVersionLanguage, useBibleStore } from '../store.js';
+import { VerseText } from './VerseText.js';
 
-const UNSPLASH_HOSTS = new Set(['images.unsplash.com', 'source.unsplash.com']);
 const SAMPLE_VERSE =
   'For God so loved the world, that he gave his only Son, that whoever believes in him should not perish but have eternal life.';
 
@@ -33,8 +32,11 @@ export const SlidePreview = memo(function SlidePreview() {
   const profileBackground = useBibleStore((s) => s.profileBackground);
   const version = useBibleStore((s) => s.version);
 
-  const previewSize = Math.max(14, Math.min(48, Math.round(fontSize * 0.6)));const resolvedBg = background ?? profileBackground;
+  const previewSize = Math.max(14, Math.min(48, Math.round(fontSize * 0.6)));
+  const resolvedBg = background ?? profileBackground;
+
   const versionLang = useBibleStore.getState().versionLanguage ?? staticVersionLanguage(version);
+
   const bookName = selectedBook
     ? abbreviatedBooks
       ? tForVersion(versionLang, `bookAbbr.${selectedBook.id}`)
@@ -45,10 +47,6 @@ export const SlidePreview = memo(function SlidePreview() {
   const previewText = verseText ? `${verseNum} ${verseText}` : `${verseNum} ${SAMPLE_VERSE}`;
 
   const containerRef = useRef<HTMLDivElement>(null);
-  const { width: bgWidth, height: bgHeight } = useContainerSize(containerRef);
-  const src = resolvedBg?.src;
-  const isUnsplash = src && UNSPLASH_HOSTS.has(new URL(src).hostname);
-  const bgSrc = isUnsplash ? optimizeImageUrl(src, bgWidth, bgHeight, 70) : null;
   const { effectiveFontSize, effectiveRefSize } = useFitFontSize(
     containerRef,
     previewText,
@@ -62,12 +60,9 @@ export const SlidePreview = memo(function SlidePreview() {
       className="relative aspect-video overflow-hidden rounded-md border border-border bg-black"
     >
       {resolvedBg ? (
-        isUnsplash ? (
-          <img src={bgSrc ?? undefined} alt="" className="absolute inset-0 h-full w-full object-cover" />
-        ) : (
-          // Non-Unsplash background (e.g. generated): show solid color instead of img
-          <div className="absolute inset-0 bg-card" />
-        )
+        <div className="absolute inset-0">
+          <BackgroundSurface background={resolvedBg} variant="fill" animated={true} />
+        </div>
       ) : (
         <div className="absolute inset-0 bg-linear-to-br from-card to-background" />
       )}

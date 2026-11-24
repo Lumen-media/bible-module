@@ -1,11 +1,9 @@
+import { BackgroundSurface } from '@lumen-media/module-sdk/ui';
 import { Palette } from 'lucide-react';
-import { memo, useRef } from 'react';
-import { useContainerSize } from '../hooks/useContainerSize.js';
+import { memo } from 'react';
 import { tForVersion } from '../i18n.js';
-import { displayVersion, optimizeImageUrl } from '../lib/utils.js';
+import { displayVersion } from '../lib/utils.js';
 import { staticVersionLanguage, useBibleStore } from '../store.js';
-
-const UNSPLASH_HOSTS = new Set(['images.unsplash.com', 'source.unsplash.com']);
 
 export const PreviewPane = memo(function PreviewPane() {
   const projectedData = useBibleStore((s) => s.projectedData);
@@ -18,13 +16,7 @@ export const PreviewPane = memo(function PreviewPane() {
   const selectedVerse = useBibleStore((s) => s.selectedVerse);
   const pickBackground = useBibleStore((s) => s.pickBackground);
 
-  const containerRef = useRef<HTMLButtonElement>(null);
-  const { width: bgWidth, height: bgHeight } = useContainerSize(containerRef);
-
   const resolvedBg = background ?? profileBg;
-  const src = resolvedBg?.src;
-  const isUnsplash = src && UNSPLASH_HOSTS.has(new URL(src).hostname);
-  const bgSrc = isUnsplash ? optimizeImageUrl(src, bgWidth, bgHeight, 60) : null;
   const data = projectedData;
   const hasData = !!data;
 
@@ -43,24 +35,12 @@ export const PreviewPane = memo(function PreviewPane() {
       type="button"
       onClick={pickBackground}
       title="Background"
-      ref={containerRef}
       className="group relative flex aspect-video w-28 shrink-0 items-center overflow-hidden rounded-md border border-border bg-black text-left transition-colors hover:border-primary/50"
     >
       {resolvedBg ? (
-        isUnsplash ? (
-          <img
-            src={bgSrc ?? undefined}
-            alt=""
-            className="absolute inset-0 h-full w-full object-cover"
-            style={{ opacity: 0.5 }}
-          />
-        ) : (
-          // Non-Unsplash background (e.g. generated): show solid color instead of img
-          <div
-            className="absolute inset-0 bg-card"
-            style={{ opacity: 0.5 }}
-          />
-        )
+        <div className="absolute inset-0 opacity-50">
+          <BackgroundSurface background={resolvedBg} variant="thumbnail" animated={false} />
+        </div>
       ) : (
         <div className="absolute inset-0 bg-linear-to-br from-card to-background" />
       )}
