@@ -5,6 +5,7 @@ import { ListPlus, Loader2, Star } from 'lucide-react';
 import { memo, useCallback, useEffect, useRef, useState } from 'react';
 import type { Book } from '../data/types.js';
 import { type TFunction, tForVersion } from '../i18n.js';
+import { generatorBackdropProps, stripPoster } from '../lib/background.js';
 import { getModuleQueue, staticVersionLanguage, useBibleStore } from '../store.js';
 import { DownloadingState } from './DownloadingState.js';
 import { VerseText } from './VerseText.js';
@@ -165,12 +166,13 @@ export const ChapterReader = memo(function ChapterReader({
         lineSpacing,
         referencePosition,
         verseNumberStyle,
-        background,
+        background: stripPoster(background),
         profileBackground,
         backgroundOpacity,
       };
+      const backdrop = generatorBackdropProps(background ?? profileBackground);
       try {
-        presentation.project('bible-slide', { data });
+        presentation.project('bible-slide', { data, ...(backdrop ?? {}) });
         useBibleStore.getState().setProjectedData(data);
         onProject();
       } catch {}

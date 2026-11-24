@@ -29,6 +29,7 @@ import { flushSync } from 'react-dom';
 import { useEventListener } from 'usehooks-ts';
 import { BOOKS } from '../data/store.js';
 import { type TFunction, type TranslationKey, tForVersion } from '../i18n.js';
+import { generatorBackdropProps, stripPoster } from '../lib/background.js';
 import { cn, displayVersion } from '../lib/utils.js';
 import { ALL_VERSIONS, staticVersionLanguage, UPDATED_VERSIONS, useBibleStore } from '../store.js';
 import { BookGrid } from './BookGrid.js';
@@ -373,15 +374,16 @@ const ReaderFooter = memo(function ReaderFooter({
       lineSpacing: state.lineSpacing,
       referencePosition: state.referencePosition,
       verseNumberStyle: state.verseNumberStyle,
-      background: state.background,
+      background: stripPoster(state.background),
       profileBackground: state.profileBackground,
       backgroundOpacity: state.backgroundOpacity,
     };
+    const backdrop = generatorBackdropProps(state.background ?? state.profileBackground);
     try {
-      presentation.project('bible-slide', { data });
+      presentation.project('bible-slide', { data, ...(backdrop ?? {}) });
       useBibleStore.getState().setProjectedData(data);
       onProject();
-    } catch {}
+    } catch { }
   }
 
   return (
@@ -769,7 +771,7 @@ const Header = memo(function Header({
         flushSync(apply);
       });
       vt.finished
-        .catch(() => {})
+        .catch(() => { })
         .finally(() => {
           vtActiveRef.current = false;
           delete document.documentElement.dataset.vtDir;
@@ -975,8 +977,8 @@ export function BibleController({ close, goToBook, goToChapter, goToVerse }: Bib
         <span className="text-sm">
           {downloading
             ? tFn('bible.downloading', {
-                version: dlVersion.split(', ').map(displayVersion).join(', '),
-              })
+              version: dlVersion.split(', ').map(displayVersion).join(', '),
+            })
             : tFn('bible.preparing')}
         </span>
       </div>

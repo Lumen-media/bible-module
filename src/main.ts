@@ -9,6 +9,7 @@ import {
 import { parseReference } from './data/ref.js';
 import { BOOKS } from './data/store.js';
 import { currentLocale, setupI18n, type TranslationKey, t } from './i18n.js';
+import { generatorBackdropProps, stripPoster } from './lib/background.js';
 import { BiblePanel } from './overlay/BiblePanel.js';
 import { BibleSlide } from './presenter/BibleSlide.js';
 import { setModuleQueue, useBibleStore } from './store.js';
@@ -143,6 +144,16 @@ export default class BibleModulePlugin extends LumenPlugin {
       useBibleStore.getState().setProfileBackground(bg);
     });
 
+    // The change listener only fires when the profile background differs from
+    // what this window already knows; a fresh window starts empty. The host
+    // resolves the poster for generators before answering, so await it.
+    void Promise.resolve(host.themes.defaultBackground())
+      .then((bg) => {
+        const state = useBibleStore.getState();
+        if (bg && !state.profileBackground) state.setProfileBackground(bg);
+      })
+      .catch(() => {});
+
     this.themeChangeSub = host.themes.onChange((theme) => {
       this.applyTheme(theme);
     });
@@ -201,11 +212,12 @@ export default class BibleModulePlugin extends LumenPlugin {
             lineSpacing: state.lineSpacing,
             referencePosition: state.referencePosition,
             verseNumberStyle: state.verseNumberStyle,
-            background: state.background,
+            background: stripPoster(state.background),
             profileBackground: state.profileBackground,
             backgroundOpacity: state.backgroundOpacity,
           };
-          host.presentation.project('bible-slide', { data });
+          const backdrop = generatorBackdropProps(state.background ?? state.profileBackground);
+          host.presentation.project('bible-slide', { data, ...(backdrop ?? {}) });
           state.setProjectedData(data);
         },
       } satisfies QueueActionSpec);
